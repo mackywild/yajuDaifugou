@@ -10,6 +10,7 @@ public class RevolutionRule implements Rule{
     public boolean matches(
             GameState state,
             Player player,
+            CardCombination previousField,
             CardCombination combination
     ) {
         return combination.getType()
@@ -20,6 +21,7 @@ public class RevolutionRule implements Rule{
     public void apply(
             GameState state,
             Player player,
+            CardCombination previousField,
             CardCombination combination,
             RuleResult result
     ) {

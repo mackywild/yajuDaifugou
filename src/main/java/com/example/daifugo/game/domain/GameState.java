@@ -16,6 +16,7 @@ public class GameState {
     private CardCombination fieldCombination;
     private boolean revolution;
     private GamePhase phase;
+    private Mark lockedMark;
 
     public GameState(List<Player> players) {
         Objects.requireNonNull(players, "players must not be null");
@@ -112,8 +113,9 @@ public class GameState {
     }
 
     public void clearField() {
-        fieldCombination = null;
-        lastPlayedPlayerIndex = null;
+        this.fieldCombination = null;
+        this.lastPlayedPlayerIndex = null;
+        this.lockedMark = null;
 
         players.forEach(Player::clearPass);
     }
@@ -141,4 +143,27 @@ public class GameState {
 
         currentPlayerIndex = playerIndex;
     }
+
+	public Mark getLockedMark() {
+		return lockedMark;
+	}
+
+	public void setLockedMark(Mark lockedMark) {
+		this.lockedMark = lockedMark;
+	}
+	
+	public boolean isMarkLocked() {
+		return lockedMark != null;
+	}
+	
+	public void lockMark(Mark mark) {
+		this.lockedMark = Objects.requireNonNull(
+				mark,
+				"マークが一致していません"
+		);
+	}
+	
+	public void clearMarkLock() {
+		this.lockedMark = null;
+	}
 }

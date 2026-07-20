@@ -8,12 +8,14 @@ public interface Rule {
     boolean matches(
             GameState state,
             Player player,
+            CardCombination previousField,
             CardCombination combination
         );
 
         void apply(
             GameState state,
             Player player,
+            CardCombination previousField,
             CardCombination combination,
             RuleResult result
         );

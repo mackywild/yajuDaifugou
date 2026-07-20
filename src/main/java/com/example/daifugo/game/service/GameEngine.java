@@ -67,7 +67,8 @@ public class GameEngine {
         	boolean canPlay = playValidator.canPlay(
         	    selectedCombination,
         	    state.getFieldCombination(),
-        	    state.isRevolution()
+        	    state.isRevolution(),
+        	    state.getLockedMark()
         	);
 
         	if (!canPlay) {
@@ -88,12 +89,14 @@ public class GameEngine {
         	        finishResult.getMessage()
         	    );
         	}
+        	
+        CardCombination previousField = state.getFieldCombination();
 
         player.removeCards(selectedCards);
 
         int playerIndex =
             state.getCurrentPlayerIndex();
-
+        
         state.updateField(
             selectedCombination,
             playerIndex
@@ -105,8 +108,13 @@ public class GameEngine {
             ruleEngine.applyRules(
                 state,
                 player,
+                previousField,
                 selectedCombination
             );
+        
+        if(ruleResult.shouldLockMark()) {
+        	state.lockMark(ruleResult.getMarkToLock());
+        }
 
         if (player.hasNoCards()) {
             assignRank(state, player);

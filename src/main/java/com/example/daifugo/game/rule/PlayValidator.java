@@ -2,13 +2,16 @@ package com.example.daifugo.game.rule;
 import java.util.Objects;
 
 import com.example.daifugo.game.domain.CardCombination;
+import com.example.daifugo.game.domain.Mark;
 
 public class PlayValidator {
 
     public boolean canPlay(
             CardCombination selected,
             CardCombination field,
-            boolean revolution
+            boolean revolution,
+            Mark lockedMark
+            
     ) {
         Objects.requireNonNull(
             selected,
@@ -45,6 +48,13 @@ public class PlayValidator {
         if (selected.isSingleJoker()) {
             return field.isSingle();
         }
+        
+        if (!matchesMarkLock(
+        	         selected,
+        	         lockedMark
+        	 )) {
+        	     return false;
+        	 }
 
         int selectedStrength =
             selected.getBaseStrength();
@@ -58,4 +68,23 @@ public class PlayValidator {
 
         return selectedStrength > fieldStrength;
     }
+    
+    private boolean matchesMarkLock(
+    	         CardCombination selected,
+    	         Mark lockedSuit
+    	 ) {
+    	     if (lockedSuit == null) {
+    	         return true;
+    	     }
+    	
+    	     if (selected.isSingleJoker()) {
+    	         return true;
+    	     }
+    	
+    	     return selected.getCards()
+    	         .stream()
+    	         .allMatch(card ->
+    	             card.getSuit() == lockedSuit
+    	         );
+    	 }
 }

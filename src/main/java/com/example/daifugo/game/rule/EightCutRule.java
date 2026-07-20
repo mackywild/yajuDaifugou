@@ -10,6 +10,7 @@ public class EightCutRule implements Rule {
     public boolean matches(
             GameState state,
             Player player,
+            CardCombination previousField,
             CardCombination combination
     ) {
         return combination.getCards()
@@ -23,6 +24,7 @@ public class EightCutRule implements Rule {
     public void apply(
             GameState state,
             Player player,
+            CardCombination previousField,
             CardCombination combination,
             RuleResult result
     ) {

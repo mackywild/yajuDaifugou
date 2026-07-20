@@ -9,6 +9,15 @@ import com.example.daifugo.game.domain.Player;
 
 public class RuleEngine {
     private final List<Rule> rules;
+    
+    RuleEngine ruleEngine = new RuleEngine(
+    	    List.of(
+    	        new RevolutionRule(),
+    	        new EightCutRule(),
+    	        new MarkLockRule()
+    	        )
+    	    );
+
 
     public RuleEngine(List<Rule> rules) {
         Objects.requireNonNull(
@@ -28,6 +37,7 @@ public class RuleEngine {
     public RuleResult applyRules(
             GameState state,
             Player player,
+            CardCombination previousField,
             CardCombination combination
     ) {
         Objects.requireNonNull(
@@ -48,10 +58,11 @@ public class RuleEngine {
         RuleResult result = new RuleResult();
 
         for (Rule rule : rules) {
-            if (rule.matches(state, player, combination)) {
+            if (rule.matches(state, player,previousField, combination)) {
                 rule.apply(
                     state,
                     player,
+                    previousField,
                     combination,
                     result
                 );
