@@ -26,7 +26,7 @@ public class FinishValidator {
         this.rules = List.copyOf(rules);
     }
 
-    public FinishValidationResult validate(
+	public FinishValidationResult validate(
             GameState state,
             Player player,
             CardCombination combination

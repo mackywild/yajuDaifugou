@@ -23,8 +23,9 @@ public class GameEngine {
     private final FinishValidator finishValidator;
 
     public GameEngine(
-            PlayValidator playValidator,
+    		GameState gamestate,
             TurnManager turnManager,
+            PlayValidator playValidator,
             RuleEngine ruleEngine,
             FinishValidator finishValidator
     ) {
@@ -223,8 +224,4 @@ public class GameEngine {
             );
         }
     }
-
-	public RuleEngine getRuleEngine() {
-		return ruleEngine;
-	}
 }

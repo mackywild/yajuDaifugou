@@ -2,6 +2,7 @@ package com.example.daifugo.game.domain;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -134,4 +135,13 @@ public class Player {
 
         return true;
     }
+    
+    public void sortHand() {
+         hand.sort(
+             Comparator.comparingInt(
+                 card -> card.getStrength(false)
+             )
+         );
+     }
+    
 }
