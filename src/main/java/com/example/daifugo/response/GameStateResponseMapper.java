@@ -44,26 +44,37 @@ public class GameStateResponseMapper {
                     null,
                     FieldResponse.from(null),
                     false,
+                    null,
+                    room.isHost(requestPlayerId),
                     false,
-                    false);
+                    false,
+                    SevenTransferResponse.none(),
+                    List.of());
         }
 
         GameState gameState =
                 room.getGameState();
 
+        /*
+         * ゲーム終了後は退出済みプレイヤーを表示し続けないよう、
+         * 現在GameRoomに残っている参加者をレスポンス対象にする。
+         */
+        List<Player> responsePlayers = gameState.isFinished()
+                ? room.getPlayers()
+                : gameState.getPlayers();
+
         List<PlayerResponse> players =
                 createPlayerResponses(
-                        gameState.getPlayers(),
+                        responsePlayers,
                         requestPlayerId);
 
-        Player currentPlayer =
-                gameState.getPlayers()
-                        .get(gameState.getCurrentPlayerIndex());
-
-        String currentPlayerId =
-                currentPlayer == null
-                        ? null
-                        : currentPlayer.getId();
+        String currentPlayerId = null;
+        if (!gameState.isFinished()) {
+            Player currentPlayer =
+                    gameState.getPlayers()
+                            .get(gameState.getCurrentPlayerIndex());
+            currentPlayerId = currentPlayer.getId();
+        }
 
         return new GameStateResponse(
                 room.getRoomId(),
@@ -72,8 +83,14 @@ public class GameStateResponseMapper {
                 FieldResponse.from(
                         gameState.getFieldCombination()),
                 gameState.isRevolution(),
+                gameState.getLockedMark() == null ? null : gameState.getLockedMark().name(),
+                room.isHost(requestPlayerId),
                 true,
-                gameState.isFinished());
+                gameState.isFinished(),
+                SevenTransferResponse.from(gameState.getPendingSevenTransfer()),
+                gameState.getEvents().stream()
+                        .map(GameEventResponse::from)
+                        .toList());
     }
 
     /**

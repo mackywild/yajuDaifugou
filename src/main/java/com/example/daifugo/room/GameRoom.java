@@ -35,6 +35,12 @@ public class GameRoom {
     /** ゲーム開始済みか */
     private boolean started;
 
+    /** 部屋を作成したホストのプレイヤーID */
+    private String hostPlayerId;
+
+    /** 最終アクセス日時（epoch milli） */
+    private volatile long lastAccessedAt;
+
     /**
      * 対戦部屋を生成する。
      *
@@ -47,6 +53,7 @@ public class GameRoom {
         );
         this.players = new ArrayList<>();
         this.started = false;
+        this.lastAccessedAt = System.currentTimeMillis();
     }
 
     /**
@@ -119,6 +126,12 @@ public class GameRoom {
         }
 
         players.add(player);
+
+        if (hostPlayerId == null) {
+            hostPlayerId = player.getId();
+        }
+
+        touch();
     }
 
     /**
@@ -129,15 +142,27 @@ public class GameRoom {
      */
     public boolean removePlayer(String playerId) {
 
-        if (started) {
+        if (started && !isFinished()) {
             throw new IllegalStateException(
-                    "ゲーム開始後は通常の退出処理を実行できません"
+                    "対戦中は退出できません。ゲーム終了後に退出してください"
             );
         }
 
-        return players.removeIf(
+        boolean removed = players.removeIf(
                 player -> player.getId().equals(playerId)
         );
+
+        if (removed && Objects.equals(hostPlayerId, playerId)) {
+            hostPlayerId = players.isEmpty()
+                    ? null
+                    : players.get(0).getId();
+        }
+
+        if (removed) {
+            touch();
+        }
+
+        return removed;
     }
 
     /**
@@ -210,5 +235,53 @@ public class GameRoom {
         );
 
         this.started = true;
+        touch();
+    }
+
+
+    /**
+     * ゲームが終了済みか判定する。
+     *
+     * @return 終了済みの場合true
+     */
+    public boolean isFinished() {
+        return started
+                && gameState != null
+                && gameState.isFinished();
+    }
+
+    /**
+     * ホストのプレイヤーIDを取得する。
+     *
+     * @return ホストのプレイヤーID
+     */
+    public String getHostPlayerId() {
+        return hostPlayerId;
+    }
+
+    /**
+     * 指定プレイヤーがホストか判定する。
+     *
+     * @param playerId プレイヤーID
+     * @return ホストの場合true
+     */
+    public boolean isHost(String playerId) {
+        return Objects.equals(hostPlayerId, playerId);
+    }
+
+    /**
+     * 部屋の最終アクセス日時を更新する。
+     */
+    public void touch() {
+        lastAccessedAt = System.currentTimeMillis();
+    }
+
+    /**
+     * 最終アクセス日時を取得する。
+     *
+     * @return epoch milli
+     */
+    public long getLastAccessedAt() {
+        return lastAccessedAt;
     }
 }

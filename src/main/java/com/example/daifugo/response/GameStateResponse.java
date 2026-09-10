@@ -22,11 +22,23 @@ public class GameStateResponse {
     /** 革命中か */
     private final boolean revolution;
 
+    /** 場で固定されているマーク。縛りがない場合はnull */
+    private final String lockedMark;
+
+    /** リクエストしたプレイヤーがホストか */
+    private final boolean host;
+
     /** ゲーム開始済みか */
     private final boolean started;
 
     /** ゲーム終了済みか */
     private final boolean finished;
+
+    /** 7渡し保留状態 */
+    private final SevenTransferResponse sevenTransfer;
+
+    /** 全端末共有イベント履歴 */
+    private final List<GameEventResponse> events;
 
     /**
      * ゲーム状態レスポンスを生成する。
@@ -45,16 +57,24 @@ public class GameStateResponse {
             String currentPlayerId,
             FieldResponse field,
             boolean revolution,
+            String lockedMark,
+            boolean host,
             boolean started,
-            boolean finished) {
+            boolean finished,
+            SevenTransferResponse sevenTransfer,
+            List<GameEventResponse> events) {
 
         this.roomId = roomId;
         this.players = players;
         this.currentPlayerId = currentPlayerId;
         this.field = field;
         this.revolution = revolution;
+        this.lockedMark = lockedMark;
+        this.host = host;
         this.started = started;
         this.finished = finished;
+        this.sevenTransfer = sevenTransfer;
+        this.events = List.copyOf(events);
     }
 
     public String getRoomId() {
@@ -77,11 +97,27 @@ public class GameStateResponse {
         return revolution;
     }
 
+    public String getLockedMark() {
+        return lockedMark;
+    }
+
+    public boolean isHost() {
+        return host;
+    }
+
     public boolean isStarted() {
         return started;
     }
 
     public boolean isFinished() {
         return finished;
+    }
+
+    public SevenTransferResponse getSevenTransfer() {
+        return sevenTransfer;
+    }
+
+    public List<GameEventResponse> getEvents() {
+        return events;
     }
 }

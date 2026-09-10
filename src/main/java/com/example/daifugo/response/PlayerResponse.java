@@ -34,6 +34,9 @@ public class PlayerResponse {
     /** 自分自身か */
     private final boolean self;
 
+    /** 野獣ルール状態。全プレイヤー共有情報。 */
+    private final String yajuStatus;
+
     /**
      * プレイヤーレスポンスを生成する。
      *
@@ -52,7 +55,8 @@ public class PlayerResponse {
             List<CardResponse> hand,
             boolean passed,
             Integer rank,
-            boolean self) {
+            boolean self,
+            String yajuStatus) {
 
         this.playerId = playerId;
         this.playerName = playerName;
@@ -61,6 +65,7 @@ public class PlayerResponse {
         this.passed = passed;
         this.rank = rank;
         this.self = self;
+        this.yajuStatus = yajuStatus;
     }
 
     /**
@@ -102,7 +107,8 @@ public class PlayerResponse {
                 hand,
                 player.isPassed(),
                 player.getRank(),
-                self);
+                self,
+                player.getYajuStatus().name());
     }
 
     public String getPlayerId() {
@@ -131,5 +137,9 @@ public class PlayerResponse {
 
     public boolean isSelf() {
         return self;
+    }
+
+    public String getYajuStatus() {
+        return yajuStatus;
     }
 }

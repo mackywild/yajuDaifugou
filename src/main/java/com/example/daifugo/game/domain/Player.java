@@ -19,6 +19,9 @@ public class Player {
     private boolean passed;
     private Integer rank;
 
+    /** 野獣ルールの進行状態 */
+    private YajuStatus yajuStatus = YajuStatus.NONE;
+
     public Player(String id, String name) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.name = Objects.requireNonNull(name, "name must not be null");
@@ -122,6 +125,71 @@ public class Player {
 
     public boolean hasFinished() {
         return rank != null;
+    }
+
+    /**
+     * 野獣ルールの現在状態を取得する。
+     *
+     * @return 野獣ルール状態
+     */
+    public YajuStatus getYajuStatus() {
+        return yajuStatus;
+    }
+
+    /**
+     * 一度でも野獣ルール対象になったか判定する。
+     * COMPLETED/PENALTYも「対象だった」状態としてtrueを返す。
+     *
+     * @return 野獣ルール対象の場合true
+     */
+    public boolean isYajuTarget() {
+        return yajuStatus != YajuStatus.NONE;
+    }
+
+    /**
+     * 野獣ルールを適用する。
+     * 一度対象になったプレイヤーはゲーム中にNONEへ戻らない。
+     *
+     * @return 今回新たに対象になった場合true
+     */
+    public boolean activateYaju() {
+        if (yajuStatus != YajuStatus.NONE) {
+            return false;
+        }
+        yajuStatus = YajuStatus.ACTIVE;
+        return true;
+    }
+
+    /** 最終8を正しく出し、10待ち状態へ進める。 */
+    public void markYajuEightPlayed() {
+        if (yajuStatus != YajuStatus.ACTIVE) {
+            throw new IllegalStateException("野獣上がりの8を出せる状態ではありません");
+        }
+        yajuStatus = YajuStatus.EIGHT_PLAYED;
+    }
+
+    /** 野獣上がり成功状態へ進める。 */
+    public void markYajuCompleted() {
+        if (yajuStatus != YajuStatus.EIGHT_PLAYED) {
+            throw new IllegalStateException("野獣上がり成功条件を満たしていません");
+        }
+        yajuStatus = YajuStatus.COMPLETED;
+    }
+
+    /** 野獣上がり違反による反則状態へ進める。 */
+    public void markYajuPenalty() {
+        if (yajuStatus == YajuStatus.NONE) {
+            throw new IllegalStateException("野獣ルール対象ではありません");
+        }
+        yajuStatus = YajuStatus.PENALTY;
+    }
+
+    /** 指定ランクのカード所持枚数を返す。 */
+    public long countRank(Rank targetRank) {
+        Objects.requireNonNull(targetRank, "targetRank must not be null");
+        return hand.stream()
+            .filter(card -> card.getRank() == targetRank)
+            .count();
     }
 
     private boolean containsAllCards(Collection<Card> cards) {

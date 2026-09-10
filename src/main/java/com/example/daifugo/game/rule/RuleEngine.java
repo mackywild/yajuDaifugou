@@ -10,14 +10,6 @@ import com.example.daifugo.game.domain.Player;
 public class RuleEngine {
     private final List<Rule> rules;
     
-    RuleEngine ruleEngine = new RuleEngine(
-    	    List.of(
-    	        new RevolutionRule(),
-    	        new EightCutRule(),
-    	        new MarkLockRule()
-    	        )
-    	    );
-
 
     public RuleEngine(List<Rule> rules) {
         Objects.requireNonNull(
