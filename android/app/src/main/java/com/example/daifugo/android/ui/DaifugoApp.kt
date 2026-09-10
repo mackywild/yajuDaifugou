@@ -67,6 +67,7 @@ import com.example.daifugo.android.ui.theme.CasinoGreenDark
 import com.example.daifugo.android.ui.theme.Danger
 import com.example.daifugo.android.ui.theme.SoftGold
 import com.example.daifugo.android.ui.theme.SoftGreen
+import androidx.compose.foundation.layout.offset
 
 @Composable
 fun DaifugoApp(viewModel: DaifugoViewModel) {
