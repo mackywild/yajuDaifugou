@@ -12,7 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.example.daifugo.game.config.GameRuleSettings;
 import com.example.daifugo.game.domain.Card;
+import com.example.daifugo.game.mode.GameMode;
 import com.example.daifugo.game.domain.GameState;
 import com.example.daifugo.game.domain.Player;
 import com.example.daifugo.game.service.GameEngine;
@@ -35,9 +37,6 @@ public class GameRoomService {
     /** 部屋IDをキーとして対戦部屋を保持する */
     private final Map<String, GameRoom> roomMap = new ConcurrentHashMap<>();
 
-    /** ゲーム初期化処理 */
-    private final GameInitializer gameInitializer = new GameInitializer(1);
-
     /** ゲームエンジン生成処理 */
     private final GameEngineFactory gameEngineFactory = new GameEngineFactory();
 
@@ -54,8 +53,15 @@ public class GameRoomService {
      * @return 作成した対戦部屋
      */
     public GameRoom createRoom() {
+        return createRoom(GameMode.MULTIPLAYER, GameRuleSettings.standard());
+    }
+
+    /**
+     * ゲームモードとルールを指定して部屋を作成する。
+     */
+    public GameRoom createRoom(GameMode mode, GameRuleSettings settings) {
         String roomId = createRoomId();
-        GameRoom room = new GameRoom(roomId);
+        GameRoom room = new GameRoom(roomId, mode, settings);
         roomMap.put(roomId, room);
         return room;
     }
@@ -160,15 +166,18 @@ public class GameRoomService {
 
             List<Player> players = new ArrayList<>(room.getPlayers());
             GameState gameState = new GameState(players);
-            gameInitializer.initialize(gameState);
+            GameRuleSettings settings = room.getRuleSettings();
+            new GameInitializer(settings.jokerCount()).initialize(gameState);
 
             /*
-             * 配牌時点で8と10を持っているプレイヤーを野獣対象化する。
-             * YAJU_AVAILABLEイベントは全端末へ共有される。
+             * 野獣ルールが有効な場合のみ、配牌時点で8と10を持っている
+             * プレイヤーを対象化する。
              */
-            yajuRuleService.initializeTargets(gameState);
+            if (settings.yajuRule()) {
+                yajuRuleService.initializeTargets(gameState);
+            }
 
-            GameEngine gameEngine = gameEngineFactory.create();
+            GameEngine gameEngine = gameEngineFactory.create(settings);
             room.start(gameState, gameEngine);
             return room;
         }

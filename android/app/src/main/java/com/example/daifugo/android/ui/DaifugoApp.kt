@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -42,7 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.offset
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -108,7 +109,9 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
             ) {
                 when (state.screen) {
                     DaifugoScreen.LOGIN -> LoginScreen(state, viewModel)
-                    DaifugoScreen.LOBBY -> LobbyScreen(state, viewModel)
+                    DaifugoScreen.MAIN_MENU -> MainMenuScreen(state, viewModel)
+                    DaifugoScreen.MULTIPLAYER -> LobbyScreen(state, viewModel)
+                    DaifugoScreen.CPU_SETUP -> CpuSetupScreen(state, viewModel)
                     DaifugoScreen.ROOM -> RoomScreen(state, viewModel)
                     DaifugoScreen.GAME -> GameScreen(state, viewModel)
                     DaifugoScreen.RESULT -> ResultScreen(state, viewModel)
@@ -156,7 +159,7 @@ private fun AppHeader(state: DaifugoUiState) {
                 color = CasinoGreenDark,
             )
             Text(
-                "ONLINE CARD GAME · v0.3.0 CROSSPLAY",
+                "ONLINE CARD GAME · v0.4.0 CPU BATTLE",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -255,7 +258,7 @@ private fun LoginScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             }
         }
         item {
-            CasinoPanel(title = "v0.2.0 野獣ルール") {
+            CasinoPanel(title = "v0.4.0 CPU BATTLE") {
                 FeatureLine("♣", "2〜4人オンライン対戦")
                 FeatureLine("⚡", "WebSocketリアルタイム更新")
                 FeatureLine("♛", "革命・8切り・7渡し・野獣ルール")
@@ -263,6 +266,118 @@ private fun LoginScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             }
         }
     }
+}
+
+@Composable
+private fun MainMenuScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item {
+            Text("メインメニュー", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+            Text("遊び方を選択してください", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = SoftGreen), shape = RoundedCornerShape(20.dp)) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("🌐 マルチプレイ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                    Text("PC・Android・iPhoneで同じ卓に参加するオンライン対戦。")
+                    Button(onClick = viewModel::openMultiplayer, modifier = Modifier.fillMaxWidth()) { Text("マルチプレイへ") }
+                }
+            }
+        }
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = SoftGold), shape = RoundedCornerShape(20.dp)) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("🤖 【ひとりでイク】", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                    Text("CPU人数・難易度・特殊ルールを設定して即対戦。N-GODは自己対戦学習済み。")
+                    Button(onClick = viewModel::openCpuSetup, modifier = Modifier.fillMaxWidth()) { Text("CPU戦へ") }
+                }
+            }
+        }
+        item { OutlinedButton(onClick = viewModel::logout, modifier = Modifier.fillMaxWidth()) { Text("ログアウト") } }
+    }
+}
+
+@Composable
+private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("【ひとりでイク】", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+                    Text("CPU戦セットアップ", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
+            }
+        }
+        item {
+            OutlinedTextField(
+                value = state.playerName,
+                onValueChange = viewModel::setPlayerName,
+                label = { Text("プレイヤー名") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+        }
+        item { ChoiceRow("CPU人数", listOf(1,2,3), state.cpuCount, viewModel::setCpuCount) { "$it人" } }
+        item { ChoiceRow("難易度", listOf("EASY","NORMAL","HARD","N_GOD"), state.cpuDifficulty, viewModel::setCpuDifficulty) { difficultyLabel(it) } }
+        item { ChoiceRow("ジョーカー", listOf(0,1,2), state.cpuJokerCount, viewModel::setCpuJokerCount) { "$it枚" } }
+        item {
+            Card(shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("特殊ルール", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    RuleSwitch("革命", state.ruleRevolution, viewModel::setRuleRevolution)
+                    RuleSwitch("8切り", state.ruleEightCut, viewModel::setRuleEightCut, enabled = !state.ruleYaju)
+                    RuleSwitch("マーク縛り", state.ruleMarkLock, viewModel::setRuleMarkLock)
+                    RuleSwitch("7渡し", state.ruleSevenTransfer, viewModel::setRuleSevenTransfer)
+                    RuleSwitch("野獣ルール", state.ruleYaju, viewModel::setRuleYaju)
+                    RuleSwitch("禁止上がり", state.ruleForbiddenFinish, viewModel::setRuleForbiddenFinish)
+                    if (state.ruleYaju) Text("※野獣ルールON時は8切り必須", style = MaterialTheme.typography.labelSmall, color = CasinoGold)
+                }
+            }
+        }
+        item {
+            Button(onClick = viewModel::startCpuGame, modifier = Modifier.fillMaxWidth()) {
+                Text("CPU戦スタート", fontWeight = FontWeight.ExtraBold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun <T> ChoiceRow(title: String, values: List<T>, selected: T, onSelect: (T)->Unit, label: (T)->String) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, fontWeight = FontWeight.Bold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            values.forEach { value ->
+                if (value == selected) Button(onClick = { onSelect(value) }, modifier = Modifier.weight(1f)) { Text(label(value), maxLines = 1) }
+                else OutlinedButton(onClick = { onSelect(value) }, modifier = Modifier.weight(1f)) { Text(label(value), maxLines = 1) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RuleSwitch(title: String, checked: Boolean, onChecked: (Boolean)->Unit, enabled: Boolean = true) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = onChecked, enabled = enabled)
+    }
+}
+
+private fun difficultyLabel(value: String): String = when(value) {
+    "EASY" -> "簡単"
+    "NORMAL" -> "普通"
+    "HARD" -> "難しい"
+    "N_GOD" -> "N-GOD"
+    else -> value
 }
 
 @Composable
@@ -278,7 +393,7 @@ private fun LobbyScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                     Text("ロビー", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
                     Text(state.serverUrl, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                TextButton(onClick = viewModel::logout) { Text("ログアウト") }
+                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
             }
         }
         item {

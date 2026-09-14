@@ -12,7 +12,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.daifugo.game.config.GameRuleSettings;
+import com.example.daifugo.game.cpu.CpuDifficulty;
+import com.example.daifugo.game.cpu.CpuGameService;
 import com.example.daifugo.game.domain.Card;
+import com.example.daifugo.game.mode.GameMode;
 import com.example.daifugo.game.domain.Mark;
 import com.example.daifugo.game.domain.Player;
 import com.example.daifugo.game.domain.Rank;
@@ -38,13 +42,16 @@ public class GameApiController {
     static final String SESSION_PLAYER_ID = "DAIFUGO_PLAYER_ID";
 
     private final GameRoomService roomService;
+    private final CpuGameService cpuGameService;
     private final GameWebSocketHandler webSocketHandler;
     private final GameStateResponseMapper responseMapper = new GameStateResponseMapper();
 
     public GameApiController(
             GameRoomService roomService,
+            CpuGameService cpuGameService,
             GameWebSocketHandler webSocketHandler) {
         this.roomService = roomService;
+        this.cpuGameService = cpuGameService;
         this.webSocketHandler = webSocketHandler;
     }
 
@@ -66,6 +73,49 @@ public class GameApiController {
         webSocketHandler.broadcastStateChanged(room.getRoomId());
 
         return new JoinResponse(room.getRoomId(), true);
+    }
+
+    /**
+     * CPU戦【ひとりでイク】を作成し、その場でゲームを開始する。
+     */
+    @PostMapping("/cpu")
+    public GameStateResponse createCpuGame(
+            @RequestBody CpuGameRequest request,
+            HttpSession session) {
+
+        ensureNotBoundToRoom(session);
+        validatePlayerName(request.playerName());
+
+        CpuDifficulty difficulty;
+        try {
+            difficulty = CpuDifficulty.valueOf(request.difficulty());
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("CPU難易度が不正です");
+        }
+
+        GameRuleSettings settings = new GameRuleSettings(
+                request.jokerCount(),
+                request.revolution(),
+                request.eightCut(),
+                request.markLock(),
+                request.sevenTransfer(),
+                request.yajuRule(),
+                request.forbiddenFinish()
+        );
+
+        CpuGameService.CpuGameCreation creation = cpuGameService.createGame(
+                request.playerName().trim(),
+                request.cpuCount(),
+                difficulty,
+                settings
+        );
+        GameRoom room = creation.room();
+        Player human = creation.humanPlayer();
+        bindSession(session, room.getRoomId(), human.getId());
+
+        synchronized (room) {
+            return responseMapper.map(room, human.getId());
+        }
     }
 
     /**
@@ -153,6 +203,7 @@ public class GameApiController {
                 .toList();
 
         roomService.play(roomId, playerId, selectedCards);
+        processCpuIfNeeded(room);
 
         GameStateResponse response;
         synchronized (room) {
@@ -187,6 +238,7 @@ public class GameApiController {
                 .toList();
 
         roomService.transferSeven(roomId, playerId, selectedCards);
+        processCpuIfNeeded(room);
 
         GameStateResponse response;
         synchronized (room) {
@@ -209,6 +261,7 @@ public class GameApiController {
         ensureStarted(room);
 
         roomService.pass(roomId, playerId);
+        processCpuIfNeeded(room);
 
         GameStateResponse response;
         synchronized (room) {
@@ -231,6 +284,13 @@ public class GameApiController {
         roomService.leaveRoom(roomId, playerId);
         clearRoomBinding(session);
         webSocketHandler.broadcastStateChanged(roomId);
+    }
+
+    /** CPU戦の場合、人間の操作後に次の人間手番までCPUを自動進行する。 */
+    private void processCpuIfNeeded(GameRoom room) {
+        if (room.getGameMode() == GameMode.CPU && !room.isFinished()) {
+            cpuGameService.processCpuTurns(room.getRoomId());
+        }
     }
 
     /**
@@ -331,6 +391,20 @@ public class GameApiController {
     }
 
     public record PlayRequest(List<CardRequest> cards) {
+    }
+
+    public record CpuGameRequest(
+            String playerName,
+            int cpuCount,
+            String difficulty,
+            int jokerCount,
+            boolean revolution,
+            boolean eightCut,
+            boolean markLock,
+            boolean sevenTransfer,
+            boolean yajuRule,
+            boolean forbiddenFinish
+    ) {
     }
 
     public record JoinResponse(String roomId, boolean host) {

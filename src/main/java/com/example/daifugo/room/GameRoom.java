@@ -7,6 +7,8 @@ import java.util.Objects;
 
 import com.example.daifugo.game.domain.GameState;
 import com.example.daifugo.game.domain.Player;
+import com.example.daifugo.game.config.GameRuleSettings;
+import com.example.daifugo.game.mode.GameMode;
 import com.example.daifugo.game.service.GameEngine;
 
 /**
@@ -25,6 +27,12 @@ public class GameRoom {
 
     /** 部屋に参加しているプレイヤー一覧 */
     private final List<Player> players;
+
+    /** マルチプレイ / CPU戦 */
+    private final GameMode gameMode;
+
+    /** この対戦で使用するルール設定 */
+    private final GameRuleSettings ruleSettings;
 
     /** ゲームの現在状態 */
     private GameState gameState;
@@ -47,10 +55,23 @@ public class GameRoom {
      * @param roomId 部屋ID
      */
     public GameRoom(String roomId) {
+        this(roomId, GameMode.MULTIPLAYER, GameRuleSettings.standard());
+    }
+
+    /**
+     * 対戦モードとルールを指定して部屋を生成する。
+     */
+    public GameRoom(
+            String roomId,
+            GameMode gameMode,
+            GameRuleSettings ruleSettings
+    ) {
         this.roomId = Objects.requireNonNull(
                 roomId,
                 "roomId must not be null"
         );
+        this.gameMode = Objects.requireNonNull(gameMode, "gameMode must not be null");
+        this.ruleSettings = Objects.requireNonNull(ruleSettings, "ruleSettings must not be null");
         this.players = new ArrayList<>();
         this.started = false;
         this.lastAccessedAt = System.currentTimeMillis();
@@ -63,6 +84,14 @@ public class GameRoom {
      */
     public String getRoomId() {
         return roomId;
+    }
+
+    public GameMode getGameMode() {
+        return gameMode;
+    }
+
+    public GameRuleSettings getRuleSettings() {
+        return ruleSettings;
     }
 
     /**

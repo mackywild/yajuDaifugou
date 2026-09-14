@@ -1,4 +1,4 @@
-# Daifugo Android v0.3.0
+# Daifugo Android v0.4.0
 
 Spring Boot版Daifugoサーバーへ接続するAndroidクライアントです。
 
@@ -19,10 +19,11 @@ WebSocket `/ws/game` は `STATE_CHANGED` 通知専用です。通知を受けた
 
 ## 画面
 1. Login - サーバーURL / 共通パスワード
-2. Lobby - プレイヤー名 / 部屋作成 / ルームID参加
-3. Room - 参加者 / ホスト開始 / ルームID共有
-4. Game - 相手残枚数 / 場札 / 革命 / 縛り / 野獣状態 / 7渡し / 手札選択 / 出す / パス
-5. Result - 最終順位 / ロビーへ戻る
+2. Main Menu - マルチプレイ / CPU戦【ひとりでイク】
+3. Multiplayer / CPU Setup - 部屋参加またはCPU人数・難易度・ルール設定
+4. Room - 参加者 / ホスト開始 / ルームID共有
+5. Game - 相手残枚数 / 場札 / 革命 / 縛り / 野獣状態 / 7渡し / 手札選択 / 出す / パス
+6. Result - 最終順位 / ロビーへ戻る
 
 ## ローカル実機接続
 サーバーPCでDaifugoサーバーを起動します。
@@ -46,7 +47,7 @@ Android EmulatorからホストPCへ接続する場合は通常:
 http://10.0.2.2:8080
 ```
 
-v0.2.0ではLAN内開発を優先し、Android Manifestでcleartext HTTPを許可しています。インターネット公開時はHTTPSを使用してください。
+v0.4.0のプロトタイプではLAN内開発を優先し、Android Manifestでcleartext HTTPを許可しています。インターネット公開時はHTTPSを使用してください。
 
 ## APKビルド
 
@@ -73,3 +74,14 @@ GitHub Actionsの `Android APK` ワークフローでも同じAPKを生成して
 - 野獣上がり成功・対象化は全端末音声イベント
 
 音声ファイルの配置方法は [`YAJU_AUDIO.md`](YAJU_AUDIO.md) を参照してください。
+
+## v0.4.0 CPU戦【ひとりでイク】
+
+ログイン後のメインメニューからCPU戦へ進み、以下を設定できます。
+
+- CPU人数 1〜3人
+- 簡単 / 普通 / 難しい / N-GOD
+- ジョーカー 0〜2枚
+- 革命 / 8切り / マーク縛り / 7渡し / 野獣ルール / 禁止上がり
+
+ゲーム判定・CPU思考ともサーバー側で実行するため、Androidだけ別ルールになることはありません。

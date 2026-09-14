@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.daifugo.android.data.ApiException
 import com.example.daifugo.android.data.DaifugoApiClient
 import com.example.daifugo.android.data.GameStateDto
+import com.example.daifugo.android.data.RuleSettingsDto
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -18,7 +19,9 @@ import kotlinx.coroutines.launch
 /** アプリ内の主要画面。 */
 enum class DaifugoScreen {
     LOGIN,
-    LOBBY,
+    MAIN_MENU,
+    MULTIPLAYER,
+    CPU_SETUP,
     ROOM,
     GAME,
     RESULT,
@@ -36,6 +39,15 @@ data class DaifugoUiState(
     val password: String = "",
     val playerName: String = "",
     val roomIdInput: String = "",
+    val cpuCount: Int = 3,
+    val cpuDifficulty: String = "HARD",
+    val cpuJokerCount: Int = 1,
+    val ruleRevolution: Boolean = true,
+    val ruleEightCut: Boolean = true,
+    val ruleMarkLock: Boolean = true,
+    val ruleSevenTransfer: Boolean = true,
+    val ruleYaju: Boolean = true,
+    val ruleForbiddenFinish: Boolean = true,
     val roomId: String? = null,
     val gameState: GameStateDto? = null,
     val selectedCardIndices: Set<Int> = emptySet(),
@@ -46,7 +58,7 @@ data class DaifugoUiState(
 )
 
 /**
- * Daifugo v0.3.0 の画面状態と通信を管理するViewModel。
+ * Daifugo v0.4.0 の画面状態と通信を管理するViewModel。
  */
 class DaifugoViewModel(application: Application) : AndroidViewModel(application) {
     private val api = DaifugoApiClient()
@@ -74,6 +86,15 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     fun setPassword(value: String) = update { copy(password = value) }
     fun setPlayerName(value: String) = update { copy(playerName = value) }
     fun setRoomIdInput(value: String) = update { copy(roomIdInput = value) }
+    fun setCpuCount(value: Int) = update { copy(cpuCount = value.coerceIn(1, 3)) }
+    fun setCpuDifficulty(value: String) = update { copy(cpuDifficulty = value) }
+    fun setCpuJokerCount(value: Int) = update { copy(cpuJokerCount = value.coerceIn(0, 2)) }
+    fun setRuleRevolution(value: Boolean) = update { copy(ruleRevolution = value) }
+    fun setRuleEightCut(value: Boolean) = update { copy(ruleEightCut = if (ruleYaju) true else value) }
+    fun setRuleMarkLock(value: Boolean) = update { copy(ruleMarkLock = value) }
+    fun setRuleSevenTransfer(value: Boolean) = update { copy(ruleSevenTransfer = value) }
+    fun setRuleYaju(value: Boolean) = update { copy(ruleYaju = value, ruleEightCut = if (value) true else ruleEightCut) }
+    fun setRuleForbiddenFinish(value: Boolean) = update { copy(ruleForbiddenFinish = value) }
 
     fun clearMessage() = update { copy(errorMessage = null, infoMessage = null) }
 
@@ -89,7 +110,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         preferences.edit().putString("serverUrl", serverUrl).apply()
         update {
             copy(
-                screen = DaifugoScreen.LOBBY,
+                screen = DaifugoScreen.MAIN_MENU,
                 serverUrl = serverUrl,
                 password = "",
                 errorMessage = null,
@@ -97,6 +118,12 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             )
         }
     }
+
+    fun openMultiplayer() = update { copy(screen = DaifugoScreen.MULTIPLAYER, errorMessage = null, infoMessage = null) }
+
+    fun openCpuSetup() = update { copy(screen = DaifugoScreen.CPU_SETUP, errorMessage = null, infoMessage = null) }
+
+    fun backToMenu() = update { copy(screen = DaifugoScreen.MAIN_MENU, errorMessage = null, infoMessage = null) }
 
     fun logout() = launchAction {
         api.logout()
@@ -112,6 +139,31 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 infoMessage = "ログアウトしました",
             )
         }
+    }
+
+    fun startCpuGame() = launchAction {
+        val state = _uiState.value
+        val playerName = validatedPlayerName()
+        val rules = RuleSettingsDto(
+            jokerCount = state.cpuJokerCount,
+            revolution = state.ruleRevolution,
+            eightCut = if (state.ruleYaju) true else state.ruleEightCut,
+            markLock = state.ruleMarkLock,
+            sevenTransfer = state.ruleSevenTransfer,
+            yajuRule = state.ruleYaju,
+            forbiddenFinish = state.ruleForbiddenFinish,
+        )
+        val game = api.createCpuGame(
+            playerName = playerName,
+            cpuCount = state.cpuCount,
+            difficulty = state.cpuDifficulty,
+            rules = rules,
+        )
+        savePlayerName(playerName)
+        lastHandledEventId = 0L
+        update { copy(roomId = game.roomId, roomIdInput = game.roomId) }
+        applyGameState(game)
+        startRoomRealtime(game.roomId)
     }
 
     fun createRoom() = launchAction {
@@ -195,7 +247,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         lastHandledEventId = 0L
         update {
             copy(
-                screen = DaifugoScreen.LOBBY,
+                screen = DaifugoScreen.MAIN_MENU,
                 roomId = null,
                 roomIdInput = "",
                 gameState = null,

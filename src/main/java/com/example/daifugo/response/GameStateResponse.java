@@ -10,6 +10,12 @@ public class GameStateResponse {
     /** 部屋ID */
     private final String roomId;
 
+    /** MULTIPLAYER / CPU */
+    private final String gameMode;
+
+    /** この対戦のルール設定 */
+    private final RuleSettingsResponse ruleSettings;
+
     /** プレイヤー情報一覧 */
     private final List<PlayerResponse> players;
 
@@ -53,6 +59,8 @@ public class GameStateResponse {
      */
     public GameStateResponse(
             String roomId,
+            String gameMode,
+            RuleSettingsResponse ruleSettings,
             List<PlayerResponse> players,
             String currentPlayerId,
             FieldResponse field,
@@ -65,6 +73,8 @@ public class GameStateResponse {
             List<GameEventResponse> events) {
 
         this.roomId = roomId;
+        this.gameMode = gameMode;
+        this.ruleSettings = ruleSettings;
         this.players = players;
         this.currentPlayerId = currentPlayerId;
         this.field = field;
@@ -79,6 +89,14 @@ public class GameStateResponse {
 
     public String getRoomId() {
         return roomId;
+    }
+
+    public String getGameMode() {
+        return gameMode;
+    }
+
+    public RuleSettingsResponse getRuleSettings() {
+        return ruleSettings;
     }
 
     public List<PlayerResponse> getPlayers() {

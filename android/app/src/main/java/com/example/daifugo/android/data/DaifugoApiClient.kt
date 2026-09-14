@@ -81,6 +81,35 @@ class DaifugoApiClient {
         return ServerJson.join(json)
     }
 
+    suspend fun createCpuGame(
+        playerName: String,
+        cpuCount: Int,
+        difficulty: String,
+        rules: RuleSettingsDto,
+    ): GameStateDto {
+        val body = JSONObject()
+            .put("playerName", playerName.trim())
+            .put("cpuCount", cpuCount)
+            .put("difficulty", difficulty)
+            .put("jokerCount", rules.jokerCount)
+            .put("revolution", rules.revolution)
+            .put("eightCut", rules.eightCut)
+            .put("markLock", rules.markLock)
+            .put("sevenTransfer", rules.sevenTransfer)
+            .put("yajuRule", rules.yajuRule)
+            .put("forbiddenFinish", rules.forbiddenFinish)
+            .toString()
+            .toRequestBody(JSON)
+
+        return ServerJson.gameState(
+            execute(
+                request("/api/rooms/cpu")
+                    .post(body)
+                    .build(),
+            )
+        )
+    }
+
     suspend fun joinRoom(roomId: String, playerName: String): JoinResponse {
         val json = execute(
             request("/api/rooms/${encodePath(roomId)}/join")

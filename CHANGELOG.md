@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.4.0 - CPU BATTLE UPDATE
+
+### Game modes
+- ログイン後にメインメニューを追加
+- 既存オンライン部屋対戦を「マルチプレイ」として整理
+- CPU戦【ひとりでイク】を追加
+- CPU 1〜3人、2〜4人戦に対応
+- CPU戦作成直後にゲーム開始し、人間の手番までCPUを自動進行
+
+### CPU difficulties
+- 簡単: ランダム寄り
+- 普通: 基本ヒューリスティック + ミス率
+- 難しい: 相手残枚数・手札構造・特殊ルールを考慮
+- N-GOD: 自己対戦学習済みニューラル評価器 + 安全ヒューリスティック
+
+### Machine learning
+- 38次元state-action特徴量
+- 5,000ゲーム / 278,188サンプルの自己対戦データ
+- 32→16 hidden MLP、最終順位報酬を学習
+- 学習済み重みをJavaへ埋め込み、サーバー推論時にPython不要
+- 再学習用Generator / Python学習スクリプト / Benchmarkを同梱
+
+### CPU rule settings
+- ジョーカー0〜2枚
+- 革命 / 8切り / マーク縛り / 7渡し / 野獣ルール / 禁止上がり ON/OFF
+- 野獣ルールON時は8切りを必須化
+
+### Clients
+- Web / Android / iOSにメインメニューとCPU戦設定画面を追加
+- CPUプレイヤー・難易度をゲーム画面に表示
+
+### Verification
+- Java 21 CPU/core compile PASS
+- CPU feature smoke PASS
+- 各難易度4,000ゲーム benchmark deadlock 0
+- N-GOD: 1位率31.3%、平均順位2.173（Hard CPU×3対戦）
+- ランダム設定自己対戦300ゲーム deadlock 0
+
 ## v0.3.0 - iOS Crossplay Update
 
 - iPhone SwiftUIクライアント追加

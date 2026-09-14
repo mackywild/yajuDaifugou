@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>野獣大富豪</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f5f5f5;background:#111}
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#27312b,#111 48%);padding:24px}
+    .wrap{max-width:1100px;margin:auto}.panel{background:#1c1f1d;border:1px solid #3d4741;border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 12px 35px #0006}
+    h1,h2{margin-top:0}.row{display:flex;gap:10px;flex-wrap:wrap}.grow{flex:1;min-width:180px}
+    input,button{font:inherit;border-radius:10px;border:1px solid #59645e;padding:11px 13px}input{background:#0e110f;color:#fff;width:100%}
+    button{cursor:pointer;background:#f0f0f0;color:#111;font-weight:700}button.secondary{background:#2a302c;color:#fff}button.danger{background:#7a2929;color:#fff}button:disabled{opacity:.4;cursor:not-allowed}
+    .hidden{display:none!important}.status{padding:10px 12px;border-radius:10px;background:#121512;margin-top:10px;white-space:pre-wrap}.error{background:#431f1f;color:#ffb7b7}
+    .players{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.player{background:#121512;padding:12px;border-radius:12px;border:1px solid #343b37}.turn{border-color:#d4b94f;box-shadow:0 0 0 1px #d4b94f inset}
+    .field{min-height:110px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;background:#0d301c;border-radius:14px;padding:15px;margin:12px 0}
+    .hand{display:flex;gap:8px;flex-wrap:wrap}.card{width:82px;min-height:112px;background:#f8f8f5;color:#111;border:3px solid transparent;border-radius:10px;padding:8px;display:flex;flex-direction:column;justify-content:space-between;user-select:none}.card.red{color:#b11818}.card.selected{transform:translateY(-8px);border-color:#e2c94e}.card.joker{background:#222;color:#fff}
+    .small{font-size:.85rem;color:#aeb8b2}.room-code{font-family:ui-monospace,monospace;font-size:1.4rem;letter-spacing:.08em}.badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#303832;font-size:.8rem;margin-left:5px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>♠ 野獣大富豪</h1>
+
+  <section id="loginPanel" class="panel">
+    <h2>アクセス認証</h2>
+    <div class="row"><div class="grow"><input id="password" type="password" placeholder="共通パスワード"></div><button onclick="login()">入る</button></div>
+  </section>
+
+  <section id="lobbyPanel" class="panel hidden">
+    <div class="row" style="align-items:center;justify-content:space-between"><h2>ロビー</h2><button class="secondary" onclick="logout()">ログアウト</button></div>
+    <div class="row"><div class="grow"><input id="playerName" maxlength="20" placeholder="プレイヤー名"></div><button onclick="createRoom()">部屋を作る</button></div>
+    <div class="row" style="margin-top:10px"><div class="grow"><input id="roomIdInput" maxlength="8" placeholder="8文字の部屋ID"></div><button class="secondary" onclick="joinRoom()">部屋に参加</button></div>
+  </section>
+
+  <section id="roomPanel" class="panel hidden">
+    <div class="row" style="align-items:center;justify-content:space-between"><div><h2 style="margin-bottom:4px">ROOM <span id="roomCode" class="room-code"></span></h2><span id="gameFlags" class="small"></span></div><div class="row"><button id="startButton" onclick="startGame()">ゲーム開始</button><button id="leaveButton" class="danger" onclick="leaveRoom()">退出</button></div></div>
+    <div id="players" class="players"></div>
+  </section>
+
+  <section id="gamePanel" class="panel hidden">
+    <h2>場</h2>
+    <div id="field" class="field"></div>
+    <div class="row" style="justify-content:center"><button id="playButton" onclick="playCards()">選択カードを出す</button><button id="passButton" class="secondary" onclick="passTurn()">パス</button></div>
+    <h2 style="margin-top:20px">あなたの手札</h2>
+    <div id="hand" class="hand"></div>
+  </section>
+
+  <div id="message" class="status hidden"></div>
+</div>
+<script>
+let roomId = localStorage.getItem('daifugo.roomId') || '';
+let selected = new Set();
+let pollTimer = null;
+let csrfToken = sessionStorage.getItem('daifugo.csrfToken') || '';
+
+async function api(url, options={}) {
+  const method=(options.method||'GET').toUpperCase(); const csrfHeader=(csrfToken&&method!=='GET'&&method!=='HEAD')?{'X-CSRF-Token':csrfToken}:{}; const res = await fetch(url, {credentials:'same-origin', headers:{'Content-Type':'application/json', ...csrfHeader, ...(options.headers||{})}, ...options});
+  let data = null; try { data = await res.json(); } catch (_) {}
+  if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+  return data;
+}
+function msg(text, error=false){const el=document.getElementById('message'); el.textContent=text; el.className='status'+(error?' error':'');}
+function clearMsg(){document.getElementById('message').className='status hidden';}
+function show(id, yes=true){document.getElementById(id).classList.toggle('hidden',!yes)}
+
+async function login(){
+  try { clearMsg(); const auth=await api('/api/auth/login',{method:'POST',body:JSON.stringify({password:password.value})}); csrfToken=auth.csrfToken||''; sessionStorage.setItem('daifugo.csrfToken',csrfToken); show('loginPanel',false); show('lobbyPanel',true); if(roomId){show('roomPanel',true);startPolling();} }
+  catch(e){msg(e.message,true)}
+}
+async function logout(){try{await api('/api/auth/logout',{method:'POST'});if(pollTimer)clearInterval(pollTimer);roomId='';selected.clear();localStorage.removeItem('daifugo.roomId');sessionStorage.removeItem('daifugo.csrfToken');csrfToken='';show('roomPanel',false);show('gamePanel',false);show('lobbyPanel',false);show('loginPanel',true);msg('ログアウトしました')}catch(e){msg(e.message,true)}}
+async function createRoom(){
+  try { const playerName=document.getElementById('playerName').value; const r=await api('/api/rooms',{method:'POST',body:JSON.stringify({playerName})}); enterRoom(r); }
+  catch(e){msg(e.message,true)}
+}
+async function joinRoom(){
+  try { const playerName=document.getElementById('playerName').value; const id=document.getElementById('roomIdInput').value.trim(); const r=await api(`/api/rooms/${id}/join`,{method:'POST',body:JSON.stringify({playerName})}); enterRoom(r); }
+  catch(e){msg(e.message,true)}
+}
+function enterRoom(r){roomId=r.roomId;localStorage.setItem('daifugo.roomId',roomId);show('roomPanel',true);document.getElementById('roomCode').textContent=roomId;startPolling();}
+function startPolling(){if(pollTimer)clearInterval(pollTimer);refreshState();pollTimer=setInterval(refreshState,1000)}
+async function refreshState(){if(!roomId)return;try{const s=await api(`/api/rooms/${roomId}/state`);render(s)}catch(e){if(e.message.includes('このブラウザは指定された部屋に参加していません')||e.message.includes('指定された部屋が存在しません')){localStorage.removeItem('daifugo.roomId');roomId='';if(pollTimer)clearInterval(pollTimer);show('roomPanel',false);show('gamePanel',false);}if(e.message!=='認証が必要です')msg(e.message,true)}}
+async function startGame(){try{const s=await api(`/api/rooms/${roomId}/start`,{method:'POST'});render(s)}catch(e){msg(e.message,true)}}
+async function playCards(){
+  try {
+    const state=window.lastState; const self=state.players.find(p=>p.self); const cards=[...selected].map(i=>self.hand[i]);
+    if(!cards.length)throw new Error('カードを選択してください');
+    const seven=state.sevenTransfer||{}; const transferring=seven.pending&&seven.sourcePlayerId===self.playerId;
+    if(transferring&&cards.length!==seven.cardCount)throw new Error(`7渡しでは${seven.cardCount}枚選択してください`);
+    const endpoint=transferring?'seven-transfer':'play';
+    const s=await api(`/api/rooms/${roomId}/${endpoint}`,{method:'POST',body:JSON.stringify({cards})});selected.clear();render(s);clearMsg();
+  }
+  catch(e){msg(e.message,true)}
+}
+async function passTurn(){try{const s=await api(`/api/rooms/${roomId}/pass`,{method:'POST'});selected.clear();render(s);clearMsg()}catch(e){msg(e.message,true)}}
+async function leaveRoom(){try{await api(`/api/rooms/${roomId}/leave`,{method:'POST'});if(pollTimer)clearInterval(pollTimer);roomId='';selected.clear();localStorage.removeItem('daifugo.roomId');show('roomPanel',false);show('gamePanel',false);show('lobbyPanel',true);msg('部屋から退出しました')}catch(e){msg(e.message,true)}}
+function render(s){window.lastState=s;document.getElementById('roomCode').textContent=s.roomId;show('roomPanel',true);show('gamePanel',s.started);document.getElementById('startButton').disabled=s.started||s.players.length<2||!s.host;document.getElementById('startButton').classList.toggle('hidden',!s.host);document.getElementById('leaveButton').disabled=s.started&&!s.finished;const anyYaju=s.players.some(p=>p.yajuStatus&&p.yajuStatus!=='NONE');document.getElementById('gameFlags').textContent=`${s.started?'対戦中':'待機中'}${s.revolution?' / 革命中':''}${s.lockedMark?' / '+symbol(s.lockedMark)+'縛り':''}${anyYaju?' / 野獣ルール':''}${s.finished?' / 終了':''}`;
+  const ps=document.getElementById('players');ps.innerHTML='';s.players.forEach(p=>{const d=document.createElement('div');d.className='player'+(s.currentPlayerId===p.playerId?' turn':'');const yaju=p.yajuStatus&&p.yajuStatus!=='NONE'?`<div>野獣: ${esc(p.yajuStatus)}</div>`:'';d.innerHTML=`<strong>${esc(p.playerName)}</strong>${p.self?'<span class="badge">YOU</span>':''}<div>手札 ${p.handCount}枚 ${p.passed?'・PASS':''}</div>${yaju}${p.rank?`<div>${p.rank}位</div>`:''}`;ps.appendChild(d)});
+  if(!s.started)return;
+  const field=document.getElementById('field');field.innerHTML='';if(!s.field.cards.length)field.innerHTML='<span class="small">場は空です</span>';else s.field.cards.forEach(c=>field.appendChild(cardElement(c,false,-1)));
+  const self=s.players.find(p=>p.self);const hand=document.getElementById('hand');hand.innerHTML='';self?.hand.forEach((c,i)=>hand.appendChild(cardElement(c,true,i)));const myTurn=!!self&&s.currentPlayerId===self.playerId&&!s.finished;const seven=s.sevenTransfer||{};const transferring=!!self&&seven.pending&&seven.sourcePlayerId===self.playerId;const playButton=document.getElementById('playButton');playButton.textContent=transferring?`選択カードを渡す (${seven.cardCount}枚)`:'選択カードを出す';playButton.disabled=!myTurn||(transferring&&selected.size!==seven.cardCount);document.getElementById('passButton').disabled=!myTurn||transferring||!s.field.cards.length;
+  if(transferring){const target=s.players.find(p=>p.playerId===seven.targetPlayerId);msg(`7渡し: ${target?.playerName||'隣のプレイヤー'}へ${seven.cardCount}枚渡してください`)}
+}
+function cardElement(c, selectable, index){const d=document.createElement('button');d.type='button';d.className='card '+((c.suit==='HEART'||c.suit==='DIAMOND')?'red ':'')+(c.joker?'joker ':'')+(selected.has(index)?'selected':'');d.innerHTML=c.joker?'<b>JOKER</b>':`<b>${symbol(c.suit)} ${rankText(c.rank)}</b><span>${rankText(c.rank)} ${symbol(c.suit)}</span>`;if(selectable)d.onclick=()=>{selected.has(index)?selected.delete(index):selected.add(index);render(window.lastState)};else d.disabled=true;return d}
+function symbol(s){return {SPADE:'♠',HEART:'♥',DIAMOND:'♦',CLUB:'♣',JOKER:'★'}[s]||s}function rankText(r){return {THREE:'3',FOUR:'4',FIVE:'5',SIX:'6',SEVEN:'7',EIGHT:'8',NINE:'9',TEN:'10',JACK:'J',QUEEN:'Q',KING:'K',ACE:'A',TWO:'2',JOKER:'JOKER'}[r]||r}function esc(v){const d=document.createElement('div');d.textContent=v;return d.innerHTML}
+</script>
+</body>
+</html>

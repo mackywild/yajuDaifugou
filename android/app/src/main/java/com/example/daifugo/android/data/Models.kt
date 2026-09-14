@@ -55,6 +55,8 @@ data class PlayerDto(
     val rank: Int?,
     val self: Boolean,
     val yajuStatus: String = "NONE",
+    val cpu: Boolean = false,
+    val cpuDifficulty: String? = null,
 ) {
     val yajuActive: Boolean
         get() = yajuStatus != "NONE"
@@ -82,9 +84,21 @@ data class GameEventDto(
     val playerName: String,
 )
 
+data class RuleSettingsDto(
+    val jokerCount: Int = 1,
+    val revolution: Boolean = true,
+    val eightCut: Boolean = true,
+    val markLock: Boolean = true,
+    val sevenTransfer: Boolean = true,
+    val yajuRule: Boolean = true,
+    val forbiddenFinish: Boolean = true,
+)
+
 /** 1プレイヤー視点のゲーム状態。 */
 data class GameStateDto(
     val roomId: String,
+    val gameMode: String = "MULTIPLAYER",
+    val ruleSettings: RuleSettingsDto = RuleSettingsDto(),
     val players: List<PlayerDto>,
     val currentPlayerId: String?,
     val field: FieldDto,
@@ -103,10 +117,10 @@ data class GameStateDto(
         get() = players.firstOrNull { it.playerId == currentPlayerId }
 
     val isMyTurn: Boolean
-        get() = selfPlayer?.playerId != null && selfPlayer.playerId == currentPlayerId
+        get() = players.firstOrNull { it.self }?.playerId == currentPlayerId
 
     val isMySevenTransfer: Boolean
-        get() = sevenTransfer.pending && selfPlayer?.playerId == sevenTransfer.sourcePlayerId
+        get() = sevenTransfer.pending && players.firstOrNull { it.self }?.playerId == sevenTransfer.sourcePlayerId
 
     val sevenTransferTarget: PlayerDto?
         get() = players.firstOrNull { it.playerId == sevenTransfer.targetPlayerId }
@@ -147,8 +161,19 @@ object ServerJson {
         val sevenTransferObject = root.optJSONObject("sevenTransfer") ?: JSONObject()
         val events = root.optJSONArray("events")?.mapObjects(::event).orEmpty()
 
+        val rules = root.optJSONObject("ruleSettings") ?: JSONObject()
         return GameStateDto(
             roomId = root.getString("roomId"),
+            gameMode = root.optString("gameMode", "MULTIPLAYER"),
+            ruleSettings = RuleSettingsDto(
+                jokerCount = rules.optInt("jokerCount", 1),
+                revolution = rules.optBoolean("revolution", true),
+                eightCut = rules.optBoolean("eightCut", true),
+                markLock = rules.optBoolean("markLock", true),
+                sevenTransfer = rules.optBoolean("sevenTransfer", true),
+                yajuRule = rules.optBoolean("yajuRule", true),
+                forbiddenFinish = rules.optBoolean("forbiddenFinish", true),
+            ),
             players = players,
             currentPlayerId = root.nullableString("currentPlayerId"),
             field = FieldDto(
@@ -183,6 +208,8 @@ object ServerJson {
         rank = if (root.isNull("rank")) null else root.optInt("rank"),
         self = root.optBoolean("self", false),
         yajuStatus = root.optString("yajuStatus", "NONE"),
+        cpu = root.optBoolean("cpu", false),
+        cpuDifficulty = root.nullableString("cpuDifficulty"),
     )
 
     private fun card(root: JSONObject): CardDto = CardDto(

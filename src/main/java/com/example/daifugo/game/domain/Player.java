@@ -6,6 +6,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+import com.example.daifugo.game.cpu.CpuDifficulty;
+
 /**
  * プレイヤー情報
  */
@@ -13,6 +15,12 @@ public class Player {
 
     private final String id;
     private final String name;
+
+    /** CPUプレイヤーか。 */
+    private final boolean cpu;
+
+    /** CPU難易度。人間の場合はnull。 */
+    private final CpuDifficulty cpuDifficulty;
 
     private final List<Card> hand = new ArrayList<>();
 
@@ -23,8 +31,19 @@ public class Player {
     private YajuStatus yajuStatus = YajuStatus.NONE;
 
     public Player(String id, String name) {
+        this(id, name, false, null);
+    }
+
+    private Player(
+            String id,
+            String name,
+            boolean cpu,
+            CpuDifficulty cpuDifficulty
+    ) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.name = Objects.requireNonNull(name, "name must not be null");
+        this.cpu = cpu;
+        this.cpuDifficulty = cpuDifficulty;
 
         if (id.isBlank()) {
             throw new IllegalArgumentException("id must not be blank");
@@ -33,6 +52,20 @@ public class Player {
         if (name.isBlank()) {
             throw new IllegalArgumentException("name must not be blank");
         }
+
+        if (cpu && cpuDifficulty == null) {
+            throw new IllegalArgumentException("CPUプレイヤーには難易度が必要です");
+        }
+    }
+
+    /** CPUプレイヤーを生成する。 */
+    public static Player cpu(String id, String name, CpuDifficulty difficulty) {
+        return new Player(
+                id,
+                name,
+                true,
+                Objects.requireNonNull(difficulty, "difficulty must not be null")
+        );
     }
 
     public String getId() {
@@ -41,6 +74,14 @@ public class Player {
 
     public String getName() {
         return name;
+    }
+
+    public boolean isCpu() {
+        return cpu;
+    }
+
+    public CpuDifficulty getCpuDifficulty() {
+        return cpuDifficulty;
     }
 
     public List<Card> getHand() {

@@ -37,6 +37,12 @@ public class PlayerResponse {
     /** 野獣ルール状態。全プレイヤー共有情報。 */
     private final String yajuStatus;
 
+    /** CPUプレイヤーか */
+    private final boolean cpu;
+
+    /** CPU難易度。人間の場合はnull */
+    private final String cpuDifficulty;
+
     /**
      * プレイヤーレスポンスを生成する。
      *
@@ -56,7 +62,9 @@ public class PlayerResponse {
             boolean passed,
             Integer rank,
             boolean self,
-            String yajuStatus) {
+            String yajuStatus,
+            boolean cpu,
+            String cpuDifficulty) {
 
         this.playerId = playerId;
         this.playerName = playerName;
@@ -66,6 +74,8 @@ public class PlayerResponse {
         this.rank = rank;
         this.self = self;
         this.yajuStatus = yajuStatus;
+        this.cpu = cpu;
+        this.cpuDifficulty = cpuDifficulty;
     }
 
     /**
@@ -108,7 +118,9 @@ public class PlayerResponse {
                 player.isPassed(),
                 player.getRank(),
                 self,
-                player.getYajuStatus().name());
+                player.getYajuStatus().name(),
+                player.isCpu(),
+                player.getCpuDifficulty() == null ? null : player.getCpuDifficulty().name());
     }
 
     public String getPlayerId() {
@@ -141,5 +153,13 @@ public class PlayerResponse {
 
     public String getYajuStatus() {
         return yajuStatus;
+    }
+
+    public boolean isCpu() {
+        return cpu;
+    }
+
+    public String getCpuDifficulty() {
+        return cpuDifficulty;
     }
 }

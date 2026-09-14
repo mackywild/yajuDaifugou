@@ -40,6 +40,8 @@ public class GameStateResponseMapper {
 
             return new GameStateResponse(
                     room.getRoomId(),
+                    room.getGameMode().name(),
+                    RuleSettingsResponse.from(room.getRuleSettings()),
                     players,
                     null,
                     FieldResponse.from(null),
@@ -78,6 +80,8 @@ public class GameStateResponseMapper {
 
         return new GameStateResponse(
                 room.getRoomId(),
+                room.getGameMode().name(),
+                RuleSettingsResponse.from(room.getRuleSettings()),
                 players,
                 currentPlayerId,
                 FieldResponse.from(

@@ -81,6 +81,15 @@ final class DaifugoAPIClient {
         )
     }
 
+    /// CPU戦【ひとりでイク】を作成し、開始済みのゲーム状態を受け取る。
+    func createCpuGame(request: CpuGameRequest) async throws -> GameStateDTO {
+        try await perform(
+            path: "/api/rooms/cpu",
+            method: "POST",
+            body: request
+        )
+    }
+
     func joinRoom(roomId: String, playerName: String) async throws -> JoinResponse {
         try await perform(
             path: "/api/rooms/\(escapePath(roomId))/join",

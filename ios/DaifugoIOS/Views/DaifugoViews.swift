@@ -17,7 +17,9 @@ struct RootView: View {
                 Group {
                     switch viewModel.screen {
                     case .login: LoginView(viewModel: viewModel)
-                    case .lobby: LobbyView(viewModel: viewModel)
+                    case .mainMenu: MainMenuView(viewModel: viewModel)
+                    case .multiplayer: LobbyView(viewModel: viewModel)
+                    case .cpuSetup: CpuSetupView(viewModel: viewModel)
                     case .room: RoomView(viewModel: viewModel)
                     case .game: GameView(viewModel: viewModel)
                     case .result: ResultView(viewModel: viewModel)
@@ -41,7 +43,7 @@ private struct HeaderView: View {
                 Text("♛ DAIFUGO")
                     .font(.headline.bold())
                     .foregroundStyle(casinoGreen)
-                Text("v0.3.0 iOS CROSSPLAY")
+                Text("v0.4.0 CPU BATTLE")
                     .font(.caption2.bold())
                     .foregroundStyle(casinoGold)
             }
@@ -82,7 +84,7 @@ private struct LoginView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                TitleBlock("テーブルへようこそ", "PC・Android・iPhoneで同じ卓に参加できます。")
+                TitleBlock("テーブルへようこそ", "マルチプレイとCPU戦【ひとりでイク】を選べます。")
                 Panel("接続先") {
                     TextField("http://192.168.1.10:8080", text: $viewModel.serverURL)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -92,12 +94,123 @@ private struct LoginView: View {
                     Button("ログイン", action: viewModel.login)
                         .fontWeight(.bold).frame(maxWidth: .infinity).buttonStyle(.borderedProminent)
                 }
-                Panel("v0.3.0") {
-                    Feature("♣", "2〜4人オンライン対戦")
-                    Feature("⚡", "WebSocketリアルタイム更新")
-                    Feature("♛", "革命・8切り・7渡し・野獣ルール")
-                    Feature("📱", "PC / Android / iPhone クロスプレイ")
+                Panel("v0.4.0 CPU BATTLE") {
+                    Feature("🌐", "PC / Android / iPhone マルチプレイ")
+                    Feature("🤖", "CPU戦【ひとりでイク】")
+                    Feature("🧠", "簡単 / 普通 / 難しい / N-GOD")
+                    Feature("♛", "特殊ルールを対戦ごとに設定")
                 }
+            }.padding(20)
+        }
+    }
+}
+
+private struct MainMenuView: View {
+    @ObservedObject var viewModel: DaifugoViewModel
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                HStack {
+                    TitleBlock("メインメニュー", "遊ぶモードを選択してください")
+                    Spacer()
+                    Button("ログアウト", action: viewModel.logout)
+                }
+
+                Button(action: viewModel.openMultiplayer) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("🌐 マルチプレイ").font(.title2.bold())
+                        Text("PC・Android・iPhoneの友達と同じ卓で対戦")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    .padding(18).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                }
+                .buttonStyle(.plain)
+
+                Button(action: viewModel.openCpuSetup) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("🤖 【ひとりでイク】").font(.title2.bold()).foregroundStyle(casinoGold)
+                        Text("CPU人数・難易度・特殊ルールを設定してすぐ対戦")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                        Text("N-GOD搭載").font(.caption.bold()).foregroundStyle(casinoGreen)
+                    }
+                    .padding(18).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.09))
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                }
+                .buttonStyle(.plain)
+            }.padding(20)
+        }
+    }
+}
+
+private struct CpuSetupView: View {
+    @ObservedObject var viewModel: DaifugoViewModel
+
+    private let difficulties = ["EASY", "NORMAL", "HARD", "N_GOD"]
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                HStack {
+                    TitleBlock("【ひとりでイク】", "CPU戦の設定")
+                    Spacer()
+                    Button("戻る", action: viewModel.backToMenu)
+                }
+
+                Panel("プレイヤー") {
+                    TextField("プレイヤー名", text: $viewModel.playerName)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                Panel("CPU設定") {
+                    Stepper("CPU人数：\(viewModel.cpuCount)人", value: $viewModel.cpuCount, in: 1...3)
+                    Picker("難易度", selection: $viewModel.cpuDifficulty) {
+                        ForEach(difficulties, id: \.self) { value in
+                            Text(cpuDifficultyLabel(value)).tag(value)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    if viewModel.cpuDifficulty == "N_GOD" {
+                        Text("N-GOD：自己対戦で学習した最強CPU")
+                            .font(.caption.bold()).foregroundStyle(casinoGold)
+                    }
+                }
+
+                Panel("デッキ") {
+                    Picker("ジョーカー", selection: $viewModel.jokerCount) {
+                        Text("0枚").tag(0)
+                        Text("1枚").tag(1)
+                        Text("2枚").tag(2)
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Panel("特殊ルール") {
+                    Toggle("革命", isOn: $viewModel.ruleRevolution)
+                    Toggle("8切り", isOn: Binding(
+                        get: { viewModel.ruleEightCut },
+                        set: { viewModel.setEightCut($0) }
+                    ))
+                    .disabled(viewModel.ruleYaju)
+                    Toggle("マーク縛り", isOn: $viewModel.ruleMarkLock)
+                    Toggle("7渡し", isOn: $viewModel.ruleSevenTransfer)
+                    Toggle("野獣ルール", isOn: Binding(
+                        get: { viewModel.ruleYaju },
+                        set: { viewModel.setYajuRule($0) }
+                    ))
+                    Toggle("禁止上がり", isOn: $viewModel.ruleForbiddenFinish)
+                    if viewModel.ruleYaju {
+                        Text("※ 野獣ルール使用時は8切りが必須です")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+
+                Button("ひとりでイク", action: viewModel.startCpuGame)
+                    .font(.title3.bold()).frame(maxWidth: .infinity)
+                    .buttonStyle(.borderedProminent)
             }.padding(20)
         }
     }
@@ -110,9 +223,9 @@ private struct LobbyView: View {
         ScrollView {
             VStack(spacing: 16) {
                 HStack {
-                    TitleBlock("ロビー", viewModel.serverURL)
+                    TitleBlock("マルチプレイ", viewModel.serverURL)
                     Spacer()
-                    Button("ログアウト", action: viewModel.logout)
+                    Button("戻る", action: viewModel.backToMenu)
                 }
                 Panel("プレイヤー") {
                     TextField("プレイヤー名", text: $viewModel.playerName).textFieldStyle(.roundedBorder)
@@ -208,6 +321,10 @@ private struct OpponentsView: View {
             ForEach(game.players.filter { !$0.isSelf }) { player in
                 VStack(spacing: 4) {
                     Text(player.playerName).font(.caption.bold()).lineLimit(1)
+                    if player.cpu {
+                        Text("CPU \(cpuDifficultyLabel(player.cpuDifficulty ?? ""))")
+                            .font(.caption2.bold()).foregroundStyle(casinoGold)
+                    }
                     Text("🂠 × \(player.handCount)").font(.caption)
                     if player.yajuActive { Text("野獣").font(.caption2.bold()).foregroundStyle(casinoGold) }
                     if player.rank != nil { Text("\(player.rank!)位").font(.caption2.bold()) }
@@ -302,7 +419,7 @@ private struct ResultView: View {
                             Divider()
                         }
                     }
-                    Button("ロビーへ戻る", action: viewModel.leaveRoom)
+                    Button("メインメニューへ戻る", action: viewModel.leaveRoom)
                         .frame(maxWidth: .infinity).buttonStyle(.borderedProminent)
                 }.padding(20)
             }
@@ -366,6 +483,16 @@ private struct Feature: View {
     let text: String
     init(_ icon: String, _ text: String) { self.icon = icon; self.text = text }
     var body: some View { HStack { Text(icon); Text(text) } }
+}
+
+private func cpuDifficultyLabel(_ value: String) -> String {
+    switch value {
+    case "EASY": return "簡単"
+    case "NORMAL": return "普通"
+    case "HARD": return "難しい"
+    case "N_GOD": return "N-GOD"
+    default: return value
+    }
 }
 
 private func markSymbol(_ value: String) -> String {

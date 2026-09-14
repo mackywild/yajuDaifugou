@@ -18,3 +18,8 @@ android/build/
 ios/DaifugoIOS.xcodeproj/xcuserdata/
 ios/DerivedData/
 *.xcuserstate
+
+# ML training generated artifacts (recreate with tools/ml scripts)
+tools/ml/ngod_selfplay.csv
+tools/ml/test.csv
+tools/ml/tmp.csv

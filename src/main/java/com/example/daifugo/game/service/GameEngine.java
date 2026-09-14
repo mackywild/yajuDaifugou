@@ -3,6 +3,7 @@ package com.example.daifugo.game.service;
 import java.util.List;
 import java.util.Objects;
 
+import com.example.daifugo.game.config.GameRuleSettings;
 import com.example.daifugo.game.domain.Card;
 import com.example.daifugo.game.domain.CardCombination;
 import com.example.daifugo.game.domain.GamePhase;
@@ -24,6 +25,7 @@ public class GameEngine {
     private final RuleEngine ruleEngine;
     private final FinishValidator finishValidator;
     private final YajuRuleService yajuRuleService;
+    private final GameRuleSettings ruleSettings;
 
     public GameEngine(
             PlayValidator playValidator,
@@ -36,7 +38,8 @@ public class GameEngine {
             turnManager,
             ruleEngine,
             finishValidator,
-            new YajuRuleService()
+            new YajuRuleService(),
+            GameRuleSettings.standard()
         );
     }
 
@@ -56,11 +59,33 @@ public class GameEngine {
             FinishValidator finishValidator,
             YajuRuleService yajuRuleService
     ) {
+        this(
+                playValidator,
+                turnManager,
+                ruleEngine,
+                finishValidator,
+                yajuRuleService,
+                GameRuleSettings.standard()
+        );
+    }
+
+    /**
+     * 対戦ルールを指定してゲームエンジンを生成する。
+     */
+    public GameEngine(
+            PlayValidator playValidator,
+            TurnManager turnManager,
+            RuleEngine ruleEngine,
+            FinishValidator finishValidator,
+            YajuRuleService yajuRuleService,
+            GameRuleSettings ruleSettings
+    ) {
         this.playValidator = Objects.requireNonNull(playValidator);
         this.turnManager = Objects.requireNonNull(turnManager);
         this.ruleEngine = Objects.requireNonNull(ruleEngine);
         this.finishValidator = Objects.requireNonNull(finishValidator);
         this.yajuRuleService = Objects.requireNonNull(yajuRuleService);
+        this.ruleSettings = Objects.requireNonNull(ruleSettings);
     }
 
     public void play(
@@ -100,11 +125,9 @@ public class GameEngine {
             );
         }
 
-        YajuPlayDecision yajuDecision =
-            yajuRuleService.validatePlay(
-                player,
-                selectedCards
-            );
+        YajuPlayDecision yajuDecision = ruleSettings.yajuRule()
+            ? yajuRuleService.validatePlay(player, selectedCards)
+            : YajuPlayDecision.none();
 
         FinishValidationResult finishResult =
             finishValidator.validate(
@@ -152,14 +175,14 @@ public class GameEngine {
             state.lockMark(ruleResult.getMarkToLock());
         }
 
-        if (yajuDecision.startsEightStep()) {
+        if (ruleSettings.yajuRule() && yajuDecision.startsEightStep()) {
             yajuRuleService.applyEightStep(player);
         }
 
         if (player.hasNoCards()) {
-            if (yajuDecision.successfulFinish()) {
+            if (ruleSettings.yajuRule() && yajuDecision.successfulFinish()) {
                 yajuRuleService.completeYajuFinish(state, player);
-            } else if (yajuDecision.penaltyFinish()) {
+            } else if (ruleSettings.yajuRule() && yajuDecision.penaltyFinish()) {
                 yajuRuleService.applyPenalty(player);
             }
 
@@ -176,11 +199,13 @@ public class GameEngine {
             return;
         }
 
-        int sevenCount = countRank(selectedCards, Rank.SEVEN);
-        int transferCount = Math.min(
-            sevenCount,
-            yajuRuleService.getTransferableCardCount(player)
-        );
+        int sevenCount = ruleSettings.sevenTransfer()
+                ? countRank(selectedCards, Rank.SEVEN)
+                : 0;
+        int transferableCardCount = ruleSettings.yajuRule()
+                ? yajuRuleService.getTransferableCardCount(player)
+                : player.getCardCount();
+        int transferCount = Math.min(sevenCount, transferableCardCount);
 
         if (!player.hasFinished() && transferCount > 0) {
             Player transferTarget = findNextUnfinishedPlayer(state, playerIndex);
@@ -254,6 +279,9 @@ public class GameEngine {
             List<Card> transferCards
     ) {
         validateGameState(state);
+        if (!ruleSettings.sevenTransfer()) {
+            throw new IllegalStateException("7渡しは無効です");
+        }
         Objects.requireNonNull(transferCards, "transferCards must not be null");
 
         PendingSevenTransfer pending = state.getPendingSevenTransfer();
@@ -274,7 +302,9 @@ public class GameEngine {
         Player source = findPlayerById(state, pending.sourcePlayerId());
         Player target = findPlayerById(state, pending.targetPlayerId());
 
-        yajuRuleService.validateSevenTransfer(source, transferCards);
+        if (ruleSettings.yajuRule()) {
+            yajuRuleService.validateSevenTransfer(source, transferCards);
+        }
 
         source.removeCards(transferCards);
         target.addCards(transferCards);
@@ -282,7 +312,9 @@ public class GameEngine {
         target.sortHand();
 
         /* 7渡しで8と10が揃った受け手にも野獣ルールを適用する。 */
-        yajuRuleService.activateIfEligible(state, target);
+        if (ruleSettings.yajuRule()) {
+            yajuRuleService.activateIfEligible(state, target);
+        }
 
         boolean clearFieldAfterTransfer = pending.clearFieldAfterTransfer();
         state.completeSevenTransfer();

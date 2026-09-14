@@ -4,7 +4,9 @@ import Combine
 @MainActor
 enum DaifugoScreen {
     case login
-    case lobby
+    case mainMenu
+    case multiplayer
+    case cpuSetup
     case room
     case game
     case result
@@ -25,6 +27,17 @@ final class DaifugoViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var infoMessage: String?
 
+    // CPU戦【ひとりでイク】設定
+    @Published var cpuCount = 3
+    @Published var cpuDifficulty = "NORMAL"
+    @Published var jokerCount = 1
+    @Published var ruleRevolution = true
+    @Published var ruleEightCut = true
+    @Published var ruleMarkLock = true
+    @Published var ruleSevenTransfer = true
+    @Published var ruleYaju = true
+    @Published var ruleForbiddenFinish = true
+
     private let api = DaifugoAPIClient()
     private let audio = YajuAudioPlayer()
     private let defaults = UserDefaults.standard
@@ -42,10 +55,45 @@ final class DaifugoViewModel: ObservableObject {
     func logout() { action { try await self.logoutImpl() } }
     func createRoom() { action { try await self.createRoomImpl() } }
     func joinRoom() { action { try await self.joinRoomImpl() } }
+    func startCpuGame() { action { try await self.startCpuGameImpl() } }
     func startGame() { action { try await self.startGameImpl() } }
     func playSelected() { action { try await self.playSelectedImpl() } }
     func pass() { action { try await self.passImpl() } }
     func leaveRoom() { action { try await self.leaveRoomImpl() } }
+
+    /// メインメニューからマルチプレイへ遷移する。
+    func openMultiplayer() {
+        clearMessage()
+        screen = .multiplayer
+    }
+
+    /// メインメニューからCPU戦【ひとりでイク】設定へ遷移する。
+    func openCpuSetup() {
+        clearMessage()
+        screen = .cpuSetup
+    }
+
+    /// サブメニューからメインメニューへ戻る。
+    func backToMenu() {
+        clearMessage()
+        screen = .mainMenu
+    }
+
+    /// 野獣ルールをONにした場合、成立に必要な8切りも強制ONにする。
+    func setYajuRule(_ enabled: Bool) {
+        ruleYaju = enabled
+        if enabled { ruleEightCut = true }
+    }
+
+    /// 野獣ルール中は8切りをOFFにできない。
+    func setEightCut(_ enabled: Bool) {
+        if ruleYaju && !enabled {
+            ruleEightCut = true
+            infoMessage = "野獣ルールを使う場合、8切りは必須です"
+        } else {
+            ruleEightCut = enabled
+        }
+    }
 
     func clearMessage() {
         errorMessage = nil
@@ -87,7 +135,7 @@ final class DaifugoViewModel: ObservableObject {
         defaults.set(normalized, forKey: "serverURL")
         serverURL = normalized
         password = ""
-        screen = .lobby
+        screen = .mainMenu
         infoMessage = "サーバーへ接続しました"
     }
 
@@ -117,6 +165,40 @@ final class DaifugoViewModel: ObservableObject {
         let response = try await api.joinRoom(roomId: targetRoom, playerName: name)
         savePlayerName(name)
         try await enterRoom(response.roomId)
+    }
+
+    private func startCpuGameImpl() async throws {
+        let name = try validatedPlayerName()
+        guard (1...3).contains(cpuCount) else {
+            throw APIError(message: "CPU人数は1〜3人で指定してください", statusCode: nil)
+        }
+        guard (0...2).contains(jokerCount) else {
+            throw APIError(message: "ジョーカー枚数は0〜2枚で指定してください", statusCode: nil)
+        }
+        if ruleYaju && !ruleEightCut {
+            throw APIError(message: "野獣ルールを使う場合は8切りを有効にしてください", statusCode: nil)
+        }
+
+        let request = CpuGameRequest(
+            playerName: name,
+            cpuCount: cpuCount,
+            difficulty: cpuDifficulty,
+            jokerCount: jokerCount,
+            revolution: ruleRevolution,
+            eightCut: ruleEightCut,
+            markLock: ruleMarkLock,
+            sevenTransfer: ruleSevenTransfer,
+            yajuRule: ruleYaju,
+            forbiddenFinish: ruleForbiddenFinish
+        )
+        let state = try await api.createCpuGame(request: request)
+        savePlayerName(name)
+        lastHandledEventId = 0
+        roomId = state.roomId
+        roomIdInput = state.roomId
+        selectedCardIndices.removeAll()
+        applyGameState(state)
+        startRealtime(roomId: state.roomId)
     }
 
     private func startGameImpl() async throws {
@@ -166,8 +248,8 @@ final class DaifugoViewModel: ObservableObject {
         gameState = nil
         selectedCardIndices.removeAll()
         socketConnected = false
-        screen = .lobby
-        infoMessage = "部屋から退出しました"
+        screen = .mainMenu
+        infoMessage = "対戦を終了しました"
     }
 
     private func enterRoom(_ roomId: String) async throws {

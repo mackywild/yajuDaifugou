@@ -1,4 +1,4 @@
-# Daifugo iOS v0.3.0
+# Daifugo iOS v0.4.0
 
 SwiftUI製のiPhoneクライアントです。PCブラウザ版・Android版と同じSpring Bootサーバーへ接続するため、3プラットフォーム混成で同卓できます。
 
@@ -54,3 +54,8 @@ wav / m4a でも利用できます。
 - Player 4: Mac Chrome
 
 ゲームルール・手札・順位はすべて同じサーバーGameEngineが管理します。
+
+
+## v0.4.0 CPU戦【ひとりでイク】
+
+メインメニューからCPU 1〜3人、簡単 / 普通 / 難しい / N-GOD、特殊ルールを指定して即対戦できます。CPU思考とゲーム判定はSpring Bootサーバー側で実行されます。

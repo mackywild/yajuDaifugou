@@ -56,6 +56,7 @@ struct CardRequest: Codable {
     }
 }
 
+/// プレイヤー表示情報。CPU情報は全端末で共有される。
 struct PlayerDTO: Codable, Identifiable {
     let playerId: String
     let playerName: String
@@ -65,12 +66,14 @@ struct PlayerDTO: Codable, Identifiable {
     let rank: Int?
     let isSelf: Bool
     let yajuStatus: String
+    let cpu: Bool
+    let cpuDifficulty: String?
 
     var id: String { playerId }
     var yajuActive: Bool { yajuStatus != "NONE" }
 
     enum CodingKeys: String, CodingKey {
-        case playerId, playerName, handCount, hand, passed, rank, yajuStatus
+        case playerId, playerName, handCount, hand, passed, rank, yajuStatus, cpu, cpuDifficulty
         case isSelf = "self"
     }
 }
@@ -94,8 +97,21 @@ struct GameEventDTO: Codable, Identifiable {
     let playerName: String
 }
 
+/// CPU戦・マルチプレイ共通の特殊ルール設定。
+struct RuleSettingsDTO: Codable {
+    let jokerCount: Int
+    let revolution: Bool
+    let eightCut: Bool
+    let markLock: Bool
+    let sevenTransfer: Bool
+    let yajuRule: Bool
+    let forbiddenFinish: Bool
+}
+
 struct GameStateDTO: Codable {
     let roomId: String
+    let gameMode: String
+    let ruleSettings: RuleSettingsDTO
     let players: [PlayerDTO]
     let currentPlayerId: String?
     let field: FieldDTO
@@ -109,13 +125,18 @@ struct GameStateDTO: Codable {
 
     var selfPlayer: PlayerDTO? { players.first(where: { $0.isSelf }) }
     var currentPlayer: PlayerDTO? { players.first(where: { $0.playerId == currentPlayerId }) }
-    var isMyTurn: Bool { selfPlayer?.playerId != nil && selfPlayer?.playerId == currentPlayerId }
+    var isMyTurn: Bool {
+        guard let myId = players.first(where: { $0.isSelf })?.playerId else { return false }
+        return myId == currentPlayerId
+    }
     var isMySevenTransfer: Bool {
-        sevenTransfer.pending && selfPlayer?.playerId == sevenTransfer.sourcePlayerId
+        guard let myId = players.first(where: { $0.isSelf })?.playerId else { return false }
+        return sevenTransfer.pending && myId == sevenTransfer.sourcePlayerId
     }
     var sevenTransferTarget: PlayerDTO? {
         players.first(where: { $0.playerId == sevenTransfer.targetPlayerId })
     }
+    var isCpuGame: Bool { gameMode == "CPU" }
 }
 
 struct LoginResponse: Codable {
@@ -142,4 +163,18 @@ struct LoginRequest: Codable {
 
 struct PlayRequest: Codable {
     let cards: [CardRequest]
+}
+
+/// CPU戦【ひとりでイク】作成APIのリクエスト。
+struct CpuGameRequest: Codable {
+    let playerName: String
+    let cpuCount: Int
+    let difficulty: String
+    let jokerCount: Int
+    let revolution: Bool
+    let eightCut: Bool
+    let markLock: Bool
+    let sevenTransfer: Bool
+    let yajuRule: Bool
+    let forbiddenFinish: Bool
 }
