@@ -1,4 +1,4 @@
-# Daifugo Android v0.4.0
+# Daifugo Android v0.4.1
 
 Spring Boot版Daifugoサーバーへ接続するAndroidクライアントです。
 
@@ -85,3 +85,10 @@ GitHub Actionsの `Android APK` ワークフローでも同じAPKを生成して
 - 革命 / 8切り / マーク縛り / 7渡し / 野獣ルール / 禁止上がり
 
 ゲーム判定・CPU思考ともサーバー側で実行するため、Androidだけ別ルールになることはありません。
+
+
+## v0.4.1 CPU Motion
+
+CPU戦はサーバー不要のまま、CPUの手番を1手ずつ演出します。
+カードを出す場合は約3秒かけてCPU側から場へ移動し、PASS・7渡しも専用表示されます。
+直近4手のCPU行動ログも表示されます。

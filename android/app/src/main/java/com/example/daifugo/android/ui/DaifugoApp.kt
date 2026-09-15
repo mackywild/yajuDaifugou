@@ -1,5 +1,8 @@
 package com.example.daifugo.android.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,10 +44,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -55,6 +60,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.daifugo.android.CpuAnimationType
+import com.example.daifugo.android.CpuTurnAnimation
 import com.example.daifugo.android.DaifugoScreen
 import com.example.daifugo.android.audio.YajuAudioPlayer
 import com.example.daifugo.android.DaifugoUiState
@@ -158,7 +165,7 @@ private fun AppHeader(state: DaifugoUiState) {
                 color = CasinoGreenDark,
             )
             Text(
-                "ONLINE CARD GAME · v0.4.0 CPU BATTLE",
+                "ONLINE CARD GAME · v0.4.1 CPU MOTION",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -265,7 +272,7 @@ private fun LoginScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             }
         }
         item {
-            CasinoPanel(title = "v0.4.0 CPU BATTLE") {
+            CasinoPanel(title = "v0.4.1 CPU MOTION") {
                 FeatureLine("♣", "2〜4人オンライン対戦")
                 FeatureLine("⚡", "WebSocketリアルタイム更新")
                 FeatureLine("♛", "革命・8切り・7渡し・野獣ルール")
@@ -537,112 +544,334 @@ private fun GameScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
     val self = game.selfPlayer ?: return
     val opponents = game.players.filterNot { it.self }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item {
-                StatusBar(game)
-            }
-            item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    itemsIndexed(opponents) { _, player -> OpponentCard(player, game.currentPlayerId == player.playerId) }
-                }
-            }
-            item {
-                GameTable(game)
-            }
-            item {
-                Text(
-                    if (game.isMyTurn) "あなたの手番です" else "${game.currentPlayer?.playerName ?: "-"} の手番",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Black,
-                    color = if (game.isMyTurn) CasinoGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (game.isMySevenTransfer) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = SoftGold),
-                        border = BorderStroke(1.dp, CasinoGold),
+                    StatusBar(game)
+                }
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        itemsIndexed(opponents) { _, player ->
+                            OpponentCard(player, game.currentPlayerId == player.playerId)
+                        }
+                    }
+                }
+                if (game.gameMode == "CPU_LOCAL" && state.cpuActionHistory.isNotEmpty()) {
+                    item {
+                        CpuActionHistoryCard(state.cpuActionHistory)
+                    }
+                }
+                item {
+                    GameTable(game)
+                }
+                item {
+                    val turnLabel = when {
+                        state.cpuTurnAnimation?.type == CpuAnimationType.THINKING ->
+                            "${state.cpuTurnAnimation.playerName} が考えています…"
+                        state.cpuTurnInProgress ->
+                            "${state.cpuTurnAnimation?.playerName ?: game.currentPlayer?.playerName ?: "CPU"} のプレイ中"
+                        game.isMyTurn -> "あなたの手番です"
+                        else -> "${game.currentPlayer?.playerName ?: "-"} の手番"
+                    }
+                    Text(
+                        turnLabel,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        color = if (game.isMyTurn && !state.cpuTurnInProgress) {
+                            CasinoGreen
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+                if (game.isMySevenTransfer) {
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = SoftGold),
+                            border = BorderStroke(1.dp, CasinoGold),
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text("7渡し", fontWeight = FontWeight.Black, color = CasinoGold)
+                                Text(
+                                    "${game.sevenTransferTarget?.playerName ?: "隣のプレイヤー"}へ" +
+                                        " ${game.sevenTransfer.cardCount}枚渡してください",
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    "野獣対象者は最後の8・10を渡すことはできません。",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+                item {
+                    Text(
+                        "あなたの手札  ${self.handCount}枚" +
+                            if (self.yajuActive) "  ·  野獣:${self.yajuStatus}" else "",
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp),
                     ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Text("7渡し", fontWeight = FontWeight.Black, color = CasinoGold)
-                            Text(
-                                "${game.sevenTransferTarget?.playerName ?: "隣のプレイヤー"}へ" +
-                                    " ${game.sevenTransfer.cardCount}枚渡してください",
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Text(
-                                "野獣対象者は最後の8・10を渡すことはできません。",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        itemsIndexed(self.hand) { index, card ->
+                            PlayingCard(
+                                card = card,
+                                selected = index in state.selectedCardIndices,
+                                enabled = game.isMyTurn && !state.cpuTurnInProgress,
+                                onClick = { viewModel.toggleCard(index) },
                             )
                         }
                     }
                 }
             }
-            item {
-                Text(
-                    "あなたの手札  ${self.handCount}枚" +
-                        if (self.yajuActive) "  ·  野獣:${self.yajuStatus}" else "",
-                    fontWeight = FontWeight.Bold,
-                )
-                Spacer(Modifier.height(8.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp),
+
+            Surface(
+                shadowElevation = 8.dp,
+                tonalElevation = 2.dp,
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    itemsIndexed(self.hand) { index, card ->
-                        PlayingCard(
-                            card = card,
-                            selected = index in state.selectedCardIndices,
-                            enabled = game.isMyTurn,
-                            onClick = { viewModel.toggleCard(index) },
+                    OutlinedButton(
+                        onClick = viewModel::pass,
+                        enabled = !state.cpuTurnInProgress &&
+                            game.isMyTurn &&
+                            !game.isMySevenTransfer &&
+                            game.field.cards.isNotEmpty(),
+                        modifier = Modifier.weight(1f),
+                    ) { Text("パス") }
+                    Button(
+                        onClick = viewModel::playSelected,
+                        enabled = !state.cpuTurnInProgress &&
+                            game.isMyTurn &&
+                            state.selectedCardIndices.isNotEmpty() &&
+                            (!game.isMySevenTransfer ||
+                                state.selectedCardIndices.size == game.sevenTransfer.cardCount),
+                        modifier = Modifier.weight(1.5f),
+                    ) {
+                        Text(
+                            if (game.isMySevenTransfer) {
+                                "渡す (${state.selectedCardIndices.size}/${game.sevenTransfer.cardCount})"
+                            } else {
+                                "出す (${state.selectedCardIndices.size})"
+                            },
+                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }
             }
         }
 
-        Surface(
-            shadowElevation = 8.dp,
-            tonalElevation = 2.dp,
-            color = MaterialTheme.colorScheme.surface,
+        if (game.gameMode == "CPU_LOCAL") {
+            state.cpuTurnAnimation?.let { animation ->
+                CpuTurnAnimationOverlay(
+                    animation = animation,
+                    opponents = opponents,
+                )
+            }
+        }
+    }
+}
+
+/** 直近のCPU行動を残し、8切りなどで場が流れても何を出したか確認できるようにする。 */
+@Composable
+private fun CpuActionHistoryCard(history: List<String>) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.58f)),
+        shape = RoundedCornerShape(14.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                OutlinedButton(
-                    onClick = viewModel::pass,
-                    enabled = game.isMyTurn && !game.isMySevenTransfer && game.field.cards.isNotEmpty(),
-                    modifier = Modifier.weight(1f),
-                ) { Text("パス") }
-                Button(
-                    onClick = viewModel::playSelected,
-                    enabled = game.isMyTurn &&
-                        state.selectedCardIndices.isNotEmpty() &&
-                        (!game.isMySevenTransfer ||
-                            state.selectedCardIndices.size == game.sevenTransfer.cardCount),
-                    modifier = Modifier.weight(1.5f),
+            Text("CPU 行動ログ", fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelLarge)
+            history.take(4).forEachIndexed { index, line ->
+                Text(
+                    text = if (index == 0) "▶ $line" else "  $line",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal,
+                    color = if (index == 0) CasinoGreenDark else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * CPUの手元付近からテーブル中央へカードを約3秒かけて移動する演出。
+ * UIだけを遅らせ、ゲームロジック自体はLocalCpuGameManagerで確定済みの結果を後から反映する。
+ */
+@Composable
+private fun CpuTurnAnimationOverlay(
+    animation: CpuTurnAnimation,
+    opponents: List<PlayerDto>,
+) {
+    val progress = remember(animation.id) { Animatable(0f) }
+    val opponentIndex = opponents.indexOfFirst { it.playerId == animation.playerId }.coerceAtLeast(0)
+    val startX = when (opponentIndex) {
+        0 -> (-92).dp
+        1 -> 0.dp
+        else -> 92.dp
+    }
+
+    LaunchedEffect(animation.id) {
+        progress.snapTo(0f)
+        when (animation.type) {
+            CpuAnimationType.PLAY -> progress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 3_000, easing = FastOutSlowInEasing),
+            )
+            CpuAnimationType.PASS -> progress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 1_500, easing = FastOutSlowInEasing),
+            )
+            CpuAnimationType.SEVEN_TRANSFER -> progress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 2_000, easing = FastOutSlowInEasing),
+            )
+            CpuAnimationType.THINKING -> Unit
+        }
+    }
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        when (animation.type) {
+            CpuAnimationType.THINKING -> {
+                Surface(
+                    modifier = Modifier.offset(y = 104.dp),
+                    shape = RoundedCornerShape(100.dp),
+                    color = Color.Black.copy(alpha = 0.78f),
+                    shadowElevation = 8.dp,
                 ) {
                     Text(
-                        if (game.isMySevenTransfer) {
-                            "渡す (${state.selectedCardIndices.size}/${game.sevenTransfer.cardCount})"
-                        } else {
-                            "出す (${state.selectedCardIndices.size})"
-                        },
+                        "${animation.playerName}  思考中…",
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                        color = Color.White,
                         fontWeight = FontWeight.Bold,
                     )
+                }
+            }
+
+            CpuAnimationType.PLAY -> {
+                val p = progress.value
+                Column(
+                    modifier = Modifier
+                        .offset(
+                            x = startX * (1f - p),
+                            y = (92 + (240 * p)).dp,
+                        )
+                        .graphicsLayer {
+                            val scale = 0.82f + (0.18f * p)
+                            scaleX = scale
+                            scaleY = scale
+                            alpha = 0.72f + (0.28f * p)
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.80f),
+                        shape = RoundedCornerShape(100.dp),
+                    ) {
+                        Text(
+                            "${animation.playerName} が出した！",
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy((-7).dp)) {
+                        animation.cards.forEach { card ->
+                            PlayingCard(
+                                card = card,
+                                selected = false,
+                                enabled = false,
+                                compact = true,
+                                onClick = {},
+                            )
+                        }
+                    }
+                }
+            }
+
+            CpuAnimationType.PASS -> {
+                val p = progress.value
+                Surface(
+                    modifier = Modifier
+                        .offset(y = (190 + (35 * p)).dp)
+                        .graphicsLayer {
+                            scaleX = 0.88f + (0.18f * p)
+                            scaleY = 0.88f + (0.18f * p)
+                            alpha = 1f - (0.28f * p)
+                        },
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = RoundedCornerShape(18.dp),
+                    shadowElevation = 10.dp,
+                ) {
+                    Text(
+                        "${animation.playerName}  PASS",
+                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 16.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                    )
+                }
+            }
+
+            CpuAnimationType.SEVEN_TRANSFER -> {
+                val p = progress.value
+                Column(
+                    modifier = Modifier
+                        .offset(
+                            x = ((-80) + (160 * p)).dp,
+                            y = 210.dp,
+                        )
+                        .graphicsLayer { alpha = 0.78f + (0.22f * p) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Surface(
+                        color = SoftGold,
+                        shape = RoundedCornerShape(100.dp),
+                        border = BorderStroke(1.dp, CasinoGold),
+                    ) {
+                        Text(
+                            "${animation.playerName} → ${animation.targetPlayerName ?: "隣"}  7渡し",
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            color = CasinoGold,
+                            fontWeight = FontWeight.Black,
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy((-7).dp)) {
+                        animation.cards.forEach { card ->
+                            PlayingCard(
+                                card = card,
+                                selected = false,
+                                enabled = false,
+                                compact = true,
+                                onClick = {},
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.4.1 - CPU MOTION UPDATE
+
+- CPU戦の自動進行を1手ずつUIへ返す方式へ変更
+- CPUがカードを出す際、手元側から場へ約3秒かけて移動するモーションを追加
+- CPUのPASS表示を追加
+- CPUの7渡し演出を追加
+- CPUの直近4手を確認できる行動ログを追加
+- CPU演出中は人間側のカード操作・提出・パスをロック
+- 8切りなどで場が即座に流れても、直前のCPU行動をログから確認可能
+- Android versionNameを0.4.1、versionCodeを5へ更新
+
 ## v0.4.0 - CPU BATTLE UPDATE
 
 ### Game modes
