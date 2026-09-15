@@ -280,6 +280,56 @@ public class GameEngineTest {
         assertEquals(2, player2.getRank());
     }
 
+    @Test
+    void JOKERをスペード3で返した後は他のカードを出せない() {
+        Player player1 = new Player("p1", "p1");
+        Card joker = new Card(Mark.JOKER, Rank.JOKER);
+        Card two = new Card(Mark.HEART, Rank.TWO);
+        player1.addCards(List.of(joker, two));
+
+        Player player2 = new Player("p2", "p2");
+        Card spadeThree = new Card(Mark.SPADE, Rank.THREE);
+        Card five = new Card(Mark.HEART, Rank.FIVE);
+        player2.addCards(List.of(spadeThree, five));
+
+        GameState state = startedState(player1, player2);
+
+        gameEngine.play(state, "p1", List.of(joker));
+        gameEngine.play(state, "p2", List.of(spadeThree));
+
+        assertTrue(state.isSpadeThreeJokerReturnActive());
+        assertEquals("p1", state.getCurrentPlayer().getId());
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> gameEngine.play(state, "p1", List.of(two))
+        );
+
+        gameEngine.pass(state, "p1");
+
+        assertFalse(state.isSpadeThreeJokerReturnActive());
+        assertNull(state.getFieldCombination());
+        assertEquals("p2", state.getCurrentPlayer().getId());
+    }
+
+    @Test
+    void 通常出しのスペード3は最強扱いしない() {
+        Player player1 = new Player("p1", "p1");
+        Card spadeThree = new Card(Mark.SPADE, Rank.THREE);
+        player1.addCards(List.of(spadeThree, new Card(Mark.HEART, Rank.SIX)));
+
+        Player player2 = new Player("p2", "p2");
+        Card four = new Card(Mark.HEART, Rank.FOUR);
+        player2.addCards(List.of(four, new Card(Mark.CLUB, Rank.SEVEN)));
+
+        GameState state = startedState(player1, player2);
+
+        gameEngine.play(state, "p1", List.of(spadeThree));
+
+        assertFalse(state.isSpadeThreeJokerReturnActive());
+        assertDoesNotThrow(() -> gameEngine.play(state, "p2", List.of(four)));
+    }
+
     private GameState startedState(Player... players) {
         GameState state =
             new GameState(List.of(players));

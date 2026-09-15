@@ -97,6 +97,39 @@ public class GameInitializerTest {
     }
 
     @Test
+    void 八人でも全カードを重複なく公平に配布できる() {
+        GameState state = createState(8);
+        GameInitializer initializer = new GameInitializer(2);
+
+        initializer.initialize(state);
+
+        List<Card> allCards = state.getPlayers().stream()
+            .flatMap(player -> player.getHand().stream())
+            .toList();
+
+        assertEquals(54, allCards.size());
+        assertEquals(2, allCards.stream().filter(Card::isJoker).count());
+        assertEquals(52, allCards.stream()
+            .filter(card -> !card.isJoker())
+            .distinct()
+            .count());
+
+        int minimum = state.getPlayers().stream()
+            .mapToInt(Player::getCardCount)
+            .min()
+            .orElseThrow();
+        int maximum = state.getPlayers().stream()
+            .mapToInt(Player::getCardCount)
+            .max()
+            .orElseThrow();
+
+        assertTrue(maximum - minimum <= 1);
+        assertTrue(state.getCurrentPlayer().getHand().contains(
+            new Card(Mark.DIAMOND, Rank.THREE)
+        ));
+    }
+
+    @Test
     void ジョーカーなしなら五十二枚配布される() {
         GameState state = createState(4);
         GameInitializer initializer =

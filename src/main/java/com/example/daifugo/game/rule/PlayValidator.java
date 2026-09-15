@@ -25,12 +25,47 @@ public class PlayValidator {
             boolean strengthReversed,
             Mark lockedMark
     ) {
+        return canPlay(
+            selected,
+            field,
+            strengthReversed,
+            lockedMark,
+            false
+        );
+    }
+
+    /**
+     * 選択した組み合わせが現在の場へ提出可能か判定する。
+     *
+     * @param selected 選択したカード組み合わせ
+     * @param field 現在の場札。場が空の場合はnull
+     * @param strengthReversed 革命/Jバックを合成した実効的な強弱反転状態
+     * @param lockedMark 縛り中のマーク。縛りがない場合はnull
+     * @param spadeThreeJokerReturnActive JOKERをスペード3で返した直後か
+     * @return 提出可能な場合true
+     */
+    public boolean canPlay(
+            CardCombination selected,
+            CardCombination field,
+            boolean strengthReversed,
+            Mark lockedMark,
+            boolean spadeThreeJokerReturnActive
+    ) {
         Objects.requireNonNull(
             selected,
             "selected must not be null"
         );
 
         if (!selected.isValid()) {
+            return false;
+        }
+
+        if (spadeThreeJokerReturnActive) {
+            if (field == null || !field.isSingleSpadeThree()) {
+                throw new IllegalStateException(
+                    "スペード3のJOKER返し状態と場札が一致していません"
+                );
+            }
             return false;
         }
 

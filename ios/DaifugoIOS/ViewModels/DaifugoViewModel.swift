@@ -186,8 +186,8 @@ final class DaifugoViewModel: ObservableObject {
 
     private func startCpuGameImpl() async throws {
         let name = try validatedPlayerName()
-        guard (1...3).contains(cpuCount) else {
-            throw APIError(message: "CPU人数は1〜3人で指定してください", statusCode: nil)
+        guard (1...7).contains(cpuCount) else {
+            throw APIError(message: "CPU人数は1〜7人で指定してください", statusCode: nil)
         }
         guard (0...2).contains(jokerCount) else {
             throw APIError(message: "ジョーカー枚数は0〜2枚で指定してください", statusCode: nil)

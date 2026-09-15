@@ -49,7 +49,7 @@ private struct HeaderView: View {
                 Text("♛ DAIFUGO")
                     .font(.headline.bold())
                     .foregroundStyle(casinoGreen)
-                Text("v0.4.3 J-BACK")
+                Text("v0.4.4 8-PLAYER")
                     .font(.caption2.bold())
                     .foregroundStyle(casinoGold)
             }
@@ -100,7 +100,7 @@ private struct LoginView: View {
                     Button("ログイン", action: viewModel.login)
                         .fontWeight(.bold).frame(maxWidth: .infinity).buttonStyle(.borderedProminent)
                 }
-                Panel("v0.4.3 J-BACK") {
+                Panel("v0.4.4 8-PLAYER") {
                     Feature("🌐", "PC / Android / iPhone マルチプレイ")
                     Feature("🤖", "CPU戦【ひとりでイク】")
                     Feature("🧠", "簡単 / 普通 / 難しい / N-GOD")
@@ -172,7 +172,7 @@ private struct CpuSetupView: View {
                 }
 
                 Panel("CPU設定") {
-                    Stepper("CPU人数：\(viewModel.cpuCount)人", value: $viewModel.cpuCount, in: 1...3)
+                    Stepper("CPU人数：\(viewModel.cpuCount)人", value: $viewModel.cpuCount, in: 1...7)
                     Picker("難易度", selection: $viewModel.cpuDifficulty) {
                         ForEach(difficulties, id: \.self) { value in
                             Text(cpuDifficultyLabel(value)).tag(value)
@@ -238,7 +238,7 @@ private struct LobbyView: View {
                     TextField("プレイヤー名", text: $viewModel.playerName).textFieldStyle(.roundedBorder)
                 }
                 Panel("新しいテーブル") {
-                    Text("あなたがホストになります。2〜4人集まったら開始できます。")
+                    Text("あなたがホストになります。2〜8人で開始できます。")
                     Button("＋ 部屋を作る", action: viewModel.createRoom)
                         .fontWeight(.bold).frame(maxWidth: .infinity).buttonStyle(.borderedProminent)
                 }
@@ -268,7 +268,7 @@ private struct RoomView: View {
                             Button("コピー") { UIPasteboard.general.string = game.roomId }
                         }
                     }
-                    Panel("プレイヤー \(game.players.count)/4") {
+                    Panel("プレイヤー \(game.players.count)/8") {
                         ForEach(Array(game.players.enumerated()), id: \.element.id) { index, player in
                             HStack {
                                 Text("\(index + 1)").font(.headline).frame(width: 34, height: 34)
@@ -324,21 +324,23 @@ private struct GameView: View {
 private struct OpponentsView: View {
     let game: GameStateDTO
     var body: some View {
-        HStack(spacing: 8) {
-            ForEach(game.players.filter { !$0.isSelf }) { player in
-                VStack(spacing: 4) {
-                    Text(player.playerName).font(.caption.bold()).lineLimit(1)
-                    if player.cpu {
-                        Text("CPU \(cpuDifficultyLabel(player.cpuDifficulty ?? ""))")
-                            .font(.caption2.bold()).foregroundStyle(casinoGold)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(game.players.filter { !$0.isSelf }) { player in
+                    VStack(spacing: 4) {
+                        Text(player.playerName).font(.caption.bold()).lineLimit(1)
+                        if player.cpu {
+                            Text("CPU \(cpuDifficultyLabel(player.cpuDifficulty ?? ""))")
+                                .font(.caption2.bold()).foregroundStyle(casinoGold)
+                        }
+                        Text("🂠 × \(player.handCount)").font(.caption)
+                        if player.yajuActive { Text("野獣").font(.caption2.bold()).foregroundStyle(casinoGold) }
+                        if player.rank != nil { Text("\(player.rank!)位").font(.caption2.bold()) }
                     }
-                    Text("🂠 × \(player.handCount)").font(.caption)
-                    if player.yajuActive { Text("野獣").font(.caption2.bold()).foregroundStyle(casinoGold) }
-                    if player.rank != nil { Text("\(player.rank!)位").font(.caption2.bold()) }
+                    .frame(width: 122).padding(8)
+                    .background(player.playerId == game.currentPlayerId ? Color.green.opacity(0.18) : Color(.secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .frame(maxWidth: .infinity).padding(8)
-                .background(player.playerId == game.currentPlayerId ? Color.green.opacity(0.18) : Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
     }

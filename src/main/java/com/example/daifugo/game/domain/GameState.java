@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import com.example.daifugo.game.config.GameLimits;
+
 /**
  * ゲームの状態を持つ
  */
@@ -17,6 +19,8 @@ public class GameState {
     private boolean revolution;
     /** Jバック中か。場が流れるまで継続する。 */
     private boolean jackBack;
+    /** JOKERをスペード3で返した直後か。場が流れるまで他の札は出せない。 */
+    private boolean spadeThreeJokerReturn;
     /** 3が最強となるJバック直後に「早漏」判定の対象となる次プレイヤーID。 */
     private String earlyShotEligiblePlayerId;
     /** 7渡し等の後に、実際の次手番プレイヤーを早漏判定対象へ設定するための保留フラグ。 */
@@ -36,9 +40,11 @@ public class GameState {
     public GameState(List<Player> players) {
         Objects.requireNonNull(players, "players must not be null");
 
-        if (players.size() < 2) {
+        if (players.size() < GameLimits.MIN_PLAYER_COUNT
+                || players.size() > GameLimits.MAX_PLAYER_COUNT) {
             throw new IllegalArgumentException(
-                "プレイヤーは2人以上必要です"
+                "プレイヤー人数は" + GameLimits.MIN_PLAYER_COUNT
+                    + "〜" + GameLimits.MAX_PLAYER_COUNT + "人で指定してください"
             );
         }
 
@@ -96,6 +102,16 @@ public class GameState {
     /** 革命とJバックを合成した実効的な強弱反転状態。 */
     public boolean isStrengthReversed() {
         return revolution ^ jackBack;
+    }
+
+    /** JOKERをスペード3で返した状態か判定する。 */
+    public boolean isSpadeThreeJokerReturnActive() {
+        return spadeThreeJokerReturn;
+    }
+
+    /** JOKER返しとしてスペード3が場に出た状態を有効化する。 */
+    public void activateSpadeThreeJokerReturn() {
+        spadeThreeJokerReturn = true;
     }
 
     /** Jバックを有効化する。 */
@@ -177,6 +193,7 @@ public class GameState {
         this.lastPlayedPlayerIndex = null;
         this.lockedMark = null;
         this.jackBack = false;
+        this.spadeThreeJokerReturn = false;
         this.earlyShotEligiblePlayerId = null;
         this.earlyShotArmPending = false;
 

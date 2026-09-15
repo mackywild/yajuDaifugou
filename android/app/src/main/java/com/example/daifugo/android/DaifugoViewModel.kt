@@ -10,6 +10,7 @@ import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.RuleSettingsDto
 import com.example.daifugo.android.local.LocalCpuActionType
 import com.example.daifugo.android.local.LocalCpuGameManager
+import com.example.daifugo.game.config.GameLimits
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -105,7 +106,7 @@ data class DaifugoUiState(
 )
 
 /**
- * Daifugo v0.4.3 の画面状態と通信を管理するViewModel。
+ * Daifugo v0.4.4 の画面状態と通信を管理するViewModel。
  * CPU戦では1手ずつ約3秒の演出を挟み、CPUが何を出したか追えるようにする。
  */
 class DaifugoViewModel(application: Application) : AndroidViewModel(application) {
@@ -137,7 +138,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     fun setPassword(value: String) = update { copy(password = value) }
     fun setPlayerName(value: String) = update { copy(playerName = value) }
     fun setRoomIdInput(value: String) = update { copy(roomIdInput = value) }
-    fun setCpuCount(value: Int) = update { copy(cpuCount = value.coerceIn(1, 3)) }
+    fun setCpuCount(value: Int) = update { copy(cpuCount = value.coerceIn(1, GameLimits.MAX_CPU_COUNT)) }
     fun setCpuDifficulty(value: String) = update { copy(cpuDifficulty = value) }
     fun setCpuJokerCount(value: Int) = update { copy(cpuJokerCount = value.coerceIn(0, 2)) }
     fun setRuleRevolution(value: Boolean) = update { copy(ruleRevolution = value) }

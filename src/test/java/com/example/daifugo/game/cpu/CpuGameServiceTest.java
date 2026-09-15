@@ -2,6 +2,7 @@ package com.example.daifugo.game.cpu;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
@@ -53,5 +54,38 @@ class CpuGameServiceTest {
                 .allMatch(p -> p.getCpuDifficulty() == CpuDifficulty.N_GOD));
         assertEquals(2, room.getRuleSettings().jokerCount());
         assertTrue(room.getRuleSettings().yajuRule());
+    }
+
+    @Test
+    void createsHumanPlusSevenCpusForEightPlayerGame() {
+        GameRoomService rooms = new GameRoomService();
+        CpuGameService service = new CpuGameService(rooms);
+
+        GameRoom room = service.createGame(
+                "human",
+                7,
+                CpuDifficulty.HARD,
+                GameRuleSettings.standard()
+        ).room();
+
+        assertEquals(8, room.getPlayerCount());
+        assertEquals(7, room.getPlayers().stream().filter(p -> p.isCpu()).count());
+        assertTrue(room.isStarted());
+    }
+
+    @Test
+    void rejectsEightCpuPlayersBecauseTotalWouldExceedEight() {
+        GameRoomService rooms = new GameRoomService();
+        CpuGameService service = new CpuGameService(rooms);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.createGame(
+                        "human",
+                        8,
+                        CpuDifficulty.EASY,
+                        GameRuleSettings.standard()
+                )
+        );
     }
 }

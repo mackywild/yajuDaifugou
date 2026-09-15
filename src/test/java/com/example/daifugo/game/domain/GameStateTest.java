@@ -205,4 +205,17 @@ class GameStateTest {
             new Card(Mark.SPADE, rank)
         ));
     }
+
+    @Test
+    void 八人までは作成でき九人以上はゲーム状態を作成できない() {
+        List<Player> eightPlayers = java.util.stream.IntStream.rangeClosed(1, 8)
+            .mapToObj(i -> new Player("p" + i, "P" + i))
+            .toList();
+        List<Player> ninePlayers = java.util.stream.IntStream.rangeClosed(1, 9)
+            .mapToObj(i -> new Player("q" + i, "Q" + i))
+            .toList();
+
+        assertDoesNotThrow(() -> new GameState(eightPlayers));
+        assertThrows(IllegalArgumentException.class, () -> new GameState(ninePlayers));
+    }
 }

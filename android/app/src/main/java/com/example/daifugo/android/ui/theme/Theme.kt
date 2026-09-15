@@ -5,7 +5,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-/** Daifugo v0.4.3: 落ち着いたカジノテーブルを意識した共通カラーパレット。 */
+/** Daifugo v0.4.4: 落ち着いたカジノテーブルを意識した共通カラーパレット。 */
 val CasinoGreen = Color(0xFF0F6A48)
 val CasinoGreenDark = Color(0xFF063827)
 val CasinoGold = Color(0xFFB9892F)

@@ -7,6 +7,7 @@ import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.PlayerDto
 import com.example.daifugo.android.data.RuleSettingsDto
 import com.example.daifugo.android.data.SevenTransferDto
+import com.example.daifugo.game.config.GameLimits
 import com.example.daifugo.game.config.GameRuleSettings
 import com.example.daifugo.game.cpu.CpuDifficulty
 import com.example.daifugo.game.cpu.CpuStrategyFactory
@@ -62,14 +63,14 @@ class LocalCpuGameManager {
     private var humanPlayerId: String? = null
     private var localGameId: String? = null
 
-    /** 人間1人 + CPU 1〜3人でローカルゲームを開始する。 */
+    /** 人間1人 + CPU 1〜7人でローカルゲームを開始する。 */
     fun start(
         humanName: String,
         cpuCount: Int,
         difficulty: String,
         rules: RuleSettingsDto,
     ): GameStateDto {
-        require(cpuCount in 1..3) { "CPU人数は1〜3人で指定してください" }
+        require(cpuCount in 1..GameLimits.MAX_CPU_COUNT) { "CPU人数は1〜7人で指定してください" }
 
         val coreRules = rules.toCore()
         val cpuDifficulty = CpuDifficulty.valueOf(difficulty)

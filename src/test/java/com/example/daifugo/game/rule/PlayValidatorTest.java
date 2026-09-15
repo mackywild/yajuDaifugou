@@ -89,6 +89,44 @@ public class PlayValidatorTest {
         );
     }
 
+    @Test
+    void JOKER返し成立後のスペード3には他のカードを出せない() {
+        CardCombination field = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.THREE)
+        ));
+        CardCombination selected = single(Rank.TWO);
+
+        assertFalse(
+            validator.canPlay(selected, field, false, null, true)
+        );
+    }
+
+    @Test
+    void JOKER返し成立後のスペード3にはJOKERでも返せない() {
+        CardCombination field = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.THREE)
+        ));
+        CardCombination joker = CardCombination.of(List.of(
+            new Card(Mark.JOKER, Rank.JOKER)
+        ));
+
+        assertFalse(
+            validator.canPlay(joker, field, false, null, true)
+        );
+    }
+
+    @Test
+    void 通常のスペード3にはより強いカードを出せる() {
+        CardCombination field = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.THREE)
+        ));
+        CardCombination selected = single(Rank.FOUR);
+
+        assertTrue(
+            validator.canPlay(selected, field, false, null, false)
+        );
+    }
+
     private CardCombination single(Rank rank) {
         return CardCombination.of(List.of(
             new Card(Mark.SPADE, rank)

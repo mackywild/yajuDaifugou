@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.example.daifugo.game.config.GameLimits;
 import com.example.daifugo.game.config.GameRuleSettings;
 import com.example.daifugo.game.domain.Card;
 import com.example.daifugo.game.mode.GameMode;
@@ -30,9 +31,6 @@ import com.example.daifugo.game.service.YajuRuleService;
  */
 @Service
 public class GameRoomService {
-
-    /** ゲームを開始するために必要な最小プレイヤー人数 */
-    private static final int MIN_PLAYER_COUNT = 2;
 
     /** 部屋IDをキーとして対戦部屋を保持する */
     private final Map<String, GameRoom> roomMap = new ConcurrentHashMap<>();
@@ -158,9 +156,9 @@ public class GameRoomService {
                 throw new IllegalStateException("ゲームは既に開始されています");
             }
 
-            if (room.getPlayerCount() < MIN_PLAYER_COUNT) {
+            if (room.getPlayerCount() < GameLimits.MIN_PLAYER_COUNT) {
                 throw new IllegalStateException(
-                        "ゲーム開始には最低" + MIN_PLAYER_COUNT
+                        "ゲーム開始には最低" + GameLimits.MIN_PLAYER_COUNT
                         + "人必要です。現在の参加人数=" + room.getPlayerCount());
             }
 

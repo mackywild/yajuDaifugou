@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.example.daifugo.game.config.GameLimits;
 import com.example.daifugo.game.config.GameRuleSettings;
 import com.example.daifugo.game.domain.Card;
 import com.example.daifugo.game.domain.GameState;
@@ -20,7 +21,6 @@ import com.example.daifugo.room.GameRoomService;
  */
 @Service
 public class CpuGameService {
-    private static final int MAX_CPU_COUNT = 3;
     private static final int MAX_AUTO_STEPS = 500;
 
     private final GameRoomService roomService;
@@ -35,7 +35,7 @@ public class CpuGameService {
     public record CpuGameCreation(GameRoom room, Player humanPlayer) {}
 
     /**
-     * 人間1人 + CPU 1～3人でゲームを即時開始する。
+     * 人間1人 + CPU 1～7人でゲームを即時開始する。
      */
     public CpuGameCreation createGame(
             String humanName,
@@ -45,8 +45,8 @@ public class CpuGameService {
     ) {
         Objects.requireNonNull(difficulty, "difficulty must not be null");
         Objects.requireNonNull(settings, "settings must not be null");
-        if (cpuCount < 1 || cpuCount > MAX_CPU_COUNT) {
-            throw new IllegalArgumentException("CPU人数は1～3人で指定してください");
+        if (cpuCount < 1 || cpuCount > GameLimits.MAX_CPU_COUNT) {
+            throw new IllegalArgumentException("CPU人数は1～7人で指定してください");
         }
 
         GameRoom room = roomService.createRoom(GameMode.CPU, settings);

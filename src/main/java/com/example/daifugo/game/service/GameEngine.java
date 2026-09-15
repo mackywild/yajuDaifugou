@@ -118,7 +118,8 @@ public class GameEngine {
             selectedCombination,
             state.getFieldCombination(),
             state.isStrengthReversed(),
-            state.getLockedMark()
+            state.getLockedMark(),
+            state.isSpadeThreeJokerReturnActive()
         );
 
         if (!canPlay) {
@@ -162,6 +163,16 @@ public class GameEngine {
             selectedCombination,
             playerIndex
         );
+
+        /*
+         * JOKERをスペード3で返した場合、そのスペード3をこのトリックの最強札とする。
+         * 場が流れるまでは他のカードを一切提出できず、残りプレイヤーはPASSのみ。
+         */
+        if (previousField != null
+                && previousField.isSingleJoker()
+                && selectedCombination.isSingleSpadeThree()) {
+            state.activateSpadeThreeJokerReturn();
+        }
 
         player.clearPass();
 

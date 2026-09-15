@@ -90,7 +90,8 @@ public class LegalMoveGenerator {
                     combination,
                     state.getFieldCombination(),
                     state.isStrengthReversed(),
-                    state.getLockedMark())) {
+                    state.getLockedMark(),
+                    state.isSpadeThreeJokerReturnActive())) {
                 continue;
             }
             if (settings.yajuRule()) {

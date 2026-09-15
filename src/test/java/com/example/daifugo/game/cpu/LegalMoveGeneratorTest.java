@@ -61,6 +61,23 @@ class LegalMoveGeneratorTest {
         assertFalse(moves.stream().anyMatch(move -> move.cards().equals(List.of(ten))));
     }
 
+    @Test
+    void spadeThreeJokerReturnAllowsOnlyPass() {
+        Player player = player("p1", Rank.FOUR, Rank.TWO);
+        GameState state = playingState(player, player("p2", Rank.FIVE));
+        state.updateField(
+                com.example.daifugo.game.domain.CardCombination.of(
+                        List.of(new Card(Mark.SPADE, Rank.THREE))),
+                1
+        );
+        state.activateSpadeThreeJokerReturn();
+
+        List<CpuMove> moves = generator.generate(state, player, noYajuSettings());
+
+        assertTrue(moves.stream().anyMatch(CpuMove::pass));
+        assertFalse(moves.stream().anyMatch(move -> !move.pass()));
+    }
+
     private static GameRuleSettings noYajuSettings() {
         return new GameRuleSettings(1, true, true, true, true, false, true, true);
     }

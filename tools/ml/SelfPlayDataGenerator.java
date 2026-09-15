@@ -51,7 +51,7 @@ public class SelfPlayDataGenerator {
 
             long rows = 0;
             for (int game = 0; game < games; game++) {
-                int playerCount = 2 + random.nextInt(3);
+                int playerCount = 2 + random.nextInt(7);
                 GameRuleSettings settings = randomSettings(random);
                 List<Player> players = new ArrayList<>();
                 for (int i = 0; i < playerCount; i++) {

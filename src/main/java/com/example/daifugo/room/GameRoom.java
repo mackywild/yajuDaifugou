@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import com.example.daifugo.game.config.GameLimits;
 import com.example.daifugo.game.domain.GameState;
 import com.example.daifugo.game.domain.Player;
 import com.example.daifugo.game.config.GameRuleSettings;
@@ -18,9 +19,6 @@ import com.example.daifugo.game.service.GameEngine;
  * ゲーム状態およびゲーム進行処理を保持する。
  */
 public class GameRoom {
-
-    /** 1部屋に参加できる最大人数 */
-    private static final int MAX_PLAYER_COUNT = 4;
 
     /** 部屋を一意に識別するID */
     private final String roomId;
@@ -213,7 +211,7 @@ public class GameRoom {
      * @return 最大人数に達している場合true
      */
     public boolean isFull() {
-        return players.size() >= MAX_PLAYER_COUNT;
+        return players.size() >= GameLimits.MAX_PLAYER_COUNT;
     }
 
     /**

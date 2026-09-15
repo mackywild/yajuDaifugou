@@ -85,6 +85,7 @@ import com.example.daifugo.android.ui.theme.CasinoGreenDark
 import com.example.daifugo.android.ui.theme.Danger
 import com.example.daifugo.android.ui.theme.SoftGold
 import com.example.daifugo.android.ui.theme.SoftGreen
+import com.example.daifugo.game.config.GameLimits
 import kotlinx.coroutines.delay
 import kotlin.math.min
 
@@ -193,7 +194,7 @@ private fun AppHeader(state: DaifugoUiState) {
                 color = CasinoGreenDark,
             )
             Text(
-                "ONLINE CARD GAME · v0.4.3 J-BACK",
+                "ONLINE CARD GAME · v0.4.4 8-PLAYER",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -300,8 +301,8 @@ private fun LoginScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             }
         }
         item {
-            CasinoPanel(title = "v0.4.3 J-BACK") {
-                FeatureLine("♣", "2〜4人オンライン対戦")
+            CasinoPanel(title = "v0.4.4 8-PLAYER") {
+                FeatureLine("♣", "2〜8人オンライン対戦")
                 FeatureLine("⚡", "WebSocketリアルタイム更新")
                 FeatureLine("♛", "革命・Jバック・8切り・7渡し・野獣ルール")
                 FeatureLine("🔒", "手札判定と本人確認はサーバー側")
@@ -367,7 +368,7 @@ private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                 singleLine = true,
             )
         }
-        item { ChoiceRow("CPU人数", listOf(1,2,3), state.cpuCount, viewModel::setCpuCount) { "${it}人" } }
+        item { CpuCountChoiceRow(state.cpuCount, viewModel::setCpuCount) }
         item { ChoiceRow("難易度", listOf("EASY","NORMAL","HARD","N_GOD"), state.cpuDifficulty, viewModel::setCpuDifficulty) { difficultyLabel(it) } }
         item { ChoiceRow("ジョーカー", listOf(0,1,2), state.cpuJokerCount, viewModel::setCpuJokerCount) { "${it}枚" } }
         item {
@@ -390,6 +391,33 @@ private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                 Text("オフラインでCPU戦スタート", fontWeight = FontWeight.ExtraBold)
             }
         }
+    }
+}
+
+@Composable
+private fun CpuCountChoiceRow(selected: Int, onSelect: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("CPU人数", fontWeight = FontWeight.Bold)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            itemsIndexed((1..GameLimits.MAX_CPU_COUNT).toList()) { _, value ->
+                if (value == selected) {
+                    Button(
+                        onClick = { onSelect(value) },
+                        modifier = Modifier.width(64.dp),
+                    ) { Text("${value}人", maxLines = 1) }
+                } else {
+                    OutlinedButton(
+                        onClick = { onSelect(value) },
+                        modifier = Modifier.width(64.dp),
+                    ) { Text("${value}人", maxLines = 1) }
+                }
+            }
+        }
+        Text(
+            "人間1人 + CPU${selected}人 = ${selected + 1}人戦",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -451,7 +479,7 @@ private fun LobbyScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
         }
         item {
             CasinoPanel(title = "新しいテーブル") {
-                Text("あなたがホストになります。2〜4人集まったらゲーム開始できます。")
+                Text("あなたがホストになります。2〜8人でゲーム開始できます。")
                 Spacer(Modifier.height(14.dp))
                 Button(
                     onClick = viewModel::createRoom,
@@ -510,12 +538,12 @@ private fun RoomScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             }
         }
         item {
-            CasinoPanel(title = "プレイヤー ${game.players.size}/4") {
+            CasinoPanel(title = "プレイヤー ${game.players.size}/${GameLimits.MAX_PLAYER_COUNT}") {
                 game.players.forEachIndexed { index, player ->
                     PlayerLobbyRow(player, index + 1)
                     if (index != game.players.lastIndex) HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
-                repeat(4 - game.players.size) { index ->
+                repeat((GameLimits.MAX_PLAYER_COUNT - game.players.size).coerceAtLeast(0)) { index ->
                     if (game.players.isNotEmpty() || index > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     Text("○ 空席", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -769,11 +797,13 @@ private fun CpuTurnAnimationOverlay(
 ) {
     val progress = remember(animation.id) { Animatable(0f) }
     val opponentIndex = opponents.indexOfFirst { it.playerId == animation.playerId }.coerceAtLeast(0)
-    val startX = when (opponentIndex) {
-        0 -> (-92).dp
-        1 -> 0.dp
-        else -> 92.dp
+    val opponentCount = opponents.size.coerceAtLeast(1)
+    val normalizedPosition = if (opponentCount == 1) {
+        0f
+    } else {
+        (opponentIndex.toFloat() / (opponentCount - 1).toFloat()) * 2f - 1f
     }
+    val startX = (normalizedPosition * 110f).dp
 
     LaunchedEffect(animation.id) {
         progress.snapTo(0f)
@@ -1294,7 +1324,7 @@ private fun CardBack(
     }
 }
 
-/** 1卓4人まで同じ顔が出ない、端末内描画のプレイヤーアイコン。 */
+/** 1卓8人まで同じ顔が出ない、端末内描画のプレイヤーアイコン。 */
 @Composable
 private fun PlayerAvatar(
     avatarIndex: Int,
