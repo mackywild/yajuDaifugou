@@ -4,9 +4,12 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.daifugo.android.data.ApiException
+import com.example.daifugo.android.data.CardDto
 import com.example.daifugo.android.data.DaifugoApiClient
 import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.RuleSettingsDto
+import com.example.daifugo.android.local.LocalCpuActionType
+import com.example.daifugo.android.local.LocalCpuGameManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -33,8 +36,26 @@ enum class GameAudioCue {
     YAJU_SUCCESS,
 }
 
+/** CPU手番演出の種類。 */
+enum class CpuAnimationType {
+    THINKING,
+    PLAY,
+    PASS,
+    SEVEN_TRANSFER,
+}
+
+/** CPUが現在行っているアクションを画面へ伝える。 */
+data class CpuTurnAnimation(
+    val id: Long,
+    val playerId: String,
+    val playerName: String,
+    val type: CpuAnimationType,
+    val cards: List<CardDto> = emptyList(),
+    val targetPlayerName: String? = null,
+)
+
 data class DaifugoUiState(
-    val screen: DaifugoScreen = DaifugoScreen.LOGIN,
+    val screen: DaifugoScreen = DaifugoScreen.MAIN_MENU,
     val serverUrl: String = "http://10.0.2.2:8080",
     val password: String = "",
     val playerName: String = "",
@@ -53,15 +74,20 @@ data class DaifugoUiState(
     val selectedCardIndices: Set<Int> = emptySet(),
     val loading: Boolean = false,
     val socketConnected: Boolean = false,
+    val cpuTurnInProgress: Boolean = false,
+    val cpuTurnAnimation: CpuTurnAnimation? = null,
+    val cpuActionHistory: List<String> = emptyList(),
     val errorMessage: String? = null,
     val infoMessage: String? = null,
 )
 
 /**
- * Daifugo v0.4.0 の画面状態と通信を管理するViewModel。
+ * Daifugo v0.4.1 の画面状態と通信を管理するViewModel。
+ * CPU戦では1手ずつ約3秒の演出を挟み、CPUが何を出したか追えるようにする。
  */
 class DaifugoViewModel(application: Application) : AndroidViewModel(application) {
     private val api = DaifugoApiClient()
+    private val localCpu = LocalCpuGameManager()
     private val preferences = application.getSharedPreferences("daifugo", 0)
 
     private val _uiState = MutableStateFlow(
@@ -81,6 +107,8 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     private var pollingJob: Job? = null
     private var reconnectJob: Job? = null
+    private var cpuTurnJob: Job? = null
+    private var cpuAnimationSequence: Long = 0L
 
     fun setServerUrl(value: String) = update { copy(serverUrl = value) }
     fun setPassword(value: String) = update { copy(password = value) }
@@ -110,7 +138,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         preferences.edit().putString("serverUrl", serverUrl).apply()
         update {
             copy(
-                screen = DaifugoScreen.MAIN_MENU,
+                screen = DaifugoScreen.MULTIPLAYER,
                 serverUrl = serverUrl,
                 password = "",
                 errorMessage = null,
@@ -119,19 +147,20 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun openMultiplayer() = update { copy(screen = DaifugoScreen.MULTIPLAYER, errorMessage = null, infoMessage = null) }
+    fun openMultiplayer() = update { copy(screen = DaifugoScreen.LOGIN, errorMessage = null, infoMessage = null) }
 
     fun openCpuSetup() = update { copy(screen = DaifugoScreen.CPU_SETUP, errorMessage = null, infoMessage = null) }
 
     fun backToMenu() = update { copy(screen = DaifugoScreen.MAIN_MENU, errorMessage = null, infoMessage = null) }
 
     fun logout() = launchAction {
-        api.logout()
+        runCatching { api.logout() }
+        localCpu.close()
         stopRoomRealtime()
         lastHandledEventId = 0L
         update {
             copy(
-                screen = DaifugoScreen.LOGIN,
+                screen = DaifugoScreen.MAIN_MENU,
                 roomId = null,
                 gameState = null,
                 selectedCardIndices = emptySet(),
@@ -153,17 +182,22 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             yajuRule = state.ruleYaju,
             forbiddenFinish = state.ruleForbiddenFinish,
         )
-        val game = api.createCpuGame(
-            playerName = playerName,
+        /*
+         * CPU戦は完全ローカル実行。
+         * Spring Bootへのログイン・REST・WebSocket接続は一切不要。
+         */
+        val game = localCpu.start(
+            humanName = playerName,
             cpuCount = state.cpuCount,
             difficulty = state.cpuDifficulty,
             rules = rules,
         )
         savePlayerName(playerName)
         lastHandledEventId = 0L
-        update { copy(roomId = game.roomId, roomIdInput = game.roomId) }
+        stopRoomRealtime()
+        update { copy(cpuActionHistory = emptyList(), cpuTurnAnimation = null, cpuTurnInProgress = false) }
         applyGameState(game)
-        startRoomRealtime(game.roomId)
+        startCpuTurnSequence()
     }
 
     fun createRoom() = launchAction {
@@ -185,6 +219,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun refreshState(silent: Boolean = true) {
+        if (_uiState.value.gameState?.gameMode == "CPU_LOCAL") return
         val roomId = _uiState.value.roomId ?: return
         viewModelScope.launch {
             if (!silent) update { copy(loading = true) }
@@ -204,7 +239,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         val state = _uiState.value
         val game = state.gameState ?: return
         val handSize = game.selfPlayer?.hand?.size ?: return
-        if (!game.isMyTurn || index !in 0 until handSize) return
+        if (state.cpuTurnInProgress || !game.isMyTurn || index !in 0 until handSize) return
 
         val selected = state.selectedCardIndices.toMutableSet()
         if (!selected.add(index)) selected.remove(index)
@@ -221,7 +256,14 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             .mapNotNull { self.hand.getOrNull(it) }
         require(selectedCards.isNotEmpty()) { "カードを選択してください" }
 
-        val nextState = if (game.isMySevenTransfer) {
+        val nextState = if (game.gameMode == "CPU_LOCAL") {
+            if (game.isMySevenTransfer) {
+                require(selectedCards.size == game.sevenTransfer.cardCount) {
+                    "7渡しでは${game.sevenTransfer.cardCount}枚選択してください"
+                }
+            }
+            localCpu.play(selectedCards)
+        } else if (game.isMySevenTransfer) {
             require(selectedCards.size == game.sevenTransfer.cardCount) {
                 "7渡しでは${game.sevenTransfer.cardCount}枚選択してください"
             }
@@ -232,17 +274,34 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
         applyGameState(nextState)
         update { copy(selectedCardIndices = emptySet()) }
+        if (game.gameMode == "CPU_LOCAL") {
+            startCpuTurnSequence()
+        }
     }
 
     fun pass() = launchAction {
-        val roomId = requireRoomId()
-        applyGameState(api.pass(roomId))
+        val game = _uiState.value.gameState ?: error("ゲーム状態を取得できません")
+        val nextState = if (game.gameMode == "CPU_LOCAL") {
+            localCpu.pass()
+        } else {
+            api.pass(requireRoomId())
+        }
+        applyGameState(nextState)
         update { copy(selectedCardIndices = emptySet()) }
+        if (game.gameMode == "CPU_LOCAL") {
+            startCpuTurnSequence()
+        }
     }
 
     fun leaveRoom() = launchAction {
-        val roomId = requireRoomId()
-        api.leave(roomId)
+        val game = _uiState.value.gameState
+        if (game?.gameMode == "CPU_LOCAL") {
+            cpuTurnJob?.cancel()
+            cpuTurnJob = null
+            localCpu.close()
+        } else {
+            api.leave(requireRoomId())
+        }
         stopRoomRealtime()
         lastHandledEventId = 0L
         update {
@@ -253,8 +312,111 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 gameState = null,
                 selectedCardIndices = emptySet(),
                 socketConnected = false,
-                infoMessage = "部屋から退出しました",
+                cpuTurnInProgress = false,
+                cpuTurnAnimation = null,
+                cpuActionHistory = emptyList(),
+                infoMessage = if (game?.gameMode == "CPU_LOCAL") "CPU戦を終了しました" else "部屋から退出しました",
             )
+        }
+    }
+
+    /**
+     * CPUの手番を1手ずつ進め、各アクションを人間が確認できる速度で演出する。
+     * PLAYは約3秒、PASSと7渡しは少し短く表示する。
+     */
+    private fun startCpuTurnSequence() {
+        cpuTurnJob?.cancel()
+        cpuTurnJob = viewModelScope.launch {
+            try {
+                while (localCpu.hasCpuTurn()) {
+                    val visibleState = _uiState.value.gameState ?: break
+                    val cpu = visibleState.currentPlayer ?: break
+
+                    update {
+                        copy(
+                            cpuTurnInProgress = true,
+                            cpuTurnAnimation = CpuTurnAnimation(
+                                id = nextCpuAnimationId(),
+                                playerId = cpu.playerId,
+                                playerName = cpu.playerName,
+                                type = CpuAnimationType.THINKING,
+                            ),
+                            selectedCardIndices = emptySet(),
+                        )
+                    }
+
+                    // 一瞬の思考表示を入れて、手番が切り替わったことを認識しやすくする。
+                    delay(450)
+
+                    val result = localCpu.executeNextCpuTurn()
+                    val animationType = when (result.type) {
+                        LocalCpuActionType.PLAY -> CpuAnimationType.PLAY
+                        LocalCpuActionType.PASS -> CpuAnimationType.PASS
+                        LocalCpuActionType.SEVEN_TRANSFER -> CpuAnimationType.SEVEN_TRANSFER
+                    }
+                    val history = cpuActionText(
+                        playerName = result.playerName,
+                        type = animationType,
+                        cards = result.cards,
+                        targetPlayerName = result.targetPlayerName,
+                    )
+
+                    update {
+                        copy(
+                            cpuTurnAnimation = CpuTurnAnimation(
+                                id = nextCpuAnimationId(),
+                                playerId = result.playerId,
+                                playerName = result.playerName,
+                                type = animationType,
+                                cards = result.cards,
+                                targetPlayerName = result.targetPlayerName,
+                            ),
+                            cpuActionHistory = (listOf(history) + cpuActionHistory).take(4),
+                        )
+                    }
+
+                    // カードを手元から場へ運ぶモーションを約3秒見せる。
+                    delay(
+                        when (animationType) {
+                            CpuAnimationType.PLAY -> 3_000L
+                            CpuAnimationType.PASS -> 1_500L
+                            CpuAnimationType.SEVEN_TRANSFER -> 2_000L
+                            CpuAnimationType.THINKING -> 450L
+                        }
+                    )
+
+                    applyGameState(result.stateAfter)
+                    update { copy(cpuTurnAnimation = null) }
+                    delay(250)
+                }
+            } catch (_: kotlinx.coroutines.CancellationException) {
+                // 画面遷移・退出時のキャンセルは正常系。
+            } catch (throwable: Throwable) {
+                handleError(throwable)
+            } finally {
+                update { copy(cpuTurnInProgress = false, cpuTurnAnimation = null) }
+            }
+        }
+    }
+
+    private fun nextCpuAnimationId(): Long {
+        cpuAnimationSequence += 1
+        return cpuAnimationSequence
+    }
+
+    private fun cpuActionText(
+        playerName: String,
+        type: CpuAnimationType,
+        cards: List<CardDto>,
+        targetPlayerName: String?,
+    ): String {
+        val cardText = cards.joinToString(" ") { it.label }
+        return when (type) {
+            CpuAnimationType.PLAY -> "$playerName：$cardText を出した"
+            CpuAnimationType.PASS -> "$playerName：PASS"
+            CpuAnimationType.SEVEN_TRANSFER ->
+                "$playerName：$cardText を ${targetPlayerName ?: "隣"} へ7渡し"
+            CpuAnimationType.THINKING -> "$playerName：思考中…"
         }
     }
 
@@ -407,6 +569,8 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     override fun onCleared() {
+        cpuTurnJob?.cancel()
+        cpuTurnJob = null
         stopRoomRealtime()
         super.onCleared()
     }

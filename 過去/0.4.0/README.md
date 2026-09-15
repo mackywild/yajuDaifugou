@@ -1,8 +1,9 @@
-# Daifugo v0.4.0 — CPU BATTLE UPDATE
+# Daifugo v0.4.1 — CPU MOTION UPDATE
 
 Java 21 + Spring Bootをゲームサーバーの正本とし、PCブラウザ / Android / iPhoneでクロスプレイできるオンライン大富豪です。
 
-v0.4.0では、従来の部屋対戦を **「マルチプレイ」** としてメインメニュー配下へ整理し、1人で遊べるCPU戦 **【ひとりでイク】** を追加しました。
+v0.4.1では、v0.4.0で追加したCPU戦 **【ひとりでイク】** の視認性を改善しました。
+CPUが瞬時に連続行動するのではなく、1手ずつ約3秒のカード提出モーションを表示し、何を出したか追えるようになっています。
 
 ## ゲームモード
 
@@ -139,7 +140,7 @@ open DaifugoIOS.xcodeproj
 ## GitHub Actions
 
 - `Server Test`: Java 21 / Spring Boot / JUnit
-- `Android APK`: v0.4.0 debug APK
+- `Android APK`: v0.4.1 debug APK
 - `iOS Build`: XcodeGen + iOS Simulator build
 
 ## 野獣ルール音声
@@ -161,6 +162,29 @@ ios/DaifugoIOS/AudioResources/yaju_success.mp3
 ```
 
 詳細: [`YAJU_RULE_SPEC.md`](YAJU_RULE_SPEC.md)
+
+
+## v0.4.1 CPUプレイ演出
+
+CPU戦では各CPUの行動を次の順序で表示します。
+
+```text
+CPUの手番
+  ↓
+思考中表示
+  ↓
+選択カードを公開
+  ↓ 約3秒
+CPU側からテーブル中央へカード移動
+  ↓
+場札・手番を確定表示
+```
+
+- PLAY: 約3秒のカード移動モーション
+- PASS: 約1.5秒のPASS表示
+- 7渡し: 約2秒の譲渡モーション
+- 直近4手のCPU行動ログをゲーム画面に保持
+- 演出中は人間の操作を無効化し、CPU内部状態との競合を防止
 
 ## v0.4.0検証
 

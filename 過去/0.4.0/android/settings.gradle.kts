@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "DaifugoAndroid"
-include(":app")
+include(":app", ":gamecore")

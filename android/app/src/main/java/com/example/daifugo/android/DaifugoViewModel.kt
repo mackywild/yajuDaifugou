@@ -44,6 +44,13 @@ enum class CpuAnimationType {
     SEVEN_TRANSFER,
 }
 
+/** 野獣対象確定時の全画面カットイン情報。 */
+data class YajuCutIn(
+    val id: Long,
+    val playerIds: List<String>,
+    val playerNames: List<String>,
+)
+
 /** CPUが現在行っているアクションを画面へ伝える。 */
 data class CpuTurnAnimation(
     val id: Long,
@@ -51,6 +58,7 @@ data class CpuTurnAnimation(
     val playerName: String,
     val type: CpuAnimationType,
     val cards: List<CardDto> = emptyList(),
+    val cardCount: Int = cards.size,
     val targetPlayerName: String? = null,
 )
 
@@ -77,12 +85,13 @@ data class DaifugoUiState(
     val cpuTurnInProgress: Boolean = false,
     val cpuTurnAnimation: CpuTurnAnimation? = null,
     val cpuActionHistory: List<String> = emptyList(),
+    val yajuCutIn: YajuCutIn? = null,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
 )
 
 /**
- * Daifugo v0.4.1 の画面状態と通信を管理するViewModel。
+ * Daifugo v0.4.2 の画面状態と通信を管理するViewModel。
  * CPU戦では1手ずつ約3秒の演出を挟み、CPUが何を出したか追えるようにする。
  */
 class DaifugoViewModel(application: Application) : AndroidViewModel(application) {
@@ -126,6 +135,11 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun clearMessage() = update { copy(errorMessage = null, infoMessage = null) }
 
+    /** 表示中の野獣確定カットインを、同一イベントの場合だけ閉じる。 */
+    fun clearYajuCutIn(id: Long) = update {
+        if (yajuCutIn?.id == id) copy(yajuCutIn = null) else this
+    }
+
     fun login() = launchAction {
         val state = _uiState.value
         val serverUrl = normalizeServerUrl(state.serverUrl)
@@ -165,6 +179,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 gameState = null,
                 selectedCardIndices = emptySet(),
                 socketConnected = false,
+                yajuCutIn = null,
                 infoMessage = "ログアウトしました",
             )
         }
@@ -195,7 +210,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         savePlayerName(playerName)
         lastHandledEventId = 0L
         stopRoomRealtime()
-        update { copy(cpuActionHistory = emptyList(), cpuTurnAnimation = null, cpuTurnInProgress = false) }
+        update { copy(cpuActionHistory = emptyList(), cpuTurnAnimation = null, cpuTurnInProgress = false, yajuCutIn = null) }
         applyGameState(game)
         startCpuTurnSequence()
     }
@@ -315,6 +330,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 cpuTurnInProgress = false,
                 cpuTurnAnimation = null,
                 cpuActionHistory = emptyList(),
+                yajuCutIn = null,
                 infoMessage = if (game?.gameMode == "CPU_LOCAL") "CPU戦を終了しました" else "部屋から退出しました",
             )
         }
@@ -329,6 +345,11 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         cpuTurnJob = viewModelScope.launch {
             try {
                 while (localCpu.hasCpuTurn()) {
+                    // 野獣確定カットイン中はCPU演出を進めず、見せ場を潰さない。
+                    while (_uiState.value.yajuCutIn != null) {
+                        delay(100)
+                    }
+
                     val visibleState = _uiState.value.gameState ?: break
                     val cpu = visibleState.currentPlayer ?: break
 
@@ -368,10 +389,12 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                                 playerId = result.playerId,
                                 playerName = result.playerName,
                                 type = animationType,
-                                cards = result.cards,
+                                // 7渡しはUI状態へカード内容を渡さず、枚数だけ保持する。
+                                cards = if (animationType == CpuAnimationType.SEVEN_TRANSFER) emptyList() else result.cards,
+                                cardCount = result.cards.size,
                                 targetPlayerName = result.targetPlayerName,
                             ),
-                            cpuActionHistory = (listOf(history) + cpuActionHistory).take(4),
+                            cpuActionHistory = (listOf(history) + cpuActionHistory).take(6),
                         )
                     }
 
@@ -410,12 +433,12 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         cards: List<CardDto>,
         targetPlayerName: String?,
     ): String {
-        val cardText = cards.joinToString(" ") { it.label }
         return when (type) {
-            CpuAnimationType.PLAY -> "$playerName：$cardText を出した"
+            CpuAnimationType.PLAY ->
+                "$playerName：${cards.joinToString(" ") { it.label }} を出した"
             CpuAnimationType.PASS -> "$playerName：PASS"
             CpuAnimationType.SEVEN_TRANSFER ->
-                "$playerName：$cardText を ${targetPlayerName ?: "隣"} へ7渡し"
+                "$playerName：${cards.size}枚を ${targetPlayerName ?: "隣"} へ7渡し"
             CpuAnimationType.THINKING -> "$playerName：思考中…"
         }
     }
@@ -513,13 +536,31 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             .filter { it.id > lastHandledEventId }
             .sortedBy { it.id }
 
-        unseen.forEach { event ->
-            when (event.type) {
-                "YAJU_AVAILABLE" -> _audioCues.tryEmit(GameAudioCue.YAJU_AVAILABLE)
-                "YAJU_SUCCESS" -> _audioCues.tryEmit(GameAudioCue.YAJU_SUCCESS)
+        if (unseen.isEmpty()) return
+
+        val yajuAvailable = unseen.filter { it.type == "YAJU_AVAILABLE" }
+        if (yajuAvailable.isNotEmpty()) {
+            /*
+             * 初期配牌で複数人が同時に野獣対象になった場合も、
+             * 1回のカットインにまとめて全員を表示する。
+             */
+            update {
+                copy(
+                    yajuCutIn = YajuCutIn(
+                        id = yajuAvailable.maxOf { it.id },
+                        playerIds = yajuAvailable.map { it.playerId },
+                        playerNames = yajuAvailable.map { it.playerName },
+                    )
+                )
             }
-            lastHandledEventId = maxOf(lastHandledEventId, event.id)
+            _audioCues.tryEmit(GameAudioCue.YAJU_AVAILABLE)
         }
+
+        if (unseen.any { it.type == "YAJU_SUCCESS" }) {
+            _audioCues.tryEmit(GameAudioCue.YAJU_SUCCESS)
+        }
+
+        lastHandledEventId = maxOf(lastHandledEventId, unseen.maxOf { it.id })
     }
 
     private fun launchAction(block: suspend () -> Unit) {

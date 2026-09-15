@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -46,10 +47,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -62,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.daifugo.android.CpuAnimationType
 import com.example.daifugo.android.CpuTurnAnimation
+import com.example.daifugo.android.YajuCutIn
 import com.example.daifugo.android.DaifugoScreen
 import com.example.daifugo.android.audio.YajuAudioPlayer
 import com.example.daifugo.android.DaifugoUiState
@@ -75,6 +83,8 @@ import com.example.daifugo.android.ui.theme.CasinoGreenDark
 import com.example.daifugo.android.ui.theme.Danger
 import com.example.daifugo.android.ui.theme.SoftGold
 import com.example.daifugo.android.ui.theme.SoftGreen
+import kotlinx.coroutines.delay
+import kotlin.math.min
 
 @Composable
 fun DaifugoApp(viewModel: DaifugoViewModel) {
@@ -142,6 +152,14 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                         }
                     }
                 }
+
+                state.yajuCutIn?.let { cutIn ->
+                    YajuCutInOverlay(
+                        cutIn = cutIn,
+                        game = state.gameState,
+                        onDismiss = viewModel::clearYajuCutIn,
+                    )
+                }
             }
         }
     }
@@ -165,7 +183,7 @@ private fun AppHeader(state: DaifugoUiState) {
                 color = CasinoGreenDark,
             )
             Text(
-                "ONLINE CARD GAME · v0.4.1 CPU MOTION",
+                "ONLINE CARD GAME · v0.4.2 PREMIUM TABLE",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -272,7 +290,7 @@ private fun LoginScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             }
         }
         item {
-            CasinoPanel(title = "v0.4.1 CPU MOTION") {
+            CasinoPanel(title = "v0.4.2 PREMIUM TABLE") {
                 FeatureLine("♣", "2〜4人オンライン対戦")
                 FeatureLine("⚡", "WebSocketリアルタイム更新")
                 FeatureLine("♛", "革命・8切り・7渡し・野獣ルール")
@@ -521,15 +539,11 @@ private fun RoomScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
 @Composable
 private fun PlayerLobbyRow(player: PlayerDto, seat: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Surface(
-            modifier = Modifier.size(38.dp),
-            shape = CircleShape,
-            color = if (player.self) SoftGreen else MaterialTheme.colorScheme.surfaceVariant,
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(seat.toString(), fontWeight = FontWeight.Black)
-            }
-        }
+        PlayerAvatar(
+            avatarIndex = (seat - 1).coerceAtLeast(0),
+            size = 42.dp,
+            highlighted = player.self,
+        )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(player.playerName, fontWeight = FontWeight.Bold)
@@ -559,7 +573,11 @@ private fun GameScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                 item {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         itemsIndexed(opponents) { _, player ->
-                            OpponentCard(player, game.currentPlayerId == player.playerId)
+                            OpponentPlayerPanel(
+                                player = player,
+                                current = game.currentPlayerId == player.playerId,
+                                avatarIndex = game.avatarIndex(player.playerId),
+                            )
                         }
                     }
                 }
@@ -616,11 +634,26 @@ private fun GameScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                     }
                 }
                 item {
-                    Text(
-                        "あなたの手札  ${self.handCount}枚" +
-                            if (self.yajuActive) "  ·  野獣:${self.yajuStatus}" else "",
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        PlayerAvatar(
+                            avatarIndex = game.avatarIndex(self.playerId),
+                            size = 42.dp,
+                            highlighted = game.isMyTurn && !state.cpuTurnInProgress,
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(self.playerName, fontWeight = FontWeight.Black)
+                            Text(
+                                "あなたの手札  ${self.handCount}枚" +
+                                    if (self.yajuActive) "  ·  野獣:${self.yajuStatus}" else "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     Spacer(Modifier.height(8.dp))
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -701,8 +734,8 @@ private fun CpuActionHistoryCard(history: List<String>) {
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            Text("CPU 行動ログ", fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelLarge)
-            history.take(4).forEachIndexed { index, line ->
+            Text("PLAY LOG", color = CasinoGold, fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelLarge)
+            history.take(6).forEachIndexed { index, line ->
                 Text(
                     text = if (index == 0) "▶ $line" else "  $line",
                     style = MaterialTheme.typography.bodySmall,
@@ -861,14 +894,12 @@ private fun CpuTurnAnimationOverlay(
                         )
                     }
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy((-7).dp)) {
-                        animation.cards.forEach { card ->
-                            PlayingCard(
-                                card = card,
-                                selected = false,
-                                enabled = false,
+                    Row(horizontalArrangement = Arrangement.spacedBy((-9).dp)) {
+                        repeat(animation.cardCount) { index ->
+                            CardBack(
+                                modifier = Modifier
+                                    .zIndex(index.toFloat()),
                                 compact = true,
-                                onClick = {},
                             )
                         }
                     }
@@ -904,23 +935,106 @@ private fun RulePill(text: String, background: Color, foreground: Color) {
 }
 
 @Composable
-private fun OpponentCard(player: PlayerDto, current: Boolean) {
+private fun OpponentPlayerPanel(
+    player: PlayerDto,
+    current: Boolean,
+    avatarIndex: Int,
+) {
     Card(
-        modifier = Modifier.width(142.dp),
-        colors = CardDefaults.cardColors(containerColor = if (current) SoftGold else MaterialTheme.colorScheme.surface),
-        border = if (current) BorderStroke(1.dp, CasinoGold) else null,
+        modifier = Modifier.width(168.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (current) Color(0xFFFFF7E3) else MaterialTheme.colorScheme.surface,
+        ),
+        border = BorderStroke(
+            width = if (current) 2.dp else 1.dp,
+            color = if (current) CasinoGold else Color(0xFFE2DED2),
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (current) 5.dp else 2.dp),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(player.playerName, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("🂠 ${player.handCount}枚", style = MaterialTheme.typography.bodyMedium)
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PlayerAvatar(
+                    avatarIndex = avatarIndex,
+                    size = 40.dp,
+                    highlighted = current,
+                )
+                Spacer(Modifier.width(9.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        player.playerName,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        when {
+                            player.rank != null -> "${player.rank}位"
+                            player.passed -> "PASS"
+                            current -> "TURN"
+                            else -> if (player.cpu) player.cpuDifficulty ?: "CPU" else "PLAYER"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when {
+                            player.rank != null -> CasinoGold
+                            player.passed -> MaterialTheme.colorScheme.error
+                            current -> CasinoGreen
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+
+            OpponentHandBacks(cardCount = player.handCount)
+
             if (player.yajuActive) {
-                Text("野獣 ${player.yajuStatus}", color = CasinoGold, fontWeight = FontWeight.Bold)
+                Surface(
+                    color = Color(0xFF211507),
+                    shape = RoundedCornerShape(100.dp),
+                    border = BorderStroke(1.dp, CasinoGold),
+                ) {
+                    Text(
+                        "野獣  8 → 10",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        color = Color(0xFFFFD369),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black,
+                    )
+                }
             }
-            when {
-                player.rank != null -> Text("${player.rank}位", color = CasinoGold, fontWeight = FontWeight.Black)
-                player.passed -> Text("PASS", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                current -> Text("TURN", color = CasinoGreen, fontWeight = FontWeight.Bold)
-            }
+        }
+    }
+}
+
+/** 相手の残り手札を、枚数テキストではなく裏向きカードの重なりで表現する。 */
+@Composable
+private fun OpponentHandBacks(cardCount: Int) {
+    val safeCount = cardCount.coerceAtLeast(0)
+    val totalWidth = 132.dp
+    val cardWidth = 28.dp
+    val step = if (safeCount <= 1) {
+        0f
+    } else {
+        min(8f, (totalWidth.value - cardWidth.value) / (safeCount - 1))
+    }
+
+    Box(
+        modifier = Modifier
+            .width(totalWidth)
+            .height(44.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        repeat(safeCount) { index ->
+            CardBack(
+                modifier = Modifier
+                    .offset(x = (step * index).dp)
+                    .zIndex(index.toFloat()),
+                compact = true,
+            )
         }
     }
 }
@@ -928,34 +1042,70 @@ private fun OpponentCard(player: PlayerDto, current: Boolean) {
 @Composable
 private fun GameTable(game: GameStateDto) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = CasinoGreenDark),
-        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF073D2B)),
+        shape = RoundedCornerShape(30.dp),
+        border = BorderStroke(2.dp, Color(0xFFB78A34)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 7.dp),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 28.dp, horizontal = 14.dp),
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFF0A5139), Color(0xFF073D2B)),
+                    )
+                )
+                .padding(vertical = 30.dp, horizontal = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("場のカード", color = Color.White.copy(alpha = 0.72f), style = MaterialTheme.typography.labelMedium)
+            Text(
+                "TABLE",
+                color = Color(0xFFD6BA75),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+            )
             Spacer(Modifier.height(12.dp))
             if (game.field.cards.isEmpty()) {
-                Text("— EMPTY —", color = Color.White, fontWeight = FontWeight.Bold)
+                Surface(
+                    color = Color.White.copy(alpha = 0.07f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                ) {
+                    Text(
+                        "場は空です",
+                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 16.dp),
+                        color = Color.White.copy(alpha = 0.72f),
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             } else {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy((-12).dp)) {
                     itemsIndexed(game.field.cards) { _, card ->
-                        PlayingCard(card = card, selected = false, enabled = false, compact = true, onClick = {})
+                        PlayingCard(
+                            card = card,
+                            selected = false,
+                            enabled = false,
+                            compact = true,
+                            onClick = {},
+                        )
                     }
                 }
                 game.field.combinationType?.let {
                     Spacer(Modifier.height(10.dp))
-                    Text(it, color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        it,
+                        color = Color.White.copy(alpha = 0.68f),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }
     }
 }
 
+/** 市販トランプを意識した、四隅インデックス付きのカード表示。 */
 @Composable
 private fun PlayingCard(
     card: CardDto,
@@ -965,50 +1115,398 @@ private fun PlayingCard(
     onClick: () -> Unit,
 ) {
     val redSuit = card.suit == "HEART" || card.suit == "DIAMOND"
-    val width = if (compact) 54.dp else 62.dp
-    val height = if (compact) 78.dp else 92.dp
+    val foreground = when {
+        card.joker -> CasinoGold
+        redSuit -> Color(0xFFB51F2E)
+        else -> Color(0xFF151515)
+    }
+    val width = if (compact) 54.dp else 64.dp
+    val height = if (compact) 78.dp else 94.dp
+    val cornerSize = if (compact) 12.sp else 14.sp
 
     Card(
         modifier = Modifier
             .width(width)
             .height(height)
-            .offset(y = if (selected) (-10).dp else 0.dp)
+            .offset(y = if (selected) (-11).dp else 0.dp)
             .clickable(enabled = enabled, onClick = onClick),
-        shape = RoundedCornerShape(9.dp),
-        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) CasinoGold else Color(0xFFD7D7D7)),
-        colors = CardDefaults.cardColors(containerColor = if (selected) Color(0xFFFFF9E9) else Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 6.dp else 2.dp),
+        shape = RoundedCornerShape(7.dp),
+        border = BorderStroke(
+            if (selected) 2.dp else 1.dp,
+            if (selected) CasinoGold else Color(0xFFBDB7A9),
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) Color(0xFFFFF7DF) else Color(0xFFFFFEF8),
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 8.dp else 3.dp),
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(6.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+                .padding(if (compact) 5.dp else 6.dp),
         ) {
-            Text(
-                if (card.joker) "★" else card.displaySuit,
-                color = if (redSuit) Danger else Color(0xFF181818),
-                fontSize = if (compact) 17.sp else 20.sp,
-                fontWeight = FontWeight.Black,
+            CardCornerIndex(
+                card = card,
+                color = foreground,
+                fontSize = cornerSize,
+                modifier = Modifier.align(Alignment.TopStart),
             )
-            Text(
-                card.displayRank,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                color = if (card.joker) CasinoGold else if (redSuit) Danger else Color(0xFF181818),
-                fontSize = if (card.displayRank == "JOKER") 10.sp else if (compact) 20.sp else 24.sp,
-                fontWeight = FontWeight.Black,
-            )
-            Text(
-                if (card.joker) "★" else card.displaySuit,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.End,
-                color = if (redSuit) Danger else Color(0xFF181818),
-                fontSize = 13.sp,
+
+            if (card.joker) {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text("♛", color = CasinoGold, fontSize = if (compact) 24.sp else 29.sp)
+                    Text(
+                        "JOKER",
+                        color = CasinoGold,
+                        fontSize = if (compact) 8.sp else 9.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.5.sp,
+                    )
+                }
+            } else {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        card.displaySuit,
+                        color = foreground,
+                        fontSize = if (compact) 27.sp else 33.sp,
+                        fontWeight = FontWeight.Normal,
+                    )
+                    if (card.displayRank in setOf("J", "Q", "K")) {
+                        Text(
+                            card.displayRank,
+                            color = CasinoGold,
+                            fontSize = if (compact) 12.sp else 14.sp,
+                            fontWeight = FontWeight.Black,
+                        )
+                    }
+                }
+            }
+
+            CardCornerIndex(
+                card = card,
+                color = foreground,
+                fontSize = cornerSize,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .graphicsLayer { rotationZ = 180f },
             )
         }
     }
 }
+
+@Composable
+private fun CardCornerIndex(
+    card: CardDto,
+    color: Color,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            if (card.joker) "J" else card.displayRank,
+            color = color,
+            fontSize = fontSize,
+            fontWeight = FontWeight.Black,
+            lineHeight = fontSize,
+        )
+        Text(
+            if (card.joker) "★" else card.displaySuit,
+            color = color,
+            fontSize = fontSize,
+            lineHeight = fontSize,
+        )
+    }
+}
+
+/** 濃紺×金のオリジナル裏面。特定製品の意匠を模倣せず、卓上で見分けやすい柄にする。 */
+@Composable
+private fun CardBack(
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+) {
+    val width = if (compact) 28.dp else 54.dp
+    val height = if (compact) 40.dp else 78.dp
+
+    Card(
+        modifier = modifier
+            .width(width)
+            .height(height),
+        shape = RoundedCornerShape(if (compact) 4.dp else 7.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF102747)),
+        border = BorderStroke(1.dp, Color(0xFFB79245)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawRect(Color(0xFF102747))
+            val lineColor = Color(0xFFDBC27B).copy(alpha = 0.30f)
+            val gap = size.minDimension / 4.5f
+            var x = -size.height
+            while (x < size.width + size.height) {
+                drawLine(
+                    color = lineColor,
+                    start = Offset(x, 0f),
+                    end = Offset(x + size.height, size.height),
+                    strokeWidth = 1f,
+                )
+                drawLine(
+                    color = lineColor,
+                    start = Offset(x + size.height, 0f),
+                    end = Offset(x, size.height),
+                    strokeWidth = 1f,
+                )
+                x += gap
+            }
+            drawRoundRect(
+                color = Color(0xFFE3C878).copy(alpha = 0.75f),
+                topLeft = Offset(size.width * 0.11f, size.height * 0.08f),
+                size = Size(size.width * 0.78f, size.height * 0.84f),
+                cornerRadius = CornerRadius(size.width * 0.08f),
+                style = Stroke(width = 1.2f),
+            )
+            drawCircle(
+                color = Color(0xFFE3C878).copy(alpha = 0.82f),
+                radius = size.minDimension * 0.11f,
+                center = Offset(size.width / 2f, size.height / 2f),
+                style = Stroke(width = 1.4f),
+            )
+        }
+    }
+}
+
+/** 1卓4人まで同じ顔が出ない、端末内描画のプレイヤーアイコン。 */
+@Composable
+private fun PlayerAvatar(
+    avatarIndex: Int,
+    size: androidx.compose.ui.unit.Dp,
+    highlighted: Boolean = false,
+) {
+    val index = ((avatarIndex % 8) + 8) % 8
+    val backgrounds = listOf(
+        Color(0xFF315D7A), Color(0xFF7A3F4E), Color(0xFF486A46), Color(0xFF6A4B7A),
+        Color(0xFF8A5A2E), Color(0xFF2E6E69), Color(0xFF5A5D87), Color(0xFF7B513B),
+    )
+    val hairColors = listOf(
+        Color(0xFF201B19), Color(0xFF4A2D1D), Color(0xFF1D1D23), Color(0xFF70482E),
+        Color(0xFF2F2A28), Color(0xFF5B3726), Color(0xFF191919), Color(0xFF805E3D),
+    )
+    val skinColors = listOf(
+        Color(0xFFF2C6A2), Color(0xFFE6B58F), Color(0xFFDFA57C), Color(0xFFF0C3A1),
+        Color(0xFFD39B73), Color(0xFFE9B991), Color(0xFFC98F68), Color(0xFFF3C9AA),
+    )
+
+    Surface(
+        modifier = Modifier.size(size),
+        shape = CircleShape,
+        color = backgrounds[index],
+        border = BorderStroke(
+            if (highlighted) 2.dp else 1.dp,
+            if (highlighted) CasinoGold else Color.White.copy(alpha = 0.65f),
+        ),
+        shadowElevation = if (highlighted) 5.dp else 2.dp,
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val cx = this.size.width / 2f
+            val faceCenter = Offset(cx, this.size.height * 0.55f)
+            val faceRadius = this.size.minDimension * 0.29f
+            drawCircle(skinColors[index], faceRadius, faceCenter)
+
+            // 髪型をインデックスごとに変え、同一卓で見分けられるようにする。
+            when (index % 4) {
+                0 -> drawArc(
+                    hairColors[index], 180f, 180f, true,
+                    topLeft = Offset(cx - faceRadius, faceCenter.y - faceRadius * 1.25f),
+                    size = Size(faceRadius * 2f, faceRadius * 1.45f),
+                )
+                1 -> {
+                    drawCircle(hairColors[index], faceRadius * 0.96f, Offset(cx, faceCenter.y - faceRadius * 0.48f))
+                    drawCircle(skinColors[index], faceRadius * 0.90f, faceCenter)
+                }
+                2 -> {
+                    drawArc(
+                        hairColors[index], 190f, 160f, true,
+                        topLeft = Offset(cx - faceRadius * 1.05f, faceCenter.y - faceRadius * 1.35f),
+                        size = Size(faceRadius * 2.1f, faceRadius * 1.55f),
+                    )
+                    drawLine(
+                        hairColors[index],
+                        Offset(cx - faceRadius * 0.65f, faceCenter.y - faceRadius * 0.70f),
+                        Offset(cx + faceRadius * 0.25f, faceCenter.y - faceRadius * 1.10f),
+                        strokeWidth = 3f,
+                    )
+                }
+                else -> {
+                    drawArc(
+                        hairColors[index], 180f, 180f, true,
+                        topLeft = Offset(cx - faceRadius, faceCenter.y - faceRadius * 1.30f),
+                        size = Size(faceRadius * 2f, faceRadius * 1.50f),
+                    )
+                    drawCircle(hairColors[index], faceRadius * 0.18f, Offset(cx - faceRadius * 0.75f, faceCenter.y - faceRadius * 0.72f))
+                    drawCircle(hairColors[index], faceRadius * 0.18f, Offset(cx + faceRadius * 0.75f, faceCenter.y - faceRadius * 0.72f))
+                }
+            }
+
+            val eyeY = faceCenter.y - faceRadius * 0.05f
+            val eyeDx = faceRadius * 0.38f
+            if (index % 3 == 2) {
+                drawLine(Color(0xFF2A211D), Offset(cx - eyeDx - 3f, eyeY), Offset(cx - eyeDx + 3f, eyeY), 2f)
+                drawLine(Color(0xFF2A211D), Offset(cx + eyeDx - 3f, eyeY), Offset(cx + eyeDx + 3f, eyeY), 2f)
+            } else {
+                drawCircle(Color(0xFF2A211D), faceRadius * 0.065f, Offset(cx - eyeDx, eyeY))
+                drawCircle(Color(0xFF2A211D), faceRadius * 0.065f, Offset(cx + eyeDx, eyeY))
+            }
+
+            val mouthY = faceCenter.y + faceRadius * 0.42f
+            when (index % 3) {
+                0 -> drawArc(
+                    Color(0xFF8C3F3F), 10f, 160f, false,
+                    topLeft = Offset(cx - faceRadius * 0.28f, mouthY - faceRadius * 0.12f),
+                    size = Size(faceRadius * 0.56f, faceRadius * 0.28f),
+                    style = Stroke(width = 2f),
+                )
+                1 -> drawLine(
+                    Color(0xFF8C3F3F),
+                    Offset(cx - faceRadius * 0.20f, mouthY),
+                    Offset(cx + faceRadius * 0.20f, mouthY),
+                    strokeWidth = 2f,
+                )
+                else -> drawArc(
+                    Color(0xFF8C3F3F), 190f, 160f, false,
+                    topLeft = Offset(cx - faceRadius * 0.27f, mouthY),
+                    size = Size(faceRadius * 0.54f, faceRadius * 0.26f),
+                    style = Stroke(width = 2f),
+                )
+            }
+        }
+    }
+}
+
+/** 野獣対象が確定した瞬間に全画面で表示する共通カットイン。 */
+@Composable
+private fun YajuCutInOverlay(
+    cutIn: YajuCutIn,
+    game: GameStateDto?,
+    onDismiss: (Long) -> Unit,
+) {
+    val scale = remember(cutIn.id) { Animatable(0.78f) }
+    val alpha = remember(cutIn.id) { Animatable(0f) }
+
+    LaunchedEffect(cutIn.id) {
+        alpha.animateTo(1f, tween(180))
+        scale.animateTo(1f, tween(420, easing = FastOutSlowInEasing))
+        delay(1_950)
+        alpha.animateTo(0f, tween(220))
+        onDismiss(cutIn.id)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(100f)
+            .background(Color.Black.copy(alpha = 0.78f * alpha.value)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val bandColor = Color(0xFFD5A43A).copy(alpha = 0.28f * alpha.value)
+            val stripeHeight = size.height * 0.17f
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    listOf(Color.Transparent, bandColor, Color.Transparent),
+                ),
+                topLeft = Offset(0f, size.height * 0.36f),
+                size = Size(size.width, stripeHeight),
+            )
+            repeat(8) { index ->
+                val y = size.height * (0.18f + index * 0.09f)
+                drawLine(
+                    color = Color(0xFFFFD46A).copy(alpha = 0.09f * alpha.value),
+                    start = Offset(-size.width * 0.1f, y),
+                    end = Offset(size.width * 1.1f, y - size.height * 0.16f),
+                    strokeWidth = 3f,
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = scale.value
+                    scaleY = scale.value
+                    this.alpha = alpha.value
+                }
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                "YAJU CHANCE",
+                color = Color(0xFFFFD56A),
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 3.sp,
+            )
+            Text(
+                "野獣上がり確定",
+                color = Color.White,
+                fontSize = 38.sp,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(14.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                cutIn.playerIds.forEachIndexed { index, playerId ->
+                    val avatarIndex = game?.avatarIndex(playerId) ?: index
+                    Column(
+                        modifier = Modifier.width(64.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        PlayerAvatar(
+                            avatarIndex = avatarIndex,
+                            size = 52.dp,
+                            highlighted = true,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            cutIn.playerNames.getOrNull(index) ?: "PLAYER",
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Surface(
+                color = Color(0xFFFFD56A),
+                shape = RoundedCornerShape(100.dp),
+            ) {
+                Text(
+                    "8  →  10",
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 9.dp),
+                    color = Color(0xFF241707),
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Black,
+                )
+            }
+        }
+    }
+}
+
+private fun GameStateDto.avatarIndex(playerId: String): Int =
+    players.indexOfFirst { it.playerId == playerId }
+        .takeIf { it >= 0 }
+        ?: 0
 
 @Composable
 private fun ResultScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
@@ -1027,7 +1525,10 @@ private fun ResultScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
         item {
             CasinoPanel(title = "最終順位") {
                 ranking.forEachIndexed { index, player ->
-                    ResultRow(player)
+                    ResultRow(
+                        player = player,
+                        avatarIndex = game.avatarIndex(player.playerId),
+                    )
                     if (index != ranking.lastIndex) HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
             }
@@ -1041,8 +1542,17 @@ private fun ResultScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
 }
 
 @Composable
-private fun ResultRow(player: PlayerDto) {
+private fun ResultRow(
+    player: PlayerDto,
+    avatarIndex: Int,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
+        PlayerAvatar(
+            avatarIndex = avatarIndex,
+            size = 42.dp,
+            highlighted = player.rank == 1,
+        )
+        Spacer(Modifier.width(10.dp))
         Text(
             player.rank?.let { "${it}位" } ?: "—",
             modifier = Modifier.width(54.dp),
