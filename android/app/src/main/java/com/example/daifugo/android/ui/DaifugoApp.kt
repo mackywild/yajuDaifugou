@@ -332,9 +332,9 @@ private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                 singleLine = true,
             )
         }
-        item { ChoiceRow("CPU人数", listOf(1,2,3), state.cpuCount, viewModel::setCpuCount) { "$it人" } }
+        item { ChoiceRow("CPU人数", listOf(1,2,3), state.cpuCount, viewModel::setCpuCount) { "${it}人" } }
         item { ChoiceRow("難易度", listOf("EASY","NORMAL","HARD","N_GOD"), state.cpuDifficulty, viewModel::setCpuDifficulty) { difficultyLabel(it) } }
-        item { ChoiceRow("ジョーカー", listOf(0,1,2), state.cpuJokerCount, viewModel::setCpuJokerCount) { "$it枚" } }
+        item { ChoiceRow("ジョーカー", listOf(0,1,2), state.cpuJokerCount, viewModel::setCpuJokerCount) { "${it}枚" } }
         item {
             Card(shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(16.dp)) {
