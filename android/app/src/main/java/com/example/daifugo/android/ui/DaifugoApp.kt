@@ -1404,14 +1404,14 @@ private fun PlayerAvatar(
         ),
         shadowElevation = if (highlighted) 5.dp else 2.dp,
     ) {
-        if (photoBitmap != null) {
+        photoBitmap?.let { bitmap ->
             Image(
-                bitmap = photoBitmap,
+                bitmap = bitmap,
                 contentDescription = "CPU avatar",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
-        } else {
+        } ?: run {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val cx = this.size.width / 2f
                 val faceCenter = Offset(cx, this.size.height * 0.55f)
