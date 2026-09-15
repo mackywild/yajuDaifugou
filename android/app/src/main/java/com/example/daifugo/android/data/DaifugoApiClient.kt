@@ -232,7 +232,7 @@ class DaifugoApiClient {
         withContext(Dispatchers.IO) {
             val finalRequest = if (needsCsrf) {
                 if (csrfToken.isBlank()) {
-                    throw@withContext ApiException("認証セッションがありません。再ログインしてください")
+                    throw ApiException("認証セッションがありません。再ログインしてください")
                 }
                 request.newBuilder()
                     .header("X-CSRF-Token", csrfToken)
@@ -244,7 +244,7 @@ class DaifugoApiClient {
             client.newCall(finalRequest).execute().use { response ->
                 val body = response.body.string()
                 if (!response.isSuccessful) {
-                    throw@withContext ApiException(
+                    throw ApiException(
                         ServerJson.message(body) ?: "サーバーエラー (${response.code})",
                         response.code,
                     )
