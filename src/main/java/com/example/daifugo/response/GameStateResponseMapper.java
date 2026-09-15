@@ -46,6 +46,7 @@ public class GameStateResponseMapper {
                     null,
                     FieldResponse.from(null),
                     false,
+                    false,
                     null,
                     room.isHost(requestPlayerId),
                     false,
@@ -87,6 +88,7 @@ public class GameStateResponseMapper {
                 FieldResponse.from(
                         gameState.getFieldCombination()),
                 gameState.isRevolution(),
+                gameState.isJackBack(),
                 gameState.getLockedMark() == null ? null : gameState.getLockedMark().name(),
                 room.isHost(requestPlayerId),
                 true,

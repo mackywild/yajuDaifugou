@@ -9,5 +9,11 @@ public enum GameEventType {
     YAJU_AVAILABLE,
 
     /** 野獣上がりに成功した。 */
-    YAJU_SUCCESS
+    YAJU_SUCCESS,
+
+    /** Jバックが発動した。 */
+    JACK_BACK,
+
+    /** 通常状態のJバック直後、次プレイヤーが単体3を出した（早漏）。 */
+    EARLY_SHOT
 }

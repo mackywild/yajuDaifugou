@@ -109,13 +109,15 @@ public class GameEngine {
             );
         }
 
+        boolean earlyShotCandidate = state.isEarlyShotEligible(playerId);
+
         CardCombination selectedCombination =
             CardCombination.of(selectedCards);
 
         boolean canPlay = playValidator.canPlay(
             selectedCombination,
             state.getFieldCombination(),
-            state.isRevolution(),
+            state.isStrengthReversed(),
             state.getLockedMark()
         );
 
@@ -163,6 +165,18 @@ public class GameEngine {
 
         player.clearPass();
 
+        /*
+         * 早漏判定はカード除去と場更新が成功した後に確定する。
+         * これにより、野獣ルール等の事前検証でプレイが拒否された場合に
+         * 判定権だけが消費されることを防ぐ。
+         */
+        if (earlyShotCandidate) {
+            state.clearEarlyShotEligibility();
+            if (state.isStrengthReversed() && isSingleRank(selectedCards, Rank.THREE)) {
+                state.emitEvent(com.example.daifugo.game.domain.GameEventType.EARLY_SHOT, player);
+            }
+        }
+
         RuleResult ruleResult =
             ruleEngine.applyRules(
                 state,
@@ -174,6 +188,7 @@ public class GameEngine {
         if (ruleResult.shouldLockMark()) {
             state.lockMark(ruleResult.getMarkToLock());
         }
+
 
         if (ruleSettings.yajuRule() && yajuDecision.startsEightStep()) {
             yajuRuleService.applyEightStep(player);
@@ -234,6 +249,7 @@ public class GameEngine {
         }
 
         turnManager.moveToNextPlayer(state);
+        armEarlyShotForCurrentPlayerIfPending(state);
     }
 
     public void pass(
@@ -253,12 +269,17 @@ public class GameEngine {
 
         player.pass();
 
+        if (state.isEarlyShotEligible(playerId)) {
+            state.clearEarlyShotEligibility();
+        }
+
         if (turnManager.shouldClearField(state)) {
             turnManager.startNewTrick(state);
             return;
         }
 
         turnManager.moveToNextPlayer(state);
+        armEarlyShotForCurrentPlayerIfPending(state);
     }
 
     /**
@@ -339,6 +360,7 @@ public class GameEngine {
         }
 
         turnManager.moveToNextPlayer(state);
+        armEarlyShotForCurrentPlayerIfPending(state);
     }
 
     /** 7渡し保留中は通常のplay/passを禁止する。 */
@@ -348,6 +370,17 @@ public class GameEngine {
                 "7渡しするカードを選択してください"
             );
         }
+    }
+
+    private void armEarlyShotForCurrentPlayerIfPending(GameState state) {
+        if (state.isEarlyShotArmPending() && state.isJackBack() && !state.isFinished()) {
+            state.armEarlyShotFor(state.getCurrentPlayer().getId());
+        }
+    }
+
+
+    private boolean isSingleRank(List<Card> cards, Rank rank) {
+        return cards.size() == 1 && cards.get(0).getRank() == rank;
     }
 
     /** 指定ランクの枚数を数える。 */

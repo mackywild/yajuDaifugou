@@ -253,6 +253,7 @@ class LocalCpuGameManager {
                 combinationType = field?.type?.name,
             ),
             revolution = gameState.isRevolution,
+            jackBack = gameState.isJackBack,
             lockedMark = gameState.lockedMark?.name,
             host = true,
             started = true,
@@ -286,6 +287,7 @@ class LocalCpuGameManager {
         markLock,
         sevenTransfer,
         yajuRule,
+        jackBack,
         forbiddenFinish,
     )
 
@@ -296,6 +298,7 @@ class LocalCpuGameManager {
         markLock = markLock(),
         sevenTransfer = sevenTransfer(),
         yajuRule = yajuRule(),
+        jackBack = jackBack(),
         forbiddenFinish = forbiddenFinish(),
     )
 

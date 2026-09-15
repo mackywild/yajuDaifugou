@@ -6,6 +6,7 @@ import java.util.List;
 import com.example.daifugo.game.config.GameRuleSettings;
 import com.example.daifugo.game.rule.EightCutRule;
 import com.example.daifugo.game.rule.MarkLockRule;
+import com.example.daifugo.game.rule.JackBackRule;
 import com.example.daifugo.game.rule.PlayValidator;
 import com.example.daifugo.game.rule.RevolutionRule;
 import com.example.daifugo.game.rule.Rule;
@@ -46,6 +47,9 @@ public class GameEngineFactory {
         }
         if (settings.markLock()) {
             normalRules.add(new MarkLockRule());
+        }
+        if (settings.jackBack()) {
+            normalRules.add(new JackBackRule());
         }
 
         List<FinishRule> finishRules = new ArrayList<>();

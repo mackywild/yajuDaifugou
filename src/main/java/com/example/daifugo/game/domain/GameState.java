@@ -15,6 +15,12 @@ public class GameState {
 
     private CardCombination fieldCombination;
     private boolean revolution;
+    /** Jバック中か。場が流れるまで継続する。 */
+    private boolean jackBack;
+    /** 3が最強となるJバック直後に「早漏」判定の対象となる次プレイヤーID。 */
+    private String earlyShotEligiblePlayerId;
+    /** 7渡し等の後に、実際の次手番プレイヤーを早漏判定対象へ設定するための保留フラグ。 */
+    private boolean earlyShotArmPending;
     private GamePhase phase;
     private Mark lockedMark;
 
@@ -82,6 +88,51 @@ public class GameState {
         return revolution;
     }
 
+    /** Jバック中か判定する。 */
+    public boolean isJackBack() {
+        return jackBack;
+    }
+
+    /** 革命とJバックを合成した実効的な強弱反転状態。 */
+    public boolean isStrengthReversed() {
+        return revolution ^ jackBack;
+    }
+
+    /** Jバックを有効化する。 */
+    public void activateJackBack() {
+        jackBack = true;
+    }
+
+    /** 3が最強となるJバック後、次の実手番が決まった時点で早漏判定を設定するよう予約する。 */
+    public void requestEarlyShotArm() {
+        earlyShotArmPending = true;
+    }
+
+    public boolean isEarlyShotArmPending() {
+        return earlyShotArmPending;
+    }
+
+    /** 次プレイヤーを「早漏」判定対象として記録する。 */
+    public void armEarlyShotFor(String playerId) {
+        earlyShotEligiblePlayerId = Objects.requireNonNull(playerId, "playerId must not be null");
+        earlyShotArmPending = false;
+    }
+
+    /** 指定プレイヤーがJバック直後の「早漏」判定対象か返す。 */
+    public boolean isEarlyShotEligible(String playerId) {
+        return earlyShotEligiblePlayerId != null
+                && earlyShotEligiblePlayerId.equals(playerId);
+    }
+
+    /** 「早漏」判定対象を解除する。 */
+    public void clearEarlyShotEligibility() {
+        earlyShotEligiblePlayerId = null;
+    }
+
+    public void clearEarlyShotArmPending() {
+        earlyShotArmPending = false;
+    }
+
     public GamePhase getPhase() {
         return phase;
     }
@@ -125,6 +176,9 @@ public class GameState {
         this.fieldCombination = null;
         this.lastPlayedPlayerIndex = null;
         this.lockedMark = null;
+        this.jackBack = false;
+        this.earlyShotEligiblePlayerId = null;
+        this.earlyShotArmPending = false;
 
         players.forEach(Player::clearPass);
     }

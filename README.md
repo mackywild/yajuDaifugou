@@ -1,4 +1,4 @@
-# Daifugo v0.4.2 — PREMIUM TABLE UPDATE
+# Daifugo v0.4.3 — J-BACK UPDATE
 
 Java 21 + Spring Bootをゲームサーバーの正本とし、PCブラウザ / Android / iPhoneでクロスプレイできるオンライン大富豪です。
 
@@ -74,7 +74,7 @@ N-GOD    1位率 31.3%   平均順位 2.173
   - 8+10所持で対象化
   - 7渡しによる対象伝播
   - 8/10保持義務
-  - 最後の2枚を8→10で野獣上がり
+  - 最終手札を8×1 + 10×Nに整え、8単体→残り10全枚で野獣上がり
   - 違反上がりは反則最下位
   - 全端末共有音声イベント
 - 順位判定
@@ -140,7 +140,7 @@ open DaifugoIOS.xcodeproj
 ## GitHub Actions
 
 - `Server Test`: Java 21 / Spring Boot / JUnit
-- `Android APK`: v0.4.2 debug APK
+- `Android APK`: v0.4.3 debug APK
 - `iOS Build`: XcodeGen + iOS Simulator build
 
 ## 野獣ルール音声
@@ -164,6 +164,17 @@ ios/DaifugoIOS/AudioResources/yaju_success.mp3
 詳細: [`YAJU_RULE_SPEC.md`](YAJU_RULE_SPEC.md)
 
 
+
+## v0.4.3 J-BACK
+
+- 野獣上がりを `8×1 + 10×N` に対応。8単体の後、残り10を全枚まとめて出して上がれる
+- Jバックを追加。場が流れるまで強弱を反転し、革命中は反転を相殺
+- 通常状態のJバックでは3が最強、革命+Jバックでは2が最強
+- J提出時に全端末へ「バック気持ちいい」カットイン
+- 通常状態のJバック直後、次プレイヤーが単体3を出した場合に「早漏」カットイン
+- CPU / Web / Android / iOSのルール設定と状態表示に対応
+
+詳細は [`DAIFUGO_V0.4.3_RELEASE.md`](DAIFUGO_V0.4.3_RELEASE.md) と [`V0.4.3_REVIEW_REPORT.md`](V0.4.3_REVIEW_REPORT.md) を参照してください。
 
 ## v0.4.2 Premium Table
 

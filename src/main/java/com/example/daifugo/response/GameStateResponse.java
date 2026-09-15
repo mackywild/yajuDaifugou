@@ -28,6 +28,9 @@ public class GameStateResponse {
     /** 革命中か */
     private final boolean revolution;
 
+    /** Jバック中か */
+    private final boolean jackBack;
+
     /** 場で固定されているマーク。縛りがない場合はnull */
     private final String lockedMark;
 
@@ -50,12 +53,19 @@ public class GameStateResponse {
      * ゲーム状態レスポンスを生成する。
      *
      * @param roomId 部屋ID
+     * @param gameMode ゲームモード
+     * @param ruleSettings 対戦ルール設定
      * @param players プレイヤー情報一覧
      * @param currentPlayerId 現在の手番プレイヤーID
      * @param field 場札情報
      * @param revolution 革命中の場合true
+     * @param jackBack Jバック中の場合true
+     * @param lockedMark 縛り中のマーク
+     * @param host リクエストプレイヤーがホストの場合true
      * @param started ゲーム開始済みの場合true
      * @param finished ゲーム終了済みの場合true
+     * @param sevenTransfer 7渡し保留情報
+     * @param events 全端末共有イベント履歴
      */
     public GameStateResponse(
             String roomId,
@@ -65,6 +75,7 @@ public class GameStateResponse {
             String currentPlayerId,
             FieldResponse field,
             boolean revolution,
+            boolean jackBack,
             String lockedMark,
             boolean host,
             boolean started,
@@ -79,6 +90,7 @@ public class GameStateResponse {
         this.currentPlayerId = currentPlayerId;
         this.field = field;
         this.revolution = revolution;
+        this.jackBack = jackBack;
         this.lockedMark = lockedMark;
         this.host = host;
         this.started = started;
@@ -113,6 +125,10 @@ public class GameStateResponse {
 
     public boolean isRevolution() {
         return revolution;
+    }
+
+    public boolean isJackBack() {
+        return jackBack;
     }
 
     public String getLockedMark() {

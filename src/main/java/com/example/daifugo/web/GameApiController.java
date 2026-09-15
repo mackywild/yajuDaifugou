@@ -100,6 +100,7 @@ public class GameApiController {
                 request.markLock(),
                 request.sevenTransfer(),
                 request.yajuRule(),
+                request.jackBack(),
                 request.forbiddenFinish()
         );
 
@@ -403,6 +404,7 @@ public class GameApiController {
             boolean markLock,
             boolean sevenTransfer,
             boolean yajuRule,
+            boolean jackBack,
             boolean forbiddenFinish
     ) {
     }

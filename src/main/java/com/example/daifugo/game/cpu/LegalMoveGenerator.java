@@ -89,7 +89,7 @@ public class LegalMoveGenerator {
             if (!playValidator.canPlay(
                     combination,
                     state.getFieldCombination(),
-                    state.isRevolution(),
+                    state.isStrengthReversed(),
                     state.getLockedMark())) {
                 continue;
             }

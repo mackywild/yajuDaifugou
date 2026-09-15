@@ -62,7 +62,7 @@ class LegalMoveGeneratorTest {
     }
 
     private static GameRuleSettings noYajuSettings() {
-        return new GameRuleSettings(1, true, true, true, true, false, true);
+        return new GameRuleSettings(1, true, true, true, true, false, true, true);
     }
 
     private static GameState playingState(Player... players) {

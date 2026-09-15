@@ -20,7 +20,7 @@ final class HeuristicCpuScorer {
         int strength = c.isSingleJoker() ? 16 : c.getBaseStrength();
         double score = move.cards().size() * 7.0;
         score -= strength * 0.30;
-        if (state.isRevolution()) score += strength * 0.45;
+        if (state.isStrengthReversed()) score += strength * 0.45;
         if (settings.eightCut() && CpuFeatureExtractor.containsRank(move.cards(), Rank.EIGHT)) score += 2.0;
         if (move.cards().stream().anyMatch(Card::isJoker)) score -= 3.0;
         if (CpuFeatureExtractor.containsRank(move.cards(), Rank.TWO)) score -= 1.5;
@@ -28,10 +28,17 @@ final class HeuristicCpuScorer {
             score += CpuFeatureExtractor.containsForbiddenFinish(move.cards()) && settings.forbiddenFinish()
                     ? -100.0 : 100.0;
         }
-        if (player.getYajuStatus() == YajuStatus.ACTIVE && player.getCardCount() == 2
+        long eightCount = player.getHand().stream().filter(card -> card.getRank() == Rank.EIGHT).count();
+        long tenCount = player.getHand().stream().filter(card -> card.getRank() == Rank.TEN).count();
+        if (player.getYajuStatus() == YajuStatus.ACTIVE
+                && eightCount == 1
+                && tenCount >= 1
+                && player.getCardCount() == eightCount + tenCount
                 && CpuFeatureExtractor.isSingleRank(move.cards(), Rank.EIGHT)) score += 120.0;
         if (player.getYajuStatus() == YajuStatus.EIGHT_PLAYED
-                && CpuFeatureExtractor.isSingleRank(move.cards(), Rank.TEN)) score += 150.0;
+                && move.cards().size() == player.getCardCount()
+                && !move.cards().isEmpty()
+                && move.cards().stream().allMatch(card -> card.getRank() == Rank.TEN)) score += 150.0;
         return score;
     }
 
@@ -61,7 +68,7 @@ final class HeuristicCpuScorer {
             if (settings.eightCut() && CpuFeatureExtractor.containsRank(move.cards(), Rank.EIGHT)) score += 14.0;
             CardCombination c = CardCombination.of(move.cards());
             int strength = c.isSingleJoker() ? 16 : c.getBaseStrength();
-            score += state.isRevolution() ? (16 - strength) * 0.55 : strength * 0.55;
+            score += state.isStrengthReversed() ? (16 - strength) * 0.55 : strength * 0.55;
         }
 
         if (settings.sevenTransfer() && CpuFeatureExtractor.containsRank(move.cards(), Rank.SEVEN)) score += 1.5;

@@ -120,6 +120,7 @@ public class SelfPlayDataGenerator {
                 r.nextDouble() < 0.75,
                 r.nextDouble() < 0.80,
                 yaju,
+                r.nextDouble() < 0.80,
                 r.nextDouble() < 0.90
         );
     }}

@@ -95,6 +95,7 @@ class DaifugoApiClient {
             .put("markLock", rules.markLock)
             .put("sevenTransfer", rules.sevenTransfer)
             .put("yajuRule", rules.yajuRule)
+            .put("jackBack", rules.jackBack)
             .put("forbiddenFinish", rules.forbiddenFinish)
             .toString()
             .toRequestBody(JSON)

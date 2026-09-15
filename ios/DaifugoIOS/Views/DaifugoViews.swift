@@ -29,6 +29,12 @@ struct RootView: View {
             if viewModel.loading {
                 ProgressView().padding(18).background(.ultraThinMaterial).clipShape(RoundedRectangle(cornerRadius: 16))
             }
+            if let cutIn = viewModel.ruleCutIns.first {
+                RuleCutInOverlay(cutIn: cutIn) {
+                    viewModel.dismissRuleCutIn(cutIn.id)
+                }
+                .zIndex(100)
+            }
         }
         .tint(casinoGreen)
     }
@@ -43,7 +49,7 @@ private struct HeaderView: View {
                 Text("♛ DAIFUGO")
                     .font(.headline.bold())
                     .foregroundStyle(casinoGreen)
-                Text("v0.4.0 CPU BATTLE")
+                Text("v0.4.3 J-BACK")
                     .font(.caption2.bold())
                     .foregroundStyle(casinoGold)
             }
@@ -94,7 +100,7 @@ private struct LoginView: View {
                     Button("ログイン", action: viewModel.login)
                         .fontWeight(.bold).frame(maxWidth: .infinity).buttonStyle(.borderedProminent)
                 }
-                Panel("v0.4.0 CPU BATTLE") {
+                Panel("v0.4.3 J-BACK") {
                     Feature("🌐", "PC / Android / iPhone マルチプレイ")
                     Feature("🤖", "CPU戦【ひとりでイク】")
                     Feature("🧠", "簡単 / 普通 / 難しい / N-GOD")
@@ -201,6 +207,7 @@ private struct CpuSetupView: View {
                         get: { viewModel.ruleYaju },
                         set: { viewModel.setYajuRule($0) }
                     ))
+                    Toggle("Jバック", isOn: $viewModel.ruleJackBack)
                     Toggle("禁止上がり", isOn: $viewModel.ruleForbiddenFinish)
                     if viewModel.ruleYaju {
                         Text("※ 野獣ルール使用時は8切りが必須です")
@@ -502,5 +509,35 @@ private func markSymbol(_ value: String) -> String {
     case "DIAMOND": return "♦"
     case "CLUB": return "♣"
     default: return value
+    }
+}
+
+
+private struct RuleCutInOverlay: View {
+    let cutIn: RuleCutInNotice
+    let onDismiss: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.82).ignoresSafeArea()
+            VStack(spacing: 12) {
+                Text(cutIn.kind == .earlyShot ? "早漏" : "J BACK")
+                    .font(.headline)
+                    .fontWeight(.black)
+                    .foregroundStyle(cutIn.kind == .earlyShot ? Color.red : Color.purple)
+                Text(cutIn.kind == .earlyShot ? "早すぎるッ！" : "バック気持ちいい")
+                    .font(.system(size: 40, weight: .black))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.white)
+                Text(cutIn.playerName)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.white.opacity(0.75))
+            }
+            .padding(30)
+        }
+        .task(id: cutIn.id) {
+            try? await Task.sleep(nanoseconds: 1_900_000_000)
+            onDismiss()
+        }
     }
 }

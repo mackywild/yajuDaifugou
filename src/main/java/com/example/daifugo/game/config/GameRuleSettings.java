@@ -12,6 +12,7 @@ public record GameRuleSettings(
         boolean markLock,
         boolean sevenTransfer,
         boolean yajuRule,
+        boolean jackBack,
         boolean forbiddenFinish
 ) {
     public GameRuleSettings {
@@ -27,6 +28,7 @@ public record GameRuleSettings(
     public static GameRuleSettings standard() {
         return new GameRuleSettings(
                 1,
+                true,
                 true,
                 true,
                 true,

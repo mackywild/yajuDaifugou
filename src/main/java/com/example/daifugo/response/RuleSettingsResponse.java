@@ -10,6 +10,7 @@ public record RuleSettingsResponse(
         boolean markLock,
         boolean sevenTransfer,
         boolean yajuRule,
+        boolean jackBack,
         boolean forbiddenFinish
 ) {
     public static RuleSettingsResponse from(GameRuleSettings settings) {
@@ -20,6 +21,7 @@ public record RuleSettingsResponse(
                 settings.markLock(),
                 settings.sevenTransfer(),
                 settings.yajuRule(),
+                settings.jackBack(),
                 settings.forbiddenFinish()
         );
     }

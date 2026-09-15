@@ -12,6 +12,17 @@ enum DaifugoScreen {
     case result
 }
 
+enum RuleCutInKind: Equatable {
+    case jackBack
+    case earlyShot
+}
+
+struct RuleCutInNotice: Identifiable {
+    let id: Int64
+    let kind: RuleCutInKind
+    let playerName: String
+}
+
 @MainActor
 final class DaifugoViewModel: ObservableObject {
     @Published var screen: DaifugoScreen = .login
@@ -26,6 +37,7 @@ final class DaifugoViewModel: ObservableObject {
     @Published var socketConnected = false
     @Published var errorMessage: String?
     @Published var infoMessage: String?
+    @Published var ruleCutIns: [RuleCutInNotice] = []
 
     // CPU戦【ひとりでイク】設定
     @Published var cpuCount = 3
@@ -36,6 +48,7 @@ final class DaifugoViewModel: ObservableObject {
     @Published var ruleMarkLock = true
     @Published var ruleSevenTransfer = true
     @Published var ruleYaju = true
+    @Published var ruleJackBack = true
     @Published var ruleForbiddenFinish = true
 
     private let api = DaifugoAPIClient()
@@ -60,6 +73,10 @@ final class DaifugoViewModel: ObservableObject {
     func playSelected() { action { try await self.playSelectedImpl() } }
     func pass() { action { try await self.passImpl() } }
     func leaveRoom() { action { try await self.leaveRoomImpl() } }
+
+    func dismissRuleCutIn(_ id: Int64) {
+        ruleCutIns.removeAll { $0.id == id }
+    }
 
     /// メインメニューからマルチプレイへ遷移する。
     func openMultiplayer() {
@@ -189,6 +206,7 @@ final class DaifugoViewModel: ObservableObject {
             markLock: ruleMarkLock,
             sevenTransfer: ruleSevenTransfer,
             yajuRule: ruleYaju,
+            jackBack: ruleJackBack,
             forbiddenFinish: ruleForbiddenFinish
         )
         let state = try await api.createCpuGame(request: request)
@@ -332,9 +350,16 @@ final class DaifugoViewModel: ObservableObject {
         let unseen = state.events.filter { $0.id > lastHandledEventId }.sorted { $0.id < $1.id }
         for event in unseen {
             switch event.type {
-            case "YAJU_AVAILABLE": audio.play(.yajuAvailable)
-            case "YAJU_SUCCESS": audio.play(.yajuSuccess)
-            default: break
+            case "YAJU_AVAILABLE":
+                audio.play(.yajuAvailable)
+            case "YAJU_SUCCESS":
+                audio.play(.yajuSuccess)
+            case "JACK_BACK":
+                ruleCutIns.append(RuleCutInNotice(id: event.id, kind: .jackBack, playerName: event.playerName))
+            case "EARLY_SHOT":
+                ruleCutIns.append(RuleCutInNotice(id: event.id, kind: .earlyShot, playerName: event.playerName))
+            default:
+                break
             }
             lastHandledEventId = max(lastHandledEventId, event.id)
         }

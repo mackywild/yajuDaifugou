@@ -70,6 +70,8 @@ import androidx.compose.ui.unit.sp
 import com.example.daifugo.android.CpuAnimationType
 import com.example.daifugo.android.CpuTurnAnimation
 import com.example.daifugo.android.YajuCutIn
+import com.example.daifugo.android.RuleCutIn
+import com.example.daifugo.android.RuleCutInType
 import com.example.daifugo.android.DaifugoScreen
 import com.example.daifugo.android.audio.YajuAudioPlayer
 import com.example.daifugo.android.DaifugoUiState
@@ -160,6 +162,14 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                         onDismiss = viewModel::clearYajuCutIn,
                     )
                 }
+
+                state.ruleCutIns.firstOrNull()?.let { cutIn ->
+                    RuleCutInOverlay(
+                        cutIn = cutIn,
+                        game = state.gameState,
+                        onDismiss = viewModel::clearRuleCutIn,
+                    )
+                }
             }
         }
     }
@@ -183,7 +193,7 @@ private fun AppHeader(state: DaifugoUiState) {
                 color = CasinoGreenDark,
             )
             Text(
-                "ONLINE CARD GAME · v0.4.2 PREMIUM TABLE",
+                "ONLINE CARD GAME · v0.4.3 J-BACK",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -290,10 +300,10 @@ private fun LoginScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             }
         }
         item {
-            CasinoPanel(title = "v0.4.2 PREMIUM TABLE") {
+            CasinoPanel(title = "v0.4.3 J-BACK") {
                 FeatureLine("♣", "2〜4人オンライン対戦")
                 FeatureLine("⚡", "WebSocketリアルタイム更新")
-                FeatureLine("♛", "革命・8切り・7渡し・野獣ルール")
+                FeatureLine("♛", "革命・Jバック・8切り・7渡し・野獣ルール")
                 FeatureLine("🔒", "手札判定と本人確認はサーバー側")
             }
         }
@@ -369,6 +379,7 @@ private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                     RuleSwitch("マーク縛り", state.ruleMarkLock, viewModel::setRuleMarkLock)
                     RuleSwitch("7渡し", state.ruleSevenTransfer, viewModel::setRuleSevenTransfer)
                     RuleSwitch("野獣ルール", state.ruleYaju, viewModel::setRuleYaju)
+                    RuleSwitch("Jバック", state.ruleJackBack, viewModel::setRuleJackBack)
                     RuleSwitch("禁止上がり", state.ruleForbiddenFinish, viewModel::setRuleForbiddenFinish)
                     if (state.ruleYaju) Text("※野獣ルールON時は8切り必須", style = MaterialTheme.typography.labelSmall, color = CasinoGold)
                 }
@@ -913,6 +924,7 @@ private fun CpuTurnAnimationOverlay(
 private fun StatusBar(game: GameStateDto) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (game.revolution) item { RulePill("♛ 革命", SoftGold, CasinoGold) }
+        if (game.jackBack) item { RulePill("J BACK", Color(0xFFE8E1FF), Color(0xFF5B3AA6)) }
         game.lockedMark?.let { mark -> item { RulePill("${markSymbol(mark)} 縛り", SoftGreen, CasinoGreen) } }
         if (game.players.any { it.yajuActive }) {
             item { RulePill("野獣ルール", SoftGold, CasinoGold) }
@@ -1385,6 +1397,85 @@ private fun PlayerAvatar(
                     style = Stroke(width = 2f),
                 )
             }
+        }
+    }
+}
+
+/** Jバック・早漏を全画面で知らせるカットイン。 */
+@Composable
+private fun RuleCutInOverlay(
+    cutIn: RuleCutIn,
+    game: GameStateDto?,
+    onDismiss: (Long) -> Unit,
+) {
+    val scale = remember(cutIn.id) { Animatable(0.82f) }
+    val alpha = remember(cutIn.id) { Animatable(0f) }
+    val isEarlyShot = cutIn.type == RuleCutInType.EARLY_SHOT
+
+    LaunchedEffect(cutIn.id) {
+        alpha.animateTo(1f, tween(120))
+        scale.animateTo(1f, tween(340, easing = FastOutSlowInEasing))
+        delay(if (isEarlyShot) 1_650 else 1_900)
+        alpha.animateTo(0f, tween(180))
+        onDismiss(cutIn.id)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(110f)
+            .background(Color.Black.copy(alpha = 0.80f * alpha.value)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val accent = if (isEarlyShot) Color(0xFFFF5B5B) else Color(0xFF8A6DFF)
+            repeat(10) { index ->
+                val y = size.height * (0.10f + index * 0.09f)
+                drawLine(
+                    color = accent.copy(alpha = 0.14f * alpha.value),
+                    start = Offset(-size.width * 0.15f, y),
+                    end = Offset(size.width * 1.15f, y - size.height * 0.20f),
+                    strokeWidth = 6f,
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = scale.value
+                    scaleY = scale.value
+                    this.alpha = alpha.value
+                }
+                .padding(horizontal = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            PlayerAvatar(
+                avatarIndex = game?.avatarIndex(cutIn.playerId) ?: 0,
+                size = 72.dp,
+                highlighted = true,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                if (isEarlyShot) "早漏" else "J BACK",
+                color = if (isEarlyShot) Color(0xFFFF6B6B) else Color(0xFFB7A8FF),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+            )
+            Text(
+                if (isEarlyShot) "早すぎるッ！" else "バック気持ちいい",
+                color = Color.White,
+                fontSize = if (isEarlyShot) 38.sp else 34.sp,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                cutIn.playerName,
+                color = Color.White.copy(alpha = 0.78f),
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }

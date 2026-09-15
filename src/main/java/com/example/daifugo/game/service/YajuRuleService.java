@@ -20,7 +20,7 @@ import com.example.daifugo.game.domain.YajuStatus;
  * ・一度対象になったプレイヤーはゲーム中に解除されない。
  * ・対象者は8と10を最低1枚ずつ最後まで保持する。
  * ・余分な8/10は通常プレイおよび7渡しに使用できる。
- * ・最後の2枚を「8→10」の順に単体で出すと野獣上がり成功。
+ * ・最終局面が「8×1 + 10×N」の場合、8を単体で出した後に残りの10を全てまとめて出すと野獣上がり成功。
  * ・上記以外の方法で上がった場合は反則上がりとなる。
  */
 public class YajuRuleService {
@@ -66,8 +66,9 @@ public class YajuRuleService {
      * カード提出前に野獣ルール制約を検証する。
      *
      * 通常進行中は最後の1枚の8/10を消費できない。
-     * ただし手札がちょうど「8,10」の2枚で、8を単体提出する場合のみ
-     * 野獣上がりの第1段階として許可する。
+     * ただし手札が「8×1 + 10×N（N>=1）」だけになった場合は、
+     * 8を単体提出して野獣上がりの第1段階へ進める。
+     * その後、残った10を全てまとめて提出して上がれば成功となる。
      *
      * 上がりそのものが野獣手順違反の場合はプレイを拒否せず、
      * penaltyFinish=trueを返して最下位判定へ繋げる。
@@ -95,8 +96,8 @@ public class YajuRuleService {
 
         if (status == YajuStatus.EIGHT_PLAYED) {
             boolean validTenFinish = emptiesHand
-                    && handCount == 1
-                    && isSingleRank(selectedCards, Rank.TEN);
+                    && handCount >= 1
+                    && areAllRank(selectedCards, Rank.TEN);
 
             if (validTenFinish) {
                 return new YajuPlayDecision(false, true, false);
@@ -119,9 +120,10 @@ public class YajuRuleService {
             return new YajuPlayDecision(false, false, true);
         }
 
-        boolean startsEightStep = handCount == 2
-                && countRank(player.getHand(), Rank.EIGHT) == 1
-                && countRank(player.getHand(), Rank.TEN) == 1
+        boolean startsEightStep = countRank(player.getHand(), Rank.EIGHT) == 1
+                && countRank(player.getHand(), Rank.TEN) >= 1
+                && handCount == countRank(player.getHand(), Rank.EIGHT)
+                        + countRank(player.getHand(), Rank.TEN)
                 && isSingleRank(selectedCards, Rank.EIGHT);
 
         if (startsEightStep) {
@@ -209,6 +211,10 @@ public class YajuRuleService {
 
     private boolean isSingleRank(List<Card> cards, Rank rank) {
         return cards.size() == 1 && cards.get(0).getRank() == rank;
+    }
+
+    private boolean areAllRank(List<Card> cards, Rank rank) {
+        return !cards.isEmpty() && cards.stream().allMatch(card -> card.getRank() == rank);
     }
 
     private long countRank(Collection<Card> cards, Rank rank) {

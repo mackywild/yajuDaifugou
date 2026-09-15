@@ -44,7 +44,7 @@ class CpuGameServiceTest {
                 "human",
                 2,
                 CpuDifficulty.N_GOD,
-                new GameRuleSettings(2, true, true, false, true, true, true)
+                new GameRuleSettings(2, true, true, false, true, true, true, true)
         ).room();
 
         assertEquals(2, room.getPlayers().stream().filter(p -> p.isCpu()).count());

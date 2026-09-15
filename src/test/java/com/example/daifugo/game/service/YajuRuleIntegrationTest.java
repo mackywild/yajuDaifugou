@@ -36,7 +36,7 @@ class YajuRuleIntegrationTest {
         assertEquals(GameEventType.YAJU_AVAILABLE, state.getEvents().get(0).type());
     }
 
-    /** 最後の2枚を8→10で出すと野獣上がり成功になること。 */
+    /** 8×1・10×1の最終局面で8→10と出すと野獣上がり成功になること。 */
     @Test
     void yajuFinish_eightThenTen_completesAndEmitsSuccessEvent() {
         Card eight = card(Mark.SPADE, Rank.EIGHT);
@@ -52,6 +52,31 @@ class YajuRuleIntegrationTest {
         assertEquals(player.getId(), state.getCurrentPlayer().getId());
 
         engine.play(state, player.getId(), List.of(ten));
+
+        assertEquals(YajuStatus.COMPLETED, player.getYajuStatus());
+        assertEquals(1, player.getRank());
+        assertTrue(state.getEvents().stream()
+                .anyMatch(event -> event.type() == GameEventType.YAJU_SUCCESS));
+    }
+
+
+    /** 8が1枚・10が複数枚でも、8→残り10全枚で野獣上がりできること。 */
+    @Test
+    void yajuFinish_singleEightThenMultipleTens_completesSuccessfully() {
+        Card eight = card(Mark.SPADE, Rank.EIGHT);
+        Card ten1 = card(Mark.HEART, Rank.TEN);
+        Card ten2 = card(Mark.DIAMOND, Rank.TEN);
+        Player player = player("A", "A", eight, ten1, ten2);
+        Player opponent = player("B", "B", card(Mark.CLUB, Rank.THREE));
+        GameState state = playingState(player, opponent);
+        new YajuRuleService().initializeTargets(state);
+        GameEngine engine = new GameEngineFactory().create();
+
+        engine.play(state, player.getId(), List.of(eight));
+        assertEquals(YajuStatus.EIGHT_PLAYED, player.getYajuStatus());
+        assertEquals(2, player.getCardCount());
+
+        engine.play(state, player.getId(), List.of(ten1, ten2));
 
         assertEquals(YajuStatus.COMPLETED, player.getYajuStatus());
         assertEquals(1, player.getRank());

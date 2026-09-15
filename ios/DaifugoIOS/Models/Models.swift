@@ -105,6 +105,7 @@ struct RuleSettingsDTO: Codable {
     let markLock: Bool
     let sevenTransfer: Bool
     let yajuRule: Bool
+    let jackBack: Bool
     let forbiddenFinish: Bool
 }
 
@@ -116,6 +117,7 @@ struct GameStateDTO: Codable {
     let currentPlayerId: String?
     let field: FieldDTO
     let revolution: Bool
+    let jackBack: Bool
     let lockedMark: String?
     let host: Bool
     let started: Bool
@@ -176,5 +178,6 @@ struct CpuGameRequest: Codable {
     let markLock: Bool
     let sevenTransfer: Bool
     let yajuRule: Bool
+    let jackBack: Bool
     let forbiddenFinish: Bool
 }

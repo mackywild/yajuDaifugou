@@ -51,6 +51,18 @@ data class YajuCutIn(
     val playerNames: List<String>,
 )
 
+enum class RuleCutInType {
+    JACK_BACK,
+    EARLY_SHOT,
+}
+
+data class RuleCutIn(
+    val id: Long,
+    val type: RuleCutInType,
+    val playerId: String,
+    val playerName: String,
+)
+
 /** CPUが現在行っているアクションを画面へ伝える。 */
 data class CpuTurnAnimation(
     val id: Long,
@@ -76,6 +88,7 @@ data class DaifugoUiState(
     val ruleMarkLock: Boolean = true,
     val ruleSevenTransfer: Boolean = true,
     val ruleYaju: Boolean = true,
+    val ruleJackBack: Boolean = true,
     val ruleForbiddenFinish: Boolean = true,
     val roomId: String? = null,
     val gameState: GameStateDto? = null,
@@ -86,12 +99,13 @@ data class DaifugoUiState(
     val cpuTurnAnimation: CpuTurnAnimation? = null,
     val cpuActionHistory: List<String> = emptyList(),
     val yajuCutIn: YajuCutIn? = null,
+    val ruleCutIns: List<RuleCutIn> = emptyList(),
     val errorMessage: String? = null,
     val infoMessage: String? = null,
 )
 
 /**
- * Daifugo v0.4.2 の画面状態と通信を管理するViewModel。
+ * Daifugo v0.4.3 の画面状態と通信を管理するViewModel。
  * CPU戦では1手ずつ約3秒の演出を挟み、CPUが何を出したか追えるようにする。
  */
 class DaifugoViewModel(application: Application) : AndroidViewModel(application) {
@@ -131,6 +145,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     fun setRuleMarkLock(value: Boolean) = update { copy(ruleMarkLock = value) }
     fun setRuleSevenTransfer(value: Boolean) = update { copy(ruleSevenTransfer = value) }
     fun setRuleYaju(value: Boolean) = update { copy(ruleYaju = value, ruleEightCut = if (value) true else ruleEightCut) }
+    fun setRuleJackBack(value: Boolean) = update { copy(ruleJackBack = value) }
     fun setRuleForbiddenFinish(value: Boolean) = update { copy(ruleForbiddenFinish = value) }
 
     fun clearMessage() = update { copy(errorMessage = null, infoMessage = null) }
@@ -138,6 +153,10 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     /** 表示中の野獣確定カットインを、同一イベントの場合だけ閉じる。 */
     fun clearYajuCutIn(id: Long) = update {
         if (yajuCutIn?.id == id) copy(yajuCutIn = null) else this
+    }
+
+    fun clearRuleCutIn(id: Long) = update {
+        copy(ruleCutIns = ruleCutIns.filterNot { it.id == id })
     }
 
     fun login() = launchAction {
@@ -180,6 +199,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 selectedCardIndices = emptySet(),
                 socketConnected = false,
                 yajuCutIn = null,
+                ruleCutIns = emptyList(),
                 infoMessage = "ログアウトしました",
             )
         }
@@ -195,6 +215,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             markLock = state.ruleMarkLock,
             sevenTransfer = state.ruleSevenTransfer,
             yajuRule = state.ruleYaju,
+            jackBack = state.ruleJackBack,
             forbiddenFinish = state.ruleForbiddenFinish,
         )
         /*
@@ -210,7 +231,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         savePlayerName(playerName)
         lastHandledEventId = 0L
         stopRoomRealtime()
-        update { copy(cpuActionHistory = emptyList(), cpuTurnAnimation = null, cpuTurnInProgress = false, yajuCutIn = null) }
+        update { copy(cpuActionHistory = emptyList(), cpuTurnAnimation = null, cpuTurnInProgress = false, yajuCutIn = null, ruleCutIns = emptyList()) }
         applyGameState(game)
         startCpuTurnSequence()
     }
@@ -331,6 +352,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 cpuTurnAnimation = null,
                 cpuActionHistory = emptyList(),
                 yajuCutIn = null,
+                ruleCutIns = emptyList(),
                 infoMessage = if (game?.gameMode == "CPU_LOCAL") "CPU戦を終了しました" else "部屋から退出しました",
             )
         }
@@ -346,7 +368,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             try {
                 while (localCpu.hasCpuTurn()) {
                     // 野獣確定カットイン中はCPU演出を進めず、見せ場を潰さない。
-                    while (_uiState.value.yajuCutIn != null) {
+                    while (_uiState.value.yajuCutIn != null || _uiState.value.ruleCutIns.isNotEmpty()) {
                         delay(100)
                     }
 
@@ -558,6 +580,18 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
         if (unseen.any { it.type == "YAJU_SUCCESS" }) {
             _audioCues.tryEmit(GameAudioCue.YAJU_SUCCESS)
+        }
+
+        val newRuleCutIns = unseen.mapNotNull { event ->
+            val type = when (event.type) {
+                "JACK_BACK" -> RuleCutInType.JACK_BACK
+                "EARLY_SHOT" -> RuleCutInType.EARLY_SHOT
+                else -> null
+            } ?: return@mapNotNull null
+            RuleCutIn(event.id, type, event.playerId, event.playerName)
+        }
+        if (newRuleCutIns.isNotEmpty()) {
+            update { copy(ruleCutIns = ruleCutIns + newRuleCutIns) }
         }
 
         lastHandledEventId = maxOf(lastHandledEventId, unseen.maxOf { it.id })

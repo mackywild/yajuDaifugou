@@ -91,6 +91,7 @@ data class RuleSettingsDto(
     val markLock: Boolean = true,
     val sevenTransfer: Boolean = true,
     val yajuRule: Boolean = true,
+    val jackBack: Boolean = true,
     val forbiddenFinish: Boolean = true,
 )
 
@@ -103,6 +104,7 @@ data class GameStateDto(
     val currentPlayerId: String?,
     val field: FieldDto,
     val revolution: Boolean,
+    val jackBack: Boolean = false,
     val lockedMark: String?,
     val host: Boolean,
     val started: Boolean,
@@ -172,6 +174,7 @@ object ServerJson {
                 markLock = rules.optBoolean("markLock", true),
                 sevenTransfer = rules.optBoolean("sevenTransfer", true),
                 yajuRule = rules.optBoolean("yajuRule", true),
+                jackBack = rules.optBoolean("jackBack", true),
                 forbiddenFinish = rules.optBoolean("forbiddenFinish", true),
             ),
             players = players,
@@ -181,6 +184,7 @@ object ServerJson {
                 combinationType = fieldObject.nullableString("combinationType"),
             ),
             revolution = root.optBoolean("revolution", false),
+            jackBack = root.optBoolean("jackBack", false),
             lockedMark = root.nullableString("lockedMark"),
             host = root.optBoolean("host", false),
             started = root.optBoolean("started", false),

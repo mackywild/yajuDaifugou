@@ -51,12 +51,18 @@ public final class CpuFeatureExtractor {
         boolean willFinish = !move.pass() && remaining.isEmpty();
         boolean forbiddenFinish = willFinish && settings.forbiddenFinish()
                 && containsForbiddenFinish(move.cards());
+        long eightCount = player.getHand().stream().filter(card -> card.getRank() == Rank.EIGHT).count();
+        long tenCount = player.getHand().stream().filter(card -> card.getRank() == Rank.TEN).count();
         boolean yajuStart = player.getYajuStatus() == YajuStatus.ACTIVE
-                && player.getCardCount() == 2
+                && eightCount == 1
+                && tenCount >= 1
+                && player.getCardCount() == eightCount + tenCount
                 && isSingleRank(move.cards(), Rank.EIGHT);
         boolean yajuSuccess = player.getYajuStatus() == YajuStatus.EIGHT_PLAYED
-                && player.getCardCount() == 1
-                && isSingleRank(move.cards(), Rank.TEN);
+                && !move.pass()
+                && move.cards().size() == player.getCardCount()
+                && !move.cards().isEmpty()
+                && move.cards().stream().allMatch(card -> card.getRank() == Rank.TEN);
 
         f[0] = player.getCardCount() / 27.0;
         f[1] = remaining.size() / 27.0;
@@ -65,7 +71,7 @@ public final class CpuFeatureExtractor {
         f[4] = maxOpp / 27.0;
         f[5] = state.getFieldCombination() == null ? 0.0 : 1.0;
         f[6] = state.getFieldCombination() == null ? 0.0 : state.getFieldCombination().getCardCount() / 4.0;
-        f[7] = state.isRevolution() ? 1.0 : 0.0;
+        f[7] = state.isStrengthReversed() ? 1.0 : 0.0;
         f[8] = state.getLockedMark() == null ? 0.0 : 1.0;
         f[9] = move.pass() ? 1.0 : 0.0;
         f[10] = move.cards().size() / 4.0;
