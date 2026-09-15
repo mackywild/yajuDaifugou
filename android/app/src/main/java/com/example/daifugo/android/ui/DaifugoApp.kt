@@ -1,7 +1,10 @@
 package com.example.daifugo.android.ui
 
 import android.content.res.AssetManager
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -1339,9 +1342,65 @@ private fun CardBack(
 
 private const val CPU_AVATAR_DECODE_EDGE_PX = 512
 
-/** 大きな写真でもメモリを使いすぎないよう、アバター用途のサイズへ縮小して読み込む。 */
+/** JPEGに保存されたEXIFの向き情報を取得する。 */
+private fun readCpuAvatarOrientation(assets: AssetManager, assetName: String): Int =
+    runCatching {
+        assets.open(assetName).use { input ->
+            ExifInterface(input).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL,
+            )
+        }
+    }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+
+/**
+ * EXIF OrientationをBitmapへ実際に反映する。
+ * スマホ写真はピクセル自体を回転せず、EXIFだけに90°回転などを記録する場合があるため、
+ * BitmapFactoryで読み込んだ後に補正してからComposeへ渡す。
+ */
+private fun applyCpuAvatarOrientation(bitmap: Bitmap, orientation: Int): Bitmap {
+    val matrix = Matrix()
+
+    when (orientation) {
+        ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.setScale(-1f, 1f)
+        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.setRotate(180f)
+        ExifInterface.ORIENTATION_FLIP_VERTICAL -> {
+            matrix.setRotate(180f)
+            matrix.postScale(-1f, 1f)
+        }
+        ExifInterface.ORIENTATION_TRANSPOSE -> {
+            matrix.setRotate(90f)
+            matrix.postScale(-1f, 1f)
+        }
+        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.setRotate(90f)
+        ExifInterface.ORIENTATION_TRANSVERSE -> {
+            matrix.setRotate(-90f)
+            matrix.postScale(-1f, 1f)
+        }
+        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.setRotate(-90f)
+        else -> return bitmap
+    }
+
+    return Bitmap.createBitmap(
+        bitmap,
+        0,
+        0,
+        bitmap.width,
+        bitmap.height,
+        matrix,
+        true,
+    ).also { corrected ->
+        if (corrected !== bitmap) {
+            bitmap.recycle()
+        }
+    }
+}
+
+/** 大きな写真でもメモリを使いすぎないよう、アバター用途のサイズへ縮小し、EXIFの向きも補正して読み込む。 */
 private fun decodeCpuAvatar(assets: AssetManager, assetName: String): ImageBitmap? =
     runCatching {
+        val orientation = readCpuAvatarOrientation(assets, assetName)
+
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         assets.open(assetName).use { input ->
             BitmapFactory.decodeStream(input, null, bounds)
@@ -1356,9 +1415,11 @@ private fun decodeCpuAvatar(assets: AssetManager, assetName: String): ImageBitma
         }
 
         val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-        assets.open(assetName).use { input ->
-            BitmapFactory.decodeStream(input, null, options)?.asImageBitmap()
-        }
+        val decoded = assets.open(assetName).use { input ->
+            BitmapFactory.decodeStream(input, null, options)
+        } ?: return@runCatching null
+
+        applyCpuAvatarOrientation(decoded, orientation).asImageBitmap()
     }.getOrNull()
 
 /** CPU戦では写真を優先し、未配置時は端末内描画へフォールバックするプレイヤーアイコン。 */
