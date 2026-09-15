@@ -1,0 +1,25 @@
+.gradle/
+build/
+bin/
+.classpath
+.project
+.settings/
+.DS_Store
+
+# Android
+android/.gradle/
+android/.idea/
+android/local.properties
+android/app/build/
+android/build/
+*.apk
+
+# Xcode / iOS
+ios/DaifugoIOS.xcodeproj/xcuserdata/
+ios/DerivedData/
+*.xcuserstate
+
+# ML training generated artifacts (recreate with tools/ml scripts)
+tools/ml/ngod_selfplay.csv
+tools/ml/test.csv
+tools/ml/tmp.csv

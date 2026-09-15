@@ -43,6 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -129,7 +130,7 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                             ) {
                                 CircularProgressIndicator(modifier = Modifier.size(26.dp))
                                 Spacer(Modifier.width(12.dp))
-                                Text("通信中…")
+                                Text(if (state.gameState?.gameMode == "CPU_LOCAL" || state.screen == DaifugoScreen.CPU_SETUP) "処理中…" else "通信中…")
                             }
                         }
                     }
@@ -163,22 +164,27 @@ private fun AppHeader(state: DaifugoUiState) {
             )
         }
         if (state.roomId != null) {
-            ConnectionPill(state.socketConnected)
+            val local = state.gameState?.gameMode == "CPU_LOCAL"
+            ConnectionPill(connected = state.socketConnected, local = local)
         }
     }
     HorizontalDivider(color = CasinoGold.copy(alpha = 0.35f))
 }
 
 @Composable
-private fun ConnectionPill(connected: Boolean) {
+private fun ConnectionPill(connected: Boolean, local: Boolean = false) {
     Surface(
-        color = if (connected) SoftGreen else SoftGold,
+        color = if (connected || local) SoftGreen else SoftGold,
         shape = RoundedCornerShape(100.dp),
     ) {
         Text(
-            if (connected) "● LIVE" else "○ SYNC",
+            when {
+                local -> "● LOCAL"
+                connected -> "● LIVE"
+                else -> "○ SYNC"
+            },
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            color = if (connected) CasinoGreen else CasinoGold,
+            color = if (connected || local) CasinoGreen else CasinoGold,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
         )
@@ -213,14 +219,17 @@ private fun LoginScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
     ) {
         item {
             Text(
-                "テーブルへようこそ",
+                "マルチプレイ接続",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Black,
             )
             Text(
-                "Spring Bootサーバーへ接続してオンライン大富豪を始めます。",
+                "オンライン対戦をするときだけSpring Bootサーバーへ接続します。",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+        item {
+            TextButton(onClick = viewModel::backToMenu) { Text("← メインメニューへ") }
         }
         item {
             CasinoPanel(title = "接続先") {
@@ -281,7 +290,7 @@ private fun MainMenuScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             Card(colors = CardDefaults.cardColors(containerColor = SoftGreen), shape = RoundedCornerShape(20.dp)) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("🌐 マルチプレイ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
-                    Text("PC・Android・iPhoneで同じ卓に参加するオンライン対戦。")
+                    Text("サーバーへ接続してPC・Android・iPhoneで同じ卓に参加するオンライン対戦。")
                     Button(onClick = viewModel::openMultiplayer, modifier = Modifier.fillMaxWidth()) { Text("マルチプレイへ") }
                 }
             }
@@ -290,12 +299,11 @@ private fun MainMenuScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             Card(colors = CardDefaults.cardColors(containerColor = SoftGold), shape = RoundedCornerShape(20.dp)) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("🤖 【ひとりでイク】", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
-                    Text("CPU人数・難易度・特殊ルールを設定して即対戦。N-GODは自己対戦学習済み。")
+                    Text("完全オフライン。サーバー不要でCPU人数・難易度・特殊ルールを設定して即対戦。N-GODは自己対戦学習済み。")
                     Button(onClick = viewModel::openCpuSetup, modifier = Modifier.fillMaxWidth()) { Text("CPU戦へ") }
                 }
             }
         }
-        item { OutlinedButton(onClick = viewModel::logout, modifier = Modifier.fillMaxWidth()) { Text("ログアウト") } }
     }
 }
 
@@ -310,7 +318,7 @@ private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("【ひとりでイク】", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-                    Text("CPU戦セットアップ", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("CPU戦セットアップ · オフライン", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
             }
@@ -324,33 +332,9 @@ private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                 singleLine = true,
             )
         }
-        item {
-            ChoiceRow(
-                title = "CPU人数",
-                values = listOf(1, 2, 3),
-                selected = state.cpuCount,
-                onSelect = { value: Int -> viewModel.setCpuCount(value) },
-                label = { value: Int -> "${value}人" },
-            )
-        }
-        item {
-            ChoiceRow(
-                title = "難易度",
-                values = listOf("EASY", "NORMAL", "HARD", "N_GOD"),
-                selected = state.cpuDifficulty,
-                onSelect = { value: String -> viewModel.setCpuDifficulty(value) },
-                label = { value: String -> difficultyLabel(value) },
-            )
-        }
-        item {
-            ChoiceRow(
-                title = "ジョーカー",
-                values = listOf(0, 1, 2),
-                selected = state.cpuJokerCount,
-                onSelect = { value: Int -> viewModel.setCpuJokerCount(value) },
-                label = { value: Int -> "${value}枚" },
-            )
-        }
+        item { ChoiceRow("CPU人数", listOf(1,2,3), state.cpuCount, viewModel::setCpuCount) { "$it人" } }
+        item { ChoiceRow("難易度", listOf("EASY","NORMAL","HARD","N_GOD"), state.cpuDifficulty, viewModel::setCpuDifficulty) { difficultyLabel(it) } }
+        item { ChoiceRow("ジョーカー", listOf(0,1,2), state.cpuJokerCount, viewModel::setCpuJokerCount) { "$it枚" } }
         item {
             Card(shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(16.dp)) {
@@ -367,7 +351,7 @@ private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
         }
         item {
             Button(onClick = viewModel::startCpuGame, modifier = Modifier.fillMaxWidth()) {
-                Text("CPU戦スタート", fontWeight = FontWeight.ExtraBold)
+                Text("オフラインでCPU戦スタート", fontWeight = FontWeight.ExtraBold)
             }
         }
     }
@@ -759,7 +743,7 @@ private fun PlayingCard(
         modifier = Modifier
             .width(width)
             .height(height)
-            .padding(top = if (selected) 0.dp else 10.dp)
+            .offset(y = if (selected) (-10).dp else 0.dp)
             .clickable(enabled = enabled, onClick = onClick),
         shape = RoundedCornerShape(9.dp),
         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) CasinoGold else Color(0xFFD7D7D7)),

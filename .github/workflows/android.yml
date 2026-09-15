@@ -1,17 +1,24 @@
-name: Build Android APK
+name: Android APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main, develop, 'feature/**' ]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
   pull_request:
-    branches:
-      - main
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -22,28 +29,24 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
-        with:
-          packages: ''
-
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses || true
 
       - name: Install Android SDK packages
         run: |
-          sdkmanager "platform-tools" "platforms;android-37.0" "build-tools;36.0.0"
+          sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
 
       - name: Build debug APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew --no-daemon :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Daifugo-debug-apk
+          name: Daifugo-v0.4.0-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

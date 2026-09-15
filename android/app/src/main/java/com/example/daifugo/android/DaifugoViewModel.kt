@@ -7,6 +7,7 @@ import com.example.daifugo.android.data.ApiException
 import com.example.daifugo.android.data.DaifugoApiClient
 import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.RuleSettingsDto
+import com.example.daifugo.android.local.LocalCpuGameManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -34,7 +35,7 @@ enum class GameAudioCue {
 }
 
 data class DaifugoUiState(
-    val screen: DaifugoScreen = DaifugoScreen.LOGIN,
+    val screen: DaifugoScreen = DaifugoScreen.MAIN_MENU,
     val serverUrl: String = "http://10.0.2.2:8080",
     val password: String = "",
     val playerName: String = "",
@@ -62,6 +63,7 @@ data class DaifugoUiState(
  */
 class DaifugoViewModel(application: Application) : AndroidViewModel(application) {
     private val api = DaifugoApiClient()
+    private val localCpu = LocalCpuGameManager()
     private val preferences = application.getSharedPreferences("daifugo", 0)
 
     private val _uiState = MutableStateFlow(
@@ -110,7 +112,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         preferences.edit().putString("serverUrl", serverUrl).apply()
         update {
             copy(
-                screen = DaifugoScreen.MAIN_MENU,
+                screen = DaifugoScreen.MULTIPLAYER,
                 serverUrl = serverUrl,
                 password = "",
                 errorMessage = null,
@@ -119,19 +121,20 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun openMultiplayer() = update { copy(screen = DaifugoScreen.MULTIPLAYER, errorMessage = null, infoMessage = null) }
+    fun openMultiplayer() = update { copy(screen = DaifugoScreen.LOGIN, errorMessage = null, infoMessage = null) }
 
     fun openCpuSetup() = update { copy(screen = DaifugoScreen.CPU_SETUP, errorMessage = null, infoMessage = null) }
 
     fun backToMenu() = update { copy(screen = DaifugoScreen.MAIN_MENU, errorMessage = null, infoMessage = null) }
 
     fun logout() = launchAction {
-        api.logout()
+        runCatching { api.logout() }
+        localCpu.close()
         stopRoomRealtime()
         lastHandledEventId = 0L
         update {
             copy(
-                screen = DaifugoScreen.LOGIN,
+                screen = DaifugoScreen.MAIN_MENU,
                 roomId = null,
                 gameState = null,
                 selectedCardIndices = emptySet(),
@@ -153,17 +156,20 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             yajuRule = state.ruleYaju,
             forbiddenFinish = state.ruleForbiddenFinish,
         )
-        val game = api.createCpuGame(
-            playerName = playerName,
+        /*
+         * CPU戦は完全ローカル実行。
+         * Spring Bootへのログイン・REST・WebSocket接続は一切不要。
+         */
+        val game = localCpu.start(
+            humanName = playerName,
             cpuCount = state.cpuCount,
             difficulty = state.cpuDifficulty,
             rules = rules,
         )
         savePlayerName(playerName)
         lastHandledEventId = 0L
-        update { copy(roomId = game.roomId, roomIdInput = game.roomId) }
+        stopRoomRealtime()
         applyGameState(game)
-        startRoomRealtime(game.roomId)
     }
 
     fun createRoom() = launchAction {
@@ -185,6 +191,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun refreshState(silent: Boolean = true) {
+        if (_uiState.value.gameState?.gameMode == "CPU_LOCAL") return
         val roomId = _uiState.value.roomId ?: return
         viewModelScope.launch {
             if (!silent) update { copy(loading = true) }
@@ -221,7 +228,14 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             .mapNotNull { self.hand.getOrNull(it) }
         require(selectedCards.isNotEmpty()) { "カードを選択してください" }
 
-        val nextState = if (game.isMySevenTransfer) {
+        val nextState = if (game.gameMode == "CPU_LOCAL") {
+            if (game.isMySevenTransfer) {
+                require(selectedCards.size == game.sevenTransfer.cardCount) {
+                    "7渡しでは${game.sevenTransfer.cardCount}枚選択してください"
+                }
+            }
+            localCpu.play(selectedCards)
+        } else if (game.isMySevenTransfer) {
             require(selectedCards.size == game.sevenTransfer.cardCount) {
                 "7渡しでは${game.sevenTransfer.cardCount}枚選択してください"
             }
@@ -235,14 +249,23 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun pass() = launchAction {
-        val roomId = requireRoomId()
-        applyGameState(api.pass(roomId))
+        val game = _uiState.value.gameState ?: error("ゲーム状態を取得できません")
+        val nextState = if (game.gameMode == "CPU_LOCAL") {
+            localCpu.pass()
+        } else {
+            api.pass(requireRoomId())
+        }
+        applyGameState(nextState)
         update { copy(selectedCardIndices = emptySet()) }
     }
 
     fun leaveRoom() = launchAction {
-        val roomId = requireRoomId()
-        api.leave(roomId)
+        val game = _uiState.value.gameState
+        if (game?.gameMode == "CPU_LOCAL") {
+            localCpu.close()
+        } else {
+            api.leave(requireRoomId())
+        }
         stopRoomRealtime()
         lastHandledEventId = 0L
         update {
@@ -253,7 +276,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 gameState = null,
                 selectedCardIndices = emptySet(),
                 socketConnected = false,
-                infoMessage = "部屋から退出しました",
+                infoMessage = if (game?.gameMode == "CPU_LOCAL") "CPU戦を終了しました" else "部屋から退出しました",
             )
         }
     }

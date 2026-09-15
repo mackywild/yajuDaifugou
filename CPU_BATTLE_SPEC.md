@@ -107,3 +107,15 @@ v0.4.0のN-GODは「state-actionから最終順位価値を予測する評価器
 - ルール別モデル / curriculum learning
 - MCTSとの組み合わせ
 - N-GOD同士の世代更新
+
+## AndroidローカルCPU戦（重要）
+
+Android版の【ひとりでイク】はSpring Bootサーバーへ接続しない。
+アプリ起動直後にメインメニューを表示し、以下の2系統を完全に分離する。
+
+- マルチプレイ: サーバーURL/パスワード入力 → Spring Bootへログイン → 部屋作成/参加
+- 【ひとりでイク】: CPU設定 → 端末内GameEngineを直接起動 → オフライン対戦
+
+CPU戦ではREST/WebSocket/HTTPセッションを使用しない。既存JavaゲームコアをAndroidの
+`:gamecore` モジュールとして直接組み込み、CPU思考・N-GOD・特殊ルールも端末内で実行する。
+この構成により、サーバー停止中・圏外・機内モードでもCPU戦でゲームロジックの回帰確認ができる。
