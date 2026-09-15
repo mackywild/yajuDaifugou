@@ -1,12 +1,9 @@
 package com.example.daifugo.android.ui
 
-import android.content.res.AssetManager
-import android.graphics.BitmapFactory
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,7 +46,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -57,13 +53,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.zIndex
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -93,10 +86,7 @@ import com.example.daifugo.android.ui.theme.Danger
 import com.example.daifugo.android.ui.theme.SoftGold
 import com.example.daifugo.android.ui.theme.SoftGreen
 import com.example.daifugo.game.config.GameLimits
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import kotlin.math.max
 import kotlin.math.min
 
 @Composable
@@ -626,7 +616,6 @@ private fun GameScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                                 player = player,
                                 current = game.currentPlayerId == player.playerId,
                                 avatarIndex = game.avatarIndex(player.playerId),
-                                photoAssetName = game.cpuAvatarAssetName(player.playerId),
                             )
                         }
                     }
@@ -992,7 +981,6 @@ private fun OpponentPlayerPanel(
     player: PlayerDto,
     current: Boolean,
     avatarIndex: Int,
-    photoAssetName: String?,
 ) {
     Card(
         modifier = Modifier.width(168.dp),
@@ -1015,7 +1003,6 @@ private fun OpponentPlayerPanel(
                     avatarIndex = avatarIndex,
                     size = 40.dp,
                     highlighted = current,
-                    photoAssetName = photoAssetName,
                 )
                 Spacer(Modifier.width(9.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -1337,50 +1324,14 @@ private fun CardBack(
     }
 }
 
-private const val CPU_AVATAR_DECODE_EDGE_PX = 512
-
-/** 大きな写真でもメモリを使いすぎないよう、アバター用途のサイズへ縮小して読み込む。 */
-private fun decodeCpuAvatar(assets: AssetManager, assetName: String): ImageBitmap? =
-    runCatching {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        assets.open(assetName).use { input ->
-            BitmapFactory.decodeStream(input, null, bounds)
-        }
-
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
-
-        var sampleSize = 1
-        val longestEdge = max(bounds.outWidth, bounds.outHeight)
-        while (longestEdge / (sampleSize * 2) >= CPU_AVATAR_DECODE_EDGE_PX) {
-            sampleSize *= 2
-        }
-
-        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-        assets.open(assetName).use { input ->
-            BitmapFactory.decodeStream(input, null, options)?.asImageBitmap()
-        }
-    }.getOrNull()
-
-/** CPU戦では写真を優先し、未配置時は端末内描画へフォールバックするプレイヤーアイコン。 */
+/** 1卓8人まで同じ顔が出ない、端末内描画のプレイヤーアイコン。 */
 @Composable
 private fun PlayerAvatar(
     avatarIndex: Int,
     size: androidx.compose.ui.unit.Dp,
     highlighted: Boolean = false,
-    photoAssetName: String? = null,
 ) {
     val index = ((avatarIndex % 8) + 8) % 8
-    val context = LocalContext.current
-    val photoBitmap by produceState<ImageBitmap?>(
-        initialValue = null,
-        key1 = photoAssetName,
-    ) {
-        value = photoAssetName?.let { assetName ->
-            withContext(Dispatchers.IO) {
-                decodeCpuAvatar(context.assets, assetName)
-            }
-        }
-    }
     val backgrounds = listOf(
         Color(0xFF315D7A), Color(0xFF7A3F4E), Color(0xFF486A46), Color(0xFF6A4B7A),
         Color(0xFF8A5A2E), Color(0xFF2E6E69), Color(0xFF5A5D87), Color(0xFF7B513B),
@@ -1404,18 +1355,10 @@ private fun PlayerAvatar(
         ),
         shadowElevation = if (highlighted) 5.dp else 2.dp,
     ) {
-        if (photoBitmap != null) {
-            Image(
-                bitmap = photoBitmap,
-                contentDescription = "CPU avatar",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-        } else {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val cx = this.size.width / 2f
-                val faceCenter = Offset(cx, this.size.height * 0.55f)
-                val faceRadius = this.size.minDimension * 0.29f
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val cx = this.size.width / 2f
+            val faceCenter = Offset(cx, this.size.height * 0.55f)
+            val faceRadius = this.size.minDimension * 0.29f
             drawCircle(skinColors[index], faceRadius, faceCenter)
 
             // 髪型をインデックスごとに変え、同一卓で見分けられるようにする。
@@ -1485,7 +1428,6 @@ private fun PlayerAvatar(
                 )
             }
         }
-        }
     }
 }
 
@@ -1542,7 +1484,6 @@ private fun RuleCutInOverlay(
                 avatarIndex = game?.avatarIndex(cutIn.playerId) ?: 0,
                 size = 72.dp,
                 highlighted = true,
-                photoAssetName = game?.cpuAvatarAssetName(cutIn.playerId),
             )
             Spacer(Modifier.height(12.dp))
             Text(
@@ -1654,7 +1595,6 @@ private fun YajuCutInOverlay(
                             avatarIndex = avatarIndex,
                             size = 52.dp,
                             highlighted = true,
-                            photoAssetName = game?.cpuAvatarAssetName(playerId),
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
@@ -1689,19 +1629,6 @@ private fun GameStateDto.avatarIndex(playerId: String): Int =
         .takeIf { it >= 0 }
         ?: 0
 
-/** CPUローカル戦で使う写真アセット名。CPU以外・通信対戦ではnull。 */
-private fun GameStateDto.cpuAvatarAssetName(playerId: String): String? {
-    if (gameMode != "CPU_LOCAL") return null
-
-    val cpuIndex = players
-        .filter { it.cpu }
-        .indexOfFirst { it.playerId == playerId }
-
-    if (cpuIndex !in 0..6) return null
-    val number = (cpuIndex + 1).toString().padStart(2, '0')
-    return "cpu_avatars/cpu_${number}.jpg"
-}
-
 @Composable
 private fun ResultScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
     val game = state.gameState ?: return
@@ -1722,7 +1649,6 @@ private fun ResultScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                     ResultRow(
                         player = player,
                         avatarIndex = game.avatarIndex(player.playerId),
-                        photoAssetName = game.cpuAvatarAssetName(player.playerId),
                     )
                     if (index != ranking.lastIndex) HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
@@ -1740,14 +1666,12 @@ private fun ResultScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
 private fun ResultRow(
     player: PlayerDto,
     avatarIndex: Int,
-    photoAssetName: String?,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         PlayerAvatar(
             avatarIndex = avatarIndex,
             size = 42.dp,
             highlighted = player.rank == 1,
-            photoAssetName = photoAssetName,
         )
         Spacer(Modifier.width(10.dp))
         Text(

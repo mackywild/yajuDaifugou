@@ -1,0 +1,31 @@
+name: DaifugoIOS
+options:
+  bundleIdPrefix: com.mackywild
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.4.4"
+    CURRENT_PROJECT_VERSION: "7"
+    DEVELOPMENT_TEAM: ""
+targets:
+  DaifugoIOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: DaifugoIOS
+        excludes:
+          - AudioResources
+      - path: DaifugoIOS/AudioResources
+        type: folder
+        buildPhase: resources
+    info:
+      path: DaifugoIOS/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mackywild.daifugo
+        PRODUCT_NAME: Daifugo
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_STYLE: Automatic
