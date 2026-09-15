@@ -14,8 +14,6 @@ import org.json.JSONObject
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 class ApiException(
     override val message: String,

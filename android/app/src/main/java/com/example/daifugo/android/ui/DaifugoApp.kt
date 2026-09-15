@@ -43,7 +43,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -68,7 +67,6 @@ import com.example.daifugo.android.ui.theme.CasinoGreenDark
 import com.example.daifugo.android.ui.theme.Danger
 import com.example.daifugo.android.ui.theme.SoftGold
 import com.example.daifugo.android.ui.theme.SoftGreen
-import androidx.compose.foundation.layout.offset
 
 @Composable
 fun DaifugoApp(viewModel: DaifugoViewModel) {
@@ -326,9 +324,33 @@ private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                 singleLine = true,
             )
         }
-        item { ChoiceRow("CPU人数", listOf(1,2,3), state.cpuCount, viewModel::setCpuCount) { "$it人" } }
-        item { ChoiceRow("難易度", listOf("EASY","NORMAL","HARD","N_GOD"), state.cpuDifficulty, viewModel::setCpuDifficulty) { difficultyLabel(it) } }
-        item { ChoiceRow("ジョーカー", listOf(0,1,2), state.cpuJokerCount, viewModel::setCpuJokerCount) { "$it枚" } }
+        item {
+            ChoiceRow(
+                title = "CPU人数",
+                values = listOf(1, 2, 3),
+                selected = state.cpuCount,
+                onSelect = { value: Int -> viewModel.setCpuCount(value) },
+                label = { value: Int -> "${value}人" },
+            )
+        }
+        item {
+            ChoiceRow(
+                title = "難易度",
+                values = listOf("EASY", "NORMAL", "HARD", "N_GOD"),
+                selected = state.cpuDifficulty,
+                onSelect = { value: String -> viewModel.setCpuDifficulty(value) },
+                label = { value: String -> difficultyLabel(value) },
+            )
+        }
+        item {
+            ChoiceRow(
+                title = "ジョーカー",
+                values = listOf(0, 1, 2),
+                selected = state.cpuJokerCount,
+                onSelect = { value: Int -> viewModel.setCpuJokerCount(value) },
+                label = { value: Int -> "${value}枚" },
+            )
+        }
         item {
             Card(shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(16.dp)) {
@@ -737,7 +759,7 @@ private fun PlayingCard(
         modifier = Modifier
             .width(width)
             .height(height)
-            .offset(y = if (selected) (-10).dp else 0.dp)
+            .padding(top = if (selected) 0.dp else 10.dp)
             .clickable(enabled = enabled, onClick = onClick),
         shape = RoundedCornerShape(9.dp),
         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) CasinoGold else Color(0xFFD7D7D7)),

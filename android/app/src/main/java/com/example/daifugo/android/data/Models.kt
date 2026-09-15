@@ -117,10 +117,10 @@ data class GameStateDto(
         get() = players.firstOrNull { it.playerId == currentPlayerId }
 
     val isMyTurn: Boolean
-        get() = players.firstOrNull { it.self }?.playerId == currentPlayerId
+        get() = selfPlayer?.playerId == currentPlayerId
 
     val isMySevenTransfer: Boolean
-        get() = sevenTransfer.pending && players.firstOrNull { it.self }?.playerId == sevenTransfer.sourcePlayerId
+        get() = sevenTransfer.pending && selfPlayer?.playerId == sevenTransfer.sourcePlayerId
 
     val sevenTransferTarget: PlayerDto?
         get() = players.firstOrNull { it.playerId == sevenTransfer.targetPlayerId }
