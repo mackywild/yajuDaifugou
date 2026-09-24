@@ -51,6 +51,24 @@ public class LegalMoveGenerator {
             }
         }
 
+        // JOKERは同一ランク組み合わせのワイルドカードとして候補へ混ぜる。
+        List<Card> jokers = byRank.getOrDefault(Rank.JOKER, List.of());
+        if (!jokers.isEmpty()) {
+            for (Map.Entry<Rank, List<Card>> entry : byRank.entrySet()) {
+                if (entry.getKey() == Rank.JOKER) {
+                    continue;
+                }
+
+                List<Card> wildcardGroup = new ArrayList<>(entry.getValue());
+                wildcardGroup.addAll(jokers);
+
+                for (int size = 2; size <= Math.min(4, wildcardGroup.size()); size++) {
+                    enumerateCombinations(wildcardGroup, size, 0, new ArrayList<>(), combo ->
+                            addCandidate(candidates, combo));
+                }
+            }
+        }
+
         // 階段（同一マーク・3枚以上・連番）
         for (Mark mark : List.of(Mark.SPADE, Mark.HEART, Mark.DIAMOND, Mark.CLUB)) {
             List<Card> suitCards = hand.stream()

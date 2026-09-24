@@ -96,4 +96,31 @@ class LegalMoveGeneratorTest {
         }
         return player;
     }
+
+    @Test
+    void jackBackGeneratesThreePlusJokerPairAsLegalMove() {
+        Card three = new Card(Mark.SPADE, Rank.THREE);
+        Card joker = new Card(Mark.JOKER, Rank.JOKER);
+        Player player = new Player("p1", "p1");
+        player.addCards(List.of(three, joker));
+
+        GameState state = playingState(
+                player,
+                player("p2", Rank.FIVE, Rank.SIX)
+        );
+        state.updateField(
+                com.example.daifugo.game.domain.CardCombination.of(List.of(
+                        new Card(Mark.SPADE, Rank.FOUR),
+                        new Card(Mark.HEART, Rank.FOUR)
+                )),
+                1
+        );
+        state.activateJackBack();
+
+        List<CpuMove> moves = generator.generate(state, player, noYajuSettings());
+
+        assertTrue(moves.stream().anyMatch(move ->
+                !move.pass() && move.cards().equals(List.of(three, joker))));
+    }
+
 }
