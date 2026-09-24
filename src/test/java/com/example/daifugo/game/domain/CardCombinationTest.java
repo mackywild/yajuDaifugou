@@ -61,4 +61,39 @@ public class CardCombinationTest {
 	            c.getType());
 	
 	}
+
+    @Test
+    void ジョーカーは同ランクカードのワイルドカードとしてペアになる() {
+        CardCombination combination = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.THREE),
+            new Card(Mark.JOKER, Rank.JOKER)
+        ));
+
+        assertEquals(CombinationType.PAIR, combination.getType());
+        assertEquals(3, combination.getBaseStrength());
+    }
+
+    @Test
+    void ジョーカー2枚でも自然札のランクを使ってトリプルになる() {
+        CardCombination combination = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.THREE),
+            new Card(Mark.JOKER, Rank.JOKER),
+            new Card(Mark.JOKER, Rank.JOKER)
+        ));
+
+        assertEquals(CombinationType.TRIPLE, combination.getType());
+        assertEquals(3, combination.getBaseStrength());
+    }
+
+    @Test
+    void ジョーカーがいても異なる自然札は同ランク組み合わせにならない() {
+        CardCombination combination = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.THREE),
+            new Card(Mark.HEART, Rank.FOUR),
+            new Card(Mark.JOKER, Rank.JOKER)
+        ));
+
+        assertFalse(combination.isValid());
+    }
+
 }

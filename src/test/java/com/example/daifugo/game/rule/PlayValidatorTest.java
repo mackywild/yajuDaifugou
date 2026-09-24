@@ -132,4 +132,37 @@ public class PlayValidatorTest {
             new Card(Mark.SPADE, rank)
         ));
     }
+
+    @Test
+    void Jバック中は3とJOKERのペアを4のペアへ出せる() {
+        CardCombination field = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.FOUR),
+            new Card(Mark.HEART, Rank.FOUR)
+        ));
+        CardCombination selected = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.THREE),
+            new Card(Mark.JOKER, Rank.JOKER)
+        ));
+
+        assertTrue(
+            validator.canPlay(selected, field, true, null)
+        );
+    }
+
+    @Test
+    void 通常時は4とJOKERのペアを3のペアへ出せる() {
+        CardCombination field = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.THREE),
+            new Card(Mark.HEART, Rank.THREE)
+        ));
+        CardCombination selected = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.FOUR),
+            new Card(Mark.JOKER, Rank.JOKER)
+        ));
+
+        assertTrue(
+            validator.canPlay(selected, field, false, null)
+        );
+    }
+
 }

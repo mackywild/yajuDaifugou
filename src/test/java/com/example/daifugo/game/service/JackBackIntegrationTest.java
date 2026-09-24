@@ -211,4 +211,43 @@ class JackBackIntegrationTest {
     private static Card card(Mark mark, Rank rank) {
         return new Card(mark, rank);
     }
+
+    @Test
+    void jackBack_allowsThreePlusJokerPairAsWildcardPair() {
+        Card jackSpade = card(Mark.SPADE, Rank.JACK);
+        Card jackHeart = card(Mark.HEART, Rank.JACK);
+        Player a = player(
+                "A",
+                jackSpade,
+                jackHeart,
+                card(Mark.CLUB, Rank.FIVE)
+        );
+
+        Card three = card(Mark.SPADE, Rank.THREE);
+        Card joker = card(Mark.JOKER, Rank.JOKER);
+        Player b = player(
+                "B",
+                three,
+                joker,
+                card(Mark.CLUB, Rank.SIX)
+        );
+        Player c = player("C", card(Mark.DIAMOND, Rank.NINE));
+
+        GameState state = playingState(a, b, c);
+        GameEngine engine = new GameEngineFactory().create();
+
+        engine.play(state, "A", List.of(jackSpade, jackHeart));
+
+        assertTrue(state.isStrengthReversed());
+
+        engine.play(state, "B", List.of(three, joker));
+
+        assertEquals(
+                com.example.daifugo.game.domain.CombinationType.PAIR,
+                state.getFieldCombination().getType()
+        );
+        assertEquals(3, state.getFieldCombination().getBaseStrength());
+        assertEquals("C", state.getCurrentPlayer().getId());
+    }
+
 }

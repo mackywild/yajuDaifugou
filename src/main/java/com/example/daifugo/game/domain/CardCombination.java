@@ -71,13 +71,29 @@ public class CardCombination {
         return CombinationType.INVALID;
     }
 
+    /**
+     * JOKERは同一ランク組み合わせのワイルドカードとして扱う。
+     * JOKER以外のカードがすべて同ランクならPAIR/TRIPLE/FOURを構成できる。
+     */
     private static boolean sameRank(List<Card> cards) {
-        Rank firstRank = cards.get(0).getRank();
+        Rank naturalRank = null;
 
-        return cards.stream()
-            .allMatch(card ->
-                card.getRank() == firstRank
-            );
+        for (Card card : cards) {
+            if (card.isJoker()) {
+                continue;
+            }
+
+            if (naturalRank == null) {
+                naturalRank = card.getRank();
+                continue;
+            }
+
+            if (card.getRank() != naturalRank) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static boolean isStraight(List<Card> cards) {
@@ -149,7 +165,10 @@ public class CardCombination {
                 .orElseThrow();
         }
 
-        return cards.get(0)
+        return cards.stream()
+            .filter(card -> !card.isJoker())
+            .findFirst()
+            .orElse(cards.get(0))
             .getStrength(revolution);
     }
     public boolean isSingle() {
@@ -186,8 +205,9 @@ public class CardCombination {
         }
 
         return cards.stream()
+                .filter(card -> !card.isJoker())
                 .mapToInt(card -> card.getStrength(false))
                 .max()
-                .orElseThrow();
+                .orElse(Rank.JOKER.getStrength(false));
     }
 }

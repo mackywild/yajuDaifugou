@@ -124,6 +124,9 @@ public class PlayValidator {
 
         return selected.getCards()
             .stream()
-            .allMatch(card -> card.getSuit() == lockedMark);
+            .allMatch(card ->
+                card.isJoker()
+                    || card.getSuit() == lockedMark
+            );
     }
 }
