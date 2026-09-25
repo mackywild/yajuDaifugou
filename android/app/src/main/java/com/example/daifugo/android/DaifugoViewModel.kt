@@ -10,6 +10,8 @@ import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.RuleSettingsDto
 import com.example.daifugo.android.local.LocalCpuActionType
 import com.example.daifugo.android.local.LocalCpuGameManager
+import com.example.daifugo.android.progression.PlayerProgress
+import com.example.daifugo.android.progression.PlayerProgressRepository
 import com.example.daifugo.game.config.GameLimits
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -92,6 +94,11 @@ data class DaifugoUiState(
     val ruleYaju: Boolean = true,
     val ruleJackBack: Boolean = true,
     val ruleForbiddenFinish: Boolean = true,
+    val playGamesConfigured: Boolean = false,
+    val playGamesSignedIn: Boolean = false,
+    val playGamesDisplayName: String? = null,
+    val progress: PlayerProgress = PlayerProgress(),
+    val lastEarnedExp: Int = 0,
     val roomId: String? = null,
     val gameState: GameStateDto? = null,
     val selectedCardIndices: Set<Int> = emptySet(),
@@ -114,12 +121,14 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     private val api = DaifugoApiClient()
     private val localCpu = LocalCpuGameManager()
     private val preferences = application.getSharedPreferences("daifugo", 0)
+    private val progressRepository = PlayerProgressRepository(application)
 
     private val _uiState = MutableStateFlow(
         DaifugoUiState(
             serverUrl = preferences.getString("serverUrl", "http://10.0.2.2:8080")
                 ?: "http://10.0.2.2:8080",
             playerName = preferences.getString("playerName", "") ?: "",
+            progress = progressRepository.load(),
         )
     )
     val uiState: StateFlow<DaifugoUiState> = _uiState.asStateFlow()
@@ -151,6 +160,33 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     fun setRuleForbiddenFinish(value: Boolean) = update { copy(ruleForbiddenFinish = value) }
 
     fun clearMessage() = update { copy(errorMessage = null, infoMessage = null) }
+
+    fun updatePlayGamesAccount(
+        configured: Boolean,
+        authenticated: Boolean,
+        playerId: String?,
+        displayName: String?,
+        errorMessage: String? = null,
+    ) {
+        val progress = if (authenticated && !playerId.isNullOrBlank()) {
+            progressRepository.bindPlayGamesAccount(
+                playerId = playerId,
+                displayName = displayName.orEmpty(),
+            )
+        } else {
+            progressRepository.load()
+        }
+
+        update {
+            copy(
+                playGamesConfigured = configured,
+                playGamesSignedIn = authenticated,
+                playGamesDisplayName = displayName,
+                progress = progress,
+                errorMessage = errorMessage,
+            )
+        }
+    }
 
     /** タイトル画面のTAP TO STARTからメインメニューへ進む。 */
     fun enterMainMenu() = update {
@@ -540,6 +576,29 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         processGameEvents(newState)
 
         val previous = _uiState.value.gameState
+
+        if (newState.finished && previous?.finished != true) {
+            val self = newState.selfPlayer
+            val rank = self?.rank
+            if (self != null && rank != null) {
+                progressRepository.recordMatch(
+                    matchId = newState.roomId,
+                    rank = rank,
+                    playerCount = newState.players.size,
+                    yajuStatus = self.yajuStatus,
+                    challenge = newState.gameMode == "YAJU_CHALLENGE",
+                )?.let { matchResult ->
+                    update {
+                        copy(
+                            progress = matchResult.progress,
+                            lastEarnedExp = matchResult.earnedExp,
+                            infoMessage = "+${matchResult.earnedExp} EXP を獲得",
+                        )
+                    }
+                }
+            }
+        }
+
         val turnChanged = previous?.currentPlayerId != newState.currentPlayerId
         val handChanged = previous?.selfPlayer?.hand != newState.selfPlayer?.hand
 

@@ -1,5 +1,6 @@
 package com.example.daifugo.android.ui
 
+import android.app.Activity
 import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -91,6 +92,9 @@ import com.example.daifugo.android.DaifugoViewModel
 import com.example.daifugo.android.data.CardDto
 import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.PlayerDto
+import com.example.daifugo.android.playgames.PlayGamesAccount
+import com.example.daifugo.android.playgames.PlayGamesAccountManager
+import com.example.daifugo.android.progression.PlayerProgress
 import com.example.daifugo.android.ui.theme.CasinoGold
 import com.example.daifugo.android.ui.theme.CasinoGreen
 import com.example.daifugo.android.ui.theme.CasinoGreenDark
@@ -108,6 +112,30 @@ import kotlin.math.min
 fun DaifugoApp(viewModel: DaifugoViewModel) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val activity = context as? Activity
+    val playGamesAccountManager = remember(activity) {
+        activity?.let(::PlayGamesAccountManager)
+    }
+
+    fun applyPlayGamesAccount(account: PlayGamesAccount) {
+        viewModel.updatePlayGamesAccount(
+            configured = account.configured,
+            authenticated = account.authenticated,
+            playerId = account.playerId,
+            displayName = account.displayName,
+            errorMessage = account.errorMessage,
+        )
+    }
+
+    LaunchedEffect(playGamesAccountManager) {
+        playGamesAccountManager?.refresh(::applyPlayGamesAccount)
+            ?: viewModel.updatePlayGamesAccount(
+                configured = false,
+                authenticated = false,
+                playerId = null,
+                displayName = null,
+            )
+    }
 
     /*
      * 全端末共有の野獣イベントを音声へ変換する。
@@ -172,7 +200,13 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                     when (state.screen) {
                         DaifugoScreen.TITLE -> Unit
                         DaifugoScreen.LOGIN -> LoginScreen(state, viewModel)
-                        DaifugoScreen.MAIN_MENU -> MainMenuScreen(state, viewModel)
+                        DaifugoScreen.MAIN_MENU -> MainMenuScreen(
+                            state = state,
+                            viewModel = viewModel,
+                            onPlayGamesSignIn = {
+                                playGamesAccountManager?.signIn(::applyPlayGamesAccount)
+                            },
+                        )
                         DaifugoScreen.MULTIPLAYER -> LobbyScreen(state, viewModel)
                         DaifugoScreen.CPU_SETUP -> CpuSetupScreen(state, viewModel)
                         DaifugoScreen.ROOM -> RoomScreen(state, viewModel)
@@ -443,7 +477,11 @@ private fun LoginScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
 }
 
 @Composable
-private fun MainMenuScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
+private fun MainMenuScreen(
+    state: DaifugoUiState,
+    viewModel: DaifugoViewModel,
+    onPlayGamesSignIn: () -> Unit,
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
@@ -452,6 +490,15 @@ private fun MainMenuScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
         item {
             Text("メインメニュー", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
             Text("遊び方を選択してください", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item {
+            ProgressProfileCard(
+                progress = state.progress,
+                playGamesConfigured = state.playGamesConfigured,
+                playGamesSignedIn = state.playGamesSignedIn,
+                playGamesDisplayName = state.playGamesDisplayName,
+                onPlayGamesSignIn = onPlayGamesSignIn,
+            )
         }
         item {
             Card(colors = CardDefaults.cardColors(containerColor = SoftGreen), shape = RoundedCornerShape(20.dp)) {
@@ -471,6 +518,103 @@ private fun MainMenuScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                 }
             }
         }
+    }
+}
+
+
+@Composable
+private fun ProgressProfileCard(
+    progress: PlayerProgress,
+    playGamesConfigured: Boolean,
+    playGamesSignedIn: Boolean,
+    playGamesDisplayName: String?,
+    onPlayGamesSignIn: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        playGamesDisplayName ?: progress.displayName,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        if (playGamesSignedIn) "Google Play Games 連携済み" else "ゲストプレイ",
+                        color = if (playGamesSignedIn) CasinoGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+                Text(
+                    "Lv.${progress.level}",
+                    color = CasinoGold,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 22.sp,
+                )
+            }
+
+            val expRatio = if (progress.expToNextLevel <= 0) 0f
+            else progress.expIntoLevel.toFloat() / progress.expToNextLevel
+            androidx.compose.material3.LinearProgressIndicator(
+                progress = { expRatio.coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                "${progress.expIntoLevel} / ${progress.expToNextLevel} EXP",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                StatText("対戦", "${progress.stats.totalMatches}")
+                StatText("勝率", String.format("%.1f%%", progress.winRatePercent))
+                StatText(
+                    "平均順位",
+                    if (progress.stats.totalMatches == 0) "—"
+                    else String.format("%.2f", progress.averageRank),
+                )
+                StatText("野獣成功", String.format("%.1f%%", progress.yajuSuccessRatePercent))
+            }
+
+            if (!playGamesSignedIn) {
+                if (playGamesConfigured) {
+                    OutlinedButton(
+                        onClick = onPlayGamesSignIn,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Google Play Games と連携")
+                    }
+                } else {
+                    Text(
+                        "Play Console設定後にGoogle Play Games連携が有効になります",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatText(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontWeight = FontWeight.Black)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
