@@ -1,13 +1,41 @@
 package com.example.daifugo.android.progression
 
 import android.content.Context
+import java.time.LocalDate
+import org.json.JSONArray
 import org.json.JSONObject
 
 class PlayerProgressRepository(context: Context) {
     private val preferences =
         context.getSharedPreferences("daifugo_progression", Context.MODE_PRIVATE)
 
-    fun load(): PlayerProgress = loadFor(activeAccountKey())
+    fun load(): PlayerProgress {
+        val accountKey = activeAccountKey()
+        val loaded = loadFor(accountKey)
+        val normalized = normalizeDaily(loaded)
+        if (normalized != loaded) saveFor(accountKey, normalized)
+        return normalized
+    }
+
+    fun claimDailyMission(missionId: String): PlayerProgress {
+        val accountKey = activeAccountKey()
+        val current = normalizeDaily(loadFor(accountKey))
+        val mission = DailyMissionRules.views(current.daily)
+            .firstOrNull { it.id == missionId }
+            ?: throw IllegalArgumentException("存在しないデイリーミッションです")
+
+        require(mission.completed) { "ミッション条件をまだ達成していません" }
+        require(!mission.claimed) { "報酬は受取済みです" }
+
+        val updated = current.copy(
+            gachaMaterial = current.gachaMaterial + mission.rewardMaterial,
+            daily = current.daily.copy(
+                claimedMissionIds = current.daily.claimedMissionIds + mission.id,
+            ),
+        )
+        saveFor(accountKey, updated)
+        return updated
+    }
 
     fun bindPlayGamesAccount(playerId: String, displayName: String): PlayerProgress {
         require(playerId.isNotBlank()) { "playerId must not be blank" }
@@ -49,7 +77,7 @@ class PlayerProgressRepository(context: Context) {
             return null
         }
 
-        val current = loadFor(accountKey)
+        val current = normalizeDaily(loadFor(accountKey))
         val yajuTarget = yajuStatus != "NONE"
         val yajuSuccess = yajuStatus == "COMPLETED"
         val earned = ProgressionRules.earnedExp(rank, yajuTarget, yajuSuccess)
@@ -66,6 +94,11 @@ class PlayerProgressRepository(context: Context) {
         val updated = current.copy(
             totalExp = current.totalExp + earned,
             stats = stats,
+            daily = current.daily.copy(
+                matchesPlayed = current.daily.matchesPlayed + 1,
+                wins = current.daily.wins + if (rank == 1) 1 else 0,
+                challengePlayed = current.daily.challengePlayed + if (challenge) 1 else 0,
+            ),
         )
 
         saveFor(accountKey, updated)
@@ -106,6 +139,14 @@ class PlayerProgressRepository(context: Context) {
         .put("accountKey", progress.accountKey)
         .put("displayName", progress.displayName)
         .put("totalExp", progress.totalExp)
+        .put("gachaMaterial", progress.gachaMaterial)
+        .put("daily", JSONObject()
+            .put("date", progress.daily.date)
+            .put("matchesPlayed", progress.daily.matchesPlayed)
+            .put("wins", progress.daily.wins)
+            .put("challengePlayed", progress.daily.challengePlayed)
+            .put("claimedMissionIds", JSONArray(progress.daily.claimedMissionIds.toList()))
+        )
         .put("stats", JSONObject()
             .put("totalMatches", progress.stats.totalMatches)
             .put("wins", progress.stats.wins)
@@ -120,10 +161,16 @@ class PlayerProgressRepository(context: Context) {
     private fun decode(raw: String): PlayerProgress {
         val root = JSONObject(raw)
         val stats = root.optJSONObject("stats") ?: JSONObject()
+        val daily = root.optJSONObject("daily") ?: JSONObject()
+        val claimedArray = daily.optJSONArray("claimedMissionIds") ?: JSONArray()
+        val claimed = (0 until claimedArray.length())
+            .mapNotNull { index -> claimedArray.optString(index).takeIf { it.isNotBlank() } }
+            .toSet()
         return PlayerProgress(
             accountKey = root.optString("accountKey", "guest"),
             displayName = root.optString("displayName", "GUEST"),
             totalExp = root.optInt("totalExp", 0),
+            gachaMaterial = root.optInt("gachaMaterial", 0),
             stats = MatchStats(
                 totalMatches = stats.optInt("totalMatches", 0),
                 wins = stats.optInt("wins", 0),
@@ -133,7 +180,20 @@ class PlayerProgressRepository(context: Context) {
                 challengeMatches = stats.optInt("challengeMatches", 0),
                 challengeWins = stats.optInt("challengeWins", 0),
             ),
+            daily = DailyMissionState(
+                date = daily.optString("date", LocalDate.now().toString()),
+                matchesPlayed = daily.optInt("matchesPlayed", 0),
+                wins = daily.optInt("wins", 0),
+                challengePlayed = daily.optInt("challengePlayed", 0),
+                claimedMissionIds = claimed,
+            ),
         )
+    }
+
+    private fun normalizeDaily(progress: PlayerProgress): PlayerProgress {
+        val today = LocalDate.now().toString()
+        return if (progress.daily.date == today) progress
+        else progress.copy(daily = DailyMissionState.today())
     }
 
     private fun profileKey(accountKey: String) = "profile:$accountKey"

@@ -62,6 +62,7 @@ class LocalCpuGameManager {
     private var settings: GameRuleSettings? = null
     private var humanPlayerId: String? = null
     private var localGameId: String? = null
+    private var localGameMode: String = "CPU_LOCAL"
 
     /** 人間1人 + CPU 1〜7人でローカルゲームを開始する。 */
     fun start(
@@ -69,6 +70,7 @@ class LocalCpuGameManager {
         cpuCount: Int,
         difficulty: String,
         rules: RuleSettingsDto,
+        yajuChallenge: Boolean = false,
     ): GameStateDto {
         require(cpuCount in 1..GameLimits.MAX_CPU_COUNT) { "CPU人数は1〜7人で指定してください" }
 
@@ -87,6 +89,12 @@ class LocalCpuGameManager {
 
         val gameState = GameState(players)
         GameInitializer(coreRules.jokerCount()).initialize(gameState)
+
+        if (yajuChallenge) {
+            require(coreRules.yajuRule()) { "チャレンジモードでは野獣ルールをONにしてください" }
+            guaranteeYajuOpeningHand(gameState, humanId)
+        }
+
         if (coreRules.yajuRule()) {
             yajuRuleService.initializeTargets(gameState)
         }
@@ -95,7 +103,12 @@ class LocalCpuGameManager {
         settings = coreRules
         engine = GameEngineFactory().create(coreRules)
         humanPlayerId = humanId
-        localGameId = "LOCAL-${UUID.randomUUID().toString().take(8).uppercase()}"
+        localGameMode = if (yajuChallenge) "YAJU_CHALLENGE" else "CPU_LOCAL"
+        localGameId = if (yajuChallenge) {
+            "CHALLENGE-${UUID.randomUUID().toString().take(8).uppercase()}"
+        } else {
+            "LOCAL-${UUID.randomUUID().toString().take(8).uppercase()}"
+        }
 
         // v0.4.1: CPUをここで一気に処理しない。
         // ViewModelがexecuteNextCpuTurn()を1手ずつ呼び、演出を挟む。
@@ -219,6 +232,42 @@ class LocalCpuGameManager {
         settings = null
         humanPlayerId = null
         localGameId = null
+        localGameMode = "CPU_LOCAL"
+    }
+
+    /**
+     * チャレンジモードでは人間プレイヤーの初期手札に8と10を最低1枚ずつ保証する。
+     * 配牌後に他プレイヤーとカードを1対1交換するため、デッキ総数や各手札枚数は変化しない。
+     * ダイヤ3は交換対象から除外し、開始プレイヤー判定も壊さない。
+     */
+    private fun guaranteeYajuOpeningHand(gameState: GameState, humanId: String) {
+        val human = gameState.players.first { it.id == humanId }
+        guaranteeRank(gameState, human, Rank.EIGHT)
+        guaranteeRank(gameState, human, Rank.TEN)
+        gameState.players.forEach { it.sortHand() }
+    }
+
+    private fun guaranteeRank(gameState: GameState, human: Player, rank: Rank) {
+        if (human.countRank(rank) > 0) return
+
+        val donor = gameState.players.firstOrNull { player ->
+            player.id != human.id && player.countRank(rank) > 0
+        } ?: error("チャレンジ用の${rank.name}を確保できません")
+
+        val incoming = donor.hand.first { it.rank == rank }
+        val eightCount = human.countRank(Rank.EIGHT)
+        val tenCount = human.countRank(Rank.TEN)
+        val outgoing = human.hand.firstOrNull { card ->
+            val diamondThree = card.suit == Mark.DIAMOND && card.rank == Rank.THREE
+            val lastRequiredEight = card.rank == Rank.EIGHT && eightCount <= 1
+            val lastRequiredTen = card.rank == Rank.TEN && tenCount <= 1
+            !diamondThree && !lastRequiredEight && !lastRequiredTen
+        } ?: error("チャレンジ用の交換カードを確保できません")
+
+        human.removeCards(listOf(outgoing))
+        donor.removeCards(listOf(incoming))
+        human.addCard(incoming)
+        donor.addCard(outgoing)
     }
 
     /** Android UIが既存のGameStateDtoをそのまま使えるようローカル状態を変換する。 */
@@ -231,7 +280,7 @@ class LocalCpuGameManager {
 
         return GameStateDto(
             roomId = localGameId ?: "LOCAL",
-            gameMode = "CPU_LOCAL",
+            gameMode = localGameMode,
             ruleSettings = coreRules.toDto(),
             players = gameState.players.map { player ->
                 val self = player.id == humanId
