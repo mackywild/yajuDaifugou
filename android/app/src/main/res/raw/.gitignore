@@ -1,0 +1,6 @@
+# Keep the Android raw resource directory tracked before audio assets are added.
+!.gitignore
+!README.md
+!*.mp3
+!*.wav
+!*.ogg
