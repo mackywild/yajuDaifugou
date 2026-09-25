@@ -62,6 +62,21 @@ N-GOD    1位率 31.3%   平均順位 2.173
 
 野獣ルールON時は成立条件のため8切りも必須として、Web / Android / iOS / サーバーすべてで同じ制約を適用します。
 
+## Android UIアセット
+
+Android版は次の差し替え式アセットを使用します。ファイル未配置でもビルド可能です。
+
+- `android/app/src/main/res/drawable/title_screen.png` / `.jpg` / `.webp`
+  - 起動直後の「TAP TO START」タイトル背景
+- `android/app/src/main/res/raw/yaju_bgm.mp3` / `.wav`
+  - 野獣対象者が発生した瞬間からループする専用BGM
+- `android/app/src/main/res/raw/yaju_available.mp3` / `.wav`
+  - 野獣対象化カットインSE
+- `android/app/src/main/res/raw/yaju_success.mp3` / `.wav`
+  - 野獣上がり成功SE
+
+野獣BGMはゲーム中に `ACTIVE` または `EIGHT_PLAYED` のプレイヤーがいる間だけ再生し、対象者がいなくなるかゲーム終了・画面破棄時に停止します。
+
 ## 共通ゲーム機能
 
 - 2〜8人対戦

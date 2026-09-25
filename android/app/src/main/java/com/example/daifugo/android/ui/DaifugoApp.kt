@@ -48,6 +48,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -69,6 +70,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -117,75 +119,191 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
         }
     }
 
+    /*
+     * 野獣対象者（ACTIVE / EIGHT_PLAYED）が1人でもいる間は専用BGMをループする。
+     * 初期配牌で条件を満たした場合も、7渡しで途中から条件を満たした場合も
+     * GameState更新直後に再生状態へ反映される。
+     */
+    val yajuBgmActive = state.gameState?.let { game ->
+        !game.finished && game.players.any { player ->
+            player.yajuStatus == "ACTIVE" || player.yajuStatus == "EIGHT_PLAYED"
+        }
+    } == true
+
+    LaunchedEffect(yajuBgmActive) {
+        if (yajuBgmActive) {
+            YajuAudioPlayer.startBgm(context)
+        } else {
+            YajuAudioPlayer.stopBgm()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            YajuAudioPlayer.stopBgm()
+        }
+    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .imePadding(),
-        ) {
-            AppHeader(state)
-            MessageStrip(
-                state = state,
-                onDismiss = viewModel::clearMessage,
-            )
-
-            Box(
+        if (state.screen == DaifugoScreen.TITLE) {
+            TitleScreen(onStart = viewModel::enterMainMenu)
+        } else {
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .imePadding(),
             ) {
-                when (state.screen) {
-                    DaifugoScreen.LOGIN -> LoginScreen(state, viewModel)
-                    DaifugoScreen.MAIN_MENU -> MainMenuScreen(state, viewModel)
-                    DaifugoScreen.MULTIPLAYER -> LobbyScreen(state, viewModel)
-                    DaifugoScreen.CPU_SETUP -> CpuSetupScreen(state, viewModel)
-                    DaifugoScreen.ROOM -> RoomScreen(state, viewModel)
-                    DaifugoScreen.GAME -> GameScreen(state, viewModel)
-                    DaifugoScreen.RESULT -> ResultScreen(state, viewModel)
-                }
+                AppHeader(state)
+                MessageStrip(
+                    state = state,
+                    onDismiss = viewModel::clearMessage,
+                )
 
-                if (state.loading) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Card(shape = RoundedCornerShape(18.dp)) {
-                            Row(
-                                modifier = Modifier.padding(20.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(26.dp))
-                                Spacer(Modifier.width(12.dp))
-                                Text(if (state.gameState?.gameMode == "CPU_LOCAL" || state.screen == DaifugoScreen.CPU_SETUP) "処理中…" else "通信中…")
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                ) {
+                    when (state.screen) {
+                        DaifugoScreen.TITLE -> Unit
+                        DaifugoScreen.LOGIN -> LoginScreen(state, viewModel)
+                        DaifugoScreen.MAIN_MENU -> MainMenuScreen(state, viewModel)
+                        DaifugoScreen.MULTIPLAYER -> LobbyScreen(state, viewModel)
+                        DaifugoScreen.CPU_SETUP -> CpuSetupScreen(state, viewModel)
+                        DaifugoScreen.ROOM -> RoomScreen(state, viewModel)
+                        DaifugoScreen.GAME -> GameScreen(state, viewModel)
+                        DaifugoScreen.RESULT -> ResultScreen(state, viewModel)
+                    }
+
+                    if (state.loading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Card(shape = RoundedCornerShape(18.dp)) {
+                                Row(
+                                    modifier = Modifier.padding(20.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(26.dp))
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(if (state.gameState?.gameMode == "CPU_LOCAL" || state.screen == DaifugoScreen.CPU_SETUP) "処理中…" else "通信中…")
+                                }
                             }
                         }
                     }
-                }
 
-                state.yajuCutIn?.let { cutIn ->
-                    YajuCutInOverlay(
-                        cutIn = cutIn,
-                        game = state.gameState,
-                        onDismiss = viewModel::clearYajuCutIn,
-                    )
-                }
+                    state.yajuCutIn?.let { cutIn ->
+                        YajuCutInOverlay(
+                            cutIn = cutIn,
+                            game = state.gameState,
+                            onDismiss = viewModel::clearYajuCutIn,
+                        )
+                    }
 
-                state.ruleCutIns.firstOrNull()?.let { cutIn ->
-                    RuleCutInOverlay(
-                        cutIn = cutIn,
-                        game = state.gameState,
-                        onDismiss = viewModel::clearRuleCutIn,
-                    )
+                    state.ruleCutIns.firstOrNull()?.let { cutIn ->
+                        RuleCutInOverlay(
+                            cutIn = cutIn,
+                            game = state.gameState,
+                            onDismiss = viewModel::clearRuleCutIn,
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+/**
+ * 起動直後のタイトル画面。
+ *
+ * android/app/src/main/res/drawable/title_screen.(png|jpg|webp)
+ * を配置すると全面背景として使用する。未配置でもビルド可能で、
+ * 黒背景のフォールバック表示になる。
+ */
+@Composable
+private fun TitleScreen(onStart: () -> Unit) {
+    val context = LocalContext.current
+    val titleImageId = remember {
+        context.resources.getIdentifier(
+            "title_screen",
+            "drawable",
+            context.packageName,
+        )
+    }
+    val tapAlpha = remember { Animatable(0.35f) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            tapAlpha.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 900),
+            )
+            tapAlpha.animateTo(
+                targetValue = 0.35f,
+                animationSpec = tween(durationMillis = 900),
+            )
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .clickable(onClick = onStart),
+    ) {
+        if (titleImageId != 0) {
+            Image(
+                painter = painterResource(titleImageId),
+                contentDescription = "野獣大富豪 タイトル",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Text(
+                text = "野獣大富豪",
+                modifier = Modifier.align(Alignment.Center),
+                color = Color.White,
+                fontSize = 40.sp,
+                fontWeight = FontWeight.Black,
+            )
+        }
+
+        // 背景写真の明暗に左右されずTAP TO STARTを読めるよう下部だけ薄く暗転する。
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(150.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.72f),
+                        )
+                    )
+                )
+        )
+
+        Text(
+            text = "TAP TO START",
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 44.dp)
+                .graphicsLayer(alpha = tapAlpha.value),
+            color = Color.White,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 3.sp,
+        )
     }
 }
 
