@@ -255,10 +255,13 @@ class LocalCpuGameManager {
         } ?: error("チャレンジ用の${rank.name}を確保できません")
 
         val incoming = donor.hand.first { it.rank == rank }
+        val eightCount = human.countRank(Rank.EIGHT)
+        val tenCount = human.countRank(Rank.TEN)
         val outgoing = human.hand.firstOrNull { card ->
-            !(card.suit == Mark.DIAMOND && card.rank == Rank.THREE) &&
-                card.rank != Rank.EIGHT &&
-                card.rank != Rank.TEN
+            val diamondThree = card.suit == Mark.DIAMOND && card.rank == Rank.THREE
+            val lastRequiredEight = card.rank == Rank.EIGHT && eightCount <= 1
+            val lastRequiredTen = card.rank == Rank.TEN && tenCount <= 1
+            !diamondThree && !lastRequiredEight && !lastRequiredTen
         } ?: error("チャレンジ用の交換カードを確保できません")
 
         human.removeCards(listOf(outgoing))
