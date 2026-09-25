@@ -511,20 +511,6 @@ private fun MainMenuScreen(
             }
         }
         item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFE3B3)),
-                shape = RoundedCornerShape(20.dp),
-            ) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("🔥 やりますねぇ！チャレンジ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
-                    Text("初期手札に8と10を最低1枚ずつ保証。開始直後から野獣上がりを狙う専用CPUモード。")
-                    Button(onClick = viewModel::startYajuChallenge, modifier = Modifier.fillMaxWidth()) {
-                        Text("チャレンジ開始")
-                    }
-                }
-            }
-        }
-        item {
             DailyMissionCard(state = state, onClaim = viewModel::claimDailyMission)
         }
         item {
@@ -735,6 +721,29 @@ private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
         item {
             Button(onClick = viewModel::startCpuGame, modifier = Modifier.fillMaxWidth()) {
                 Text("オフラインでCPU戦スタート", fontWeight = FontWeight.ExtraBold)
+            }
+        }
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFE3B3)),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("🔥 やりますねぇ！チャレンジ", fontWeight = FontWeight.Black)
+                    Text(
+                        "8と10を初期手札に保証。野獣ルール・8切りは自動でONになります。",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Button(
+                        onClick = viewModel::startYajuChallenge,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("チャレンジモード開始", fontWeight = FontWeight.ExtraBold)
+                    }
+                }
             }
         }
     }

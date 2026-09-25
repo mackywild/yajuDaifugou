@@ -235,7 +235,6 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     fun claimDailyMission(missionId: String) {
         runCatching { progressRepository.claimDailyMission(missionId) }
             .onSuccess { progress ->
-                val mission = DailyMissionRules.views(progress.daily).firstOrNull { it.id == missionId }
                 update {
                     copy(
                         progress = progress,
@@ -354,7 +353,10 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun refreshState(silent: Boolean = true) {
-        if (_uiState.value.gameState?.(gameMode == "CPU_LOCAL" || gameMode == "YAJU_CHALLENGE")) return
+        if (_uiState.value.gameState?.let {
+                it.gameMode == "CPU_LOCAL" || it.gameMode == "YAJU_CHALLENGE"
+            } == true
+        ) return
         val roomId = _uiState.value.roomId ?: return
         viewModelScope.launch {
             if (!silent) update { copy(loading = true) }

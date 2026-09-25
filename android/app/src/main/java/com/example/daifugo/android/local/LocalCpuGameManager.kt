@@ -244,7 +244,7 @@ class LocalCpuGameManager {
         val human = gameState.players.first { it.id == humanId }
         guaranteeRank(gameState, human, Rank.EIGHT)
         guaranteeRank(gameState, human, Rank.TEN)
-        gameState.players.forEach(Player::sortHand)
+        gameState.players.forEach { it.sortHand() }
     }
 
     private fun guaranteeRank(gameState: GameState, human: Player, rank: Rank) {
