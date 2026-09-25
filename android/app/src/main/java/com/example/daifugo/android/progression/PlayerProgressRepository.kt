@@ -129,7 +129,7 @@ class PlayerProgressRepository(context: Context) {
 
         saveFor(accountKey, updated)
         preferences.edit()
-            .putStringSet(seenMatchesKey(accountKey), seen.takeLast(MAX_SEEN_MATCHES).toSet())
+            .putStringSet(seenMatchesKey(accountKey), seen.toList().takeLast(MAX_SEEN_MATCHES).toSet())
             .apply()
 
         return MatchProgressResult(updated, earned)
