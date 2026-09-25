@@ -8,6 +8,7 @@ data class PlayerProgress(
     val displayName: String = "GUEST",
     val totalExp: Int = 0,
     val gachaMaterial: Int = 0,
+    val inventory: Map<String, Int> = emptyMap(),
     val stats: MatchStats = MatchStats(),
     val daily: DailyMissionState = DailyMissionState.today(),
 ) {
