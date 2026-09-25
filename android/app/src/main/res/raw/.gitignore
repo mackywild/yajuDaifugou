@@ -1,0 +1,3 @@
+# Keep this directory in Git even before audio assets are added.
+# Actual game audio files such as yaju_bgm.mp3 should be committed here.
+!.gitignore
