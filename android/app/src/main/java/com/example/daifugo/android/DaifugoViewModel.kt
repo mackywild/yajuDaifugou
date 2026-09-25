@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 
 /** アプリ内の主要画面。 */
 enum class DaifugoScreen {
+    TITLE,
     LOGIN,
     MAIN_MENU,
     MULTIPLAYER,
@@ -76,7 +77,7 @@ data class CpuTurnAnimation(
 )
 
 data class DaifugoUiState(
-    val screen: DaifugoScreen = DaifugoScreen.MAIN_MENU,
+    val screen: DaifugoScreen = DaifugoScreen.TITLE,
     val serverUrl: String = "http://10.0.2.2:8080",
     val password: String = "",
     val playerName: String = "",
@@ -150,6 +151,15 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     fun setRuleForbiddenFinish(value: Boolean) = update { copy(ruleForbiddenFinish = value) }
 
     fun clearMessage() = update { copy(errorMessage = null, infoMessage = null) }
+
+    /** タイトル画面のTAP TO STARTからメインメニューへ進む。 */
+    fun enterMainMenu() = update {
+        copy(
+            screen = DaifugoScreen.MAIN_MENU,
+            errorMessage = null,
+            infoMessage = null,
+        )
+    }
 
     /** 表示中の野獣確定カットインを、同一イベントの場合だけ閉じる。 */
     fun clearYajuCutIn(id: Long) = update {
