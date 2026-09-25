@@ -1,6 +1,9 @@
 package com.example.daifugo.android.progression
 
 import android.content.Context
+import com.example.daifugo.android.gacha.DefaultGachaCatalog
+import com.example.daifugo.android.gacha.GachaPullResult
+import com.example.daifugo.android.gacha.GachaService
 import java.time.LocalDate
 import org.json.JSONArray
 import org.json.JSONObject
@@ -8,6 +11,7 @@ import org.json.JSONObject
 class PlayerProgressRepository(context: Context) {
     private val preferences =
         context.getSharedPreferences("daifugo_progression", Context.MODE_PRIVATE)
+    private val gachaService = GachaService()
 
     fun load(): PlayerProgress {
         val accountKey = activeAccountKey()
@@ -15,6 +19,28 @@ class PlayerProgressRepository(context: Context) {
         val normalized = normalizeDaily(loaded)
         if (normalized != loaded) saveFor(accountKey, normalized)
         return normalized
+    }
+
+    fun performGacha(count: Int): Pair<PlayerProgress, GachaPullResult> {
+        val accountKey = activeAccountKey()
+        val current = normalizeDaily(loadFor(accountKey))
+        val result = gachaService.pull(
+            count = count,
+            materialBalance = current.gachaMaterial,
+            catalog = DefaultGachaCatalog.items,
+        )
+
+        val inventory = current.inventory.toMutableMap()
+        result.items.forEach { item ->
+            inventory[item.id] = (inventory[item.id] ?: 0) + 1
+        }
+
+        val updated = current.copy(
+            gachaMaterial = current.gachaMaterial - result.materialSpent,
+            inventory = inventory,
+        )
+        saveFor(accountKey, updated)
+        return updated to result
     }
 
     fun claimDailyMission(missionId: String): PlayerProgress {
@@ -140,6 +166,9 @@ class PlayerProgressRepository(context: Context) {
         .put("displayName", progress.displayName)
         .put("totalExp", progress.totalExp)
         .put("gachaMaterial", progress.gachaMaterial)
+        .put("inventory", JSONObject().apply {
+            progress.inventory.forEach { (itemId, count) -> put(itemId, count) }
+        })
         .put("daily", JSONObject()
             .put("date", progress.daily.date)
             .put("matchesPlayed", progress.daily.matchesPlayed)
@@ -162,6 +191,14 @@ class PlayerProgressRepository(context: Context) {
         val root = JSONObject(raw)
         val stats = root.optJSONObject("stats") ?: JSONObject()
         val daily = root.optJSONObject("daily") ?: JSONObject()
+        val inventoryJson = root.optJSONObject("inventory") ?: JSONObject()
+        val inventory = buildMap<String, Int> {
+            val keys = inventoryJson.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                put(key, inventoryJson.optInt(key, 0))
+            }
+        }
         val claimedArray = daily.optJSONArray("claimedMissionIds") ?: JSONArray()
         val claimed = (0 until claimedArray.length())
             .mapNotNull { index -> claimedArray.optString(index).takeIf { it.isNotBlank() } }
@@ -171,6 +208,7 @@ class PlayerProgressRepository(context: Context) {
             displayName = root.optString("displayName", "GUEST"),
             totalExp = root.optInt("totalExp", 0),
             gachaMaterial = root.optInt("gachaMaterial", 0),
+            inventory = inventory,
             stats = MatchStats(
                 totalMatches = stats.optInt("totalMatches", 0),
                 wins = stats.optInt("wins", 0),

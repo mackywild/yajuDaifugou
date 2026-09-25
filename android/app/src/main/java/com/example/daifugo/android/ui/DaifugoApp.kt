@@ -89,6 +89,8 @@ import com.example.daifugo.android.DaifugoScreen
 import com.example.daifugo.android.audio.YajuAudioPlayer
 import com.example.daifugo.android.DaifugoUiState
 import com.example.daifugo.android.DaifugoViewModel
+import com.example.daifugo.android.gacha.DefaultGachaCatalog
+import com.example.daifugo.android.gacha.GachaRules
 import com.example.daifugo.android.data.CardDto
 import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.PlayerDto
@@ -210,6 +212,7 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                         )
                         DaifugoScreen.MULTIPLAYER -> LobbyScreen(state, viewModel)
                         DaifugoScreen.CPU_SETUP -> CpuSetupScreen(state, viewModel)
+                        DaifugoScreen.GACHA -> GachaScreen(state, viewModel)
                         DaifugoScreen.ROOM -> RoomScreen(state, viewModel)
                         DaifugoScreen.GAME -> GameScreen(state, viewModel)
                         DaifugoScreen.RESULT -> ResultScreen(state, viewModel)
@@ -514,6 +517,14 @@ private fun MainMenuScreen(
             DailyMissionCard(state = state, onClaim = viewModel::claimDailyMission)
         }
         item {
+            OutlinedButton(
+                onClick = viewModel::openGacha,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("🎰 ガチャ　素材 ${state.progress.gachaMaterial}")
+            }
+        }
+        item {
             Card(colors = CardDefaults.cardColors(containerColor = SoftGold), shape = RoundedCornerShape(20.dp)) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("🤖 【ひとりでイク】", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
@@ -526,6 +537,90 @@ private fun MainMenuScreen(
 }
 
 
+
+
+@Composable
+private fun GachaScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
+    val catalogReady = DefaultGachaCatalog.items.isNotEmpty()
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("ガチャ", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+                    Text("貯めた素材をここでまとめて使用します", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
+            }
+        }
+
+        item {
+            CasinoPanel(title = "所持素材") {
+                Text(
+                    "${state.progress.gachaMaterial}",
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Black,
+                    color = CasinoGold,
+                )
+            }
+        }
+
+        item {
+            CasinoPanel(title = "ガチャ") {
+                if (!catalogReady) {
+                    Text("ガチャ基盤は準備完了。排出アイテムは次フェーズで登録します。", fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Text("アイテム登録後、1回引き / 10回まとめ引きが有効になります。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Button(
+                        onClick = { viewModel.pullGacha(1) },
+                        enabled = catalogReady && state.progress.gachaMaterial >= GachaRules.costFor(1),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text("1回\n素材×${GachaRules.costFor(1)}", textAlign = TextAlign.Center)
+                    }
+                    Button(
+                        onClick = { viewModel.pullGacha(10) },
+                        enabled = catalogReady && state.progress.gachaMaterial >= GachaRules.costFor(10),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text("10回まとめて\n素材×${GachaRules.costFor(10)}", textAlign = TextAlign.Center)
+                    }
+                }
+            }
+        }
+
+        if (state.lastGachaPulls.isNotEmpty()) {
+            item {
+                CasinoPanel(title = "今回の結果") {
+                    state.lastGachaPulls.forEach { item ->
+                        Text("${item.rarity}　${item.displayName}")
+                    }
+                }
+            }
+        }
+
+        item {
+            CasinoPanel(title = "所持アイテム") {
+                if (state.progress.inventory.isEmpty()) {
+                    Text("まだアイテムを所持していません")
+                } else {
+                    state.progress.inventory.forEach { (itemId, count) ->
+                        Text("$itemId × $count")
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun DailyMissionCard(
