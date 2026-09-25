@@ -94,6 +94,7 @@ import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.PlayerDto
 import com.example.daifugo.android.playgames.PlayGamesAccount
 import com.example.daifugo.android.playgames.PlayGamesAccountManager
+import com.example.daifugo.android.progression.DailyMissionRules
 import com.example.daifugo.android.progression.PlayerProgress
 import com.example.daifugo.android.ui.theme.CasinoGold
 import com.example.daifugo.android.ui.theme.CasinoGreen
@@ -510,6 +511,23 @@ private fun MainMenuScreen(
             }
         }
         item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFE3B3)),
+                shape = RoundedCornerShape(20.dp),
+            ) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("🔥 やりますねぇ！チャレンジ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                    Text("初期手札に8と10を最低1枚ずつ保証。開始直後から野獣上がりを狙う専用CPUモード。")
+                    Button(onClick = viewModel::startYajuChallenge, modifier = Modifier.fillMaxWidth()) {
+                        Text("チャレンジ開始")
+                    }
+                }
+            }
+        }
+        item {
+            DailyMissionCard(state = state, onClaim = viewModel::claimDailyMission)
+        }
+        item {
             Card(colors = CardDefaults.cardColors(containerColor = SoftGold), shape = RoundedCornerShape(20.dp)) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("🤖 【ひとりでイク】", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
@@ -521,6 +539,59 @@ private fun MainMenuScreen(
     }
 }
 
+
+
+@Composable
+private fun DailyMissionCard(
+    state: DaifugoUiState,
+    onClaim: (String) -> Unit,
+) {
+    val missions = DailyMissionRules.views(state.progress.daily)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "デイリーミッション",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(
+                    "素材 ${state.progress.gachaMaterial}",
+                    color = CasinoGold,
+                    fontWeight = FontWeight.Black,
+                )
+            }
+
+            missions.forEach { mission ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(mission.title, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "${mission.progress.coerceAtMost(mission.target)} / ${mission.target}　報酬: 素材×${mission.rewardMaterial}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    when {
+                        mission.claimed -> Text("受取済", color = CasinoGreen, fontWeight = FontWeight.Bold)
+                        mission.claimable -> Button(onClick = { onClaim(mission.id) }) { Text("受取") }
+                        else -> Text("進行中", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun ProgressProfileCard(
@@ -2014,7 +2085,7 @@ private fun GameStateDto.avatarIndex(playerId: String): Int =
 
 /** CPUローカル戦で使う写真アセット名。CPU以外・通信対戦ではnull。 */
 private fun GameStateDto.cpuAvatarAssetName(playerId: String): String? {
-    if (gameMode != "CPU_LOCAL") return null
+    if (gameMode != "CPU_LOCAL" && gameMode != "YAJU_CHALLENGE") return null
 
     val cpuIndex = players
         .filter { it.cpu }

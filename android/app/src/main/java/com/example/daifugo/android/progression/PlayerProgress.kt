@@ -1,12 +1,15 @@
 package com.example.daifugo.android.progression
 
+import java.time.LocalDate
 import kotlin.math.max
 
 data class PlayerProgress(
     val accountKey: String = "guest",
     val displayName: String = "GUEST",
     val totalExp: Int = 0,
+    val gachaMaterial: Int = 0,
     val stats: MatchStats = MatchStats(),
+    val daily: DailyMissionState = DailyMissionState.today(),
 ) {
     val level: Int get() = ProgressionRules.levelFor(totalExp)
     val expIntoLevel: Int get() = ProgressionRules.expIntoLevel(totalExp)
@@ -79,4 +82,62 @@ object ProgressionRules {
         }
         return remaining
     }
+}
+
+
+data class DailyMissionState(
+    val date: String,
+    val matchesPlayed: Int = 0,
+    val wins: Int = 0,
+    val challengePlayed: Int = 0,
+    val claimedMissionIds: Set<String> = emptySet(),
+) {
+    companion object {
+        fun today(): DailyMissionState = DailyMissionState(LocalDate.now().toString())
+    }
+}
+
+data class DailyMissionView(
+    val id: String,
+    val title: String,
+    val progress: Int,
+    val target: Int,
+    val rewardMaterial: Int,
+    val claimed: Boolean,
+) {
+    val completed: Boolean get() = progress >= target
+    val claimable: Boolean get() = completed && !claimed
+}
+
+object DailyMissionRules {
+    const val PLAY_3 = "play_3"
+    const val WIN_1 = "win_1"
+    const val CHALLENGE_1 = "challenge_1"
+
+    fun views(state: DailyMissionState): List<DailyMissionView> = listOf(
+        DailyMissionView(
+            id = PLAY_3,
+            title = "対戦を3回完了する",
+            progress = state.matchesPlayed,
+            target = 3,
+            rewardMaterial = 10,
+            claimed = PLAY_3 in state.claimedMissionIds,
+        ),
+        DailyMissionView(
+            id = WIN_1,
+            title = "1回大富豪になる",
+            progress = state.wins,
+            target = 1,
+            rewardMaterial = 20,
+            claimed = WIN_1 in state.claimedMissionIds,
+        ),
+        DailyMissionView(
+            id = CHALLENGE_1,
+            title = "やりますねぇ！チャレンジを1回プレイ",
+            progress = state.challengePlayed,
+            target = 1,
+            rewardMaterial = 15,
+            claimed = CHALLENGE_1 in state.claimedMissionIds,
+        ),
+    )
 }
