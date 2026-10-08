@@ -8,7 +8,6 @@ import com.example.daifugo.android.data.CardDto
 import com.example.daifugo.android.data.DaifugoApiClient
 import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.RuleSettingsDto
-import com.example.daifugo.android.gacha.GachaItemDefinition
 import com.example.daifugo.android.local.LocalCpuActionType
 import com.example.daifugo.android.local.LocalCpuGameManager
 import com.example.daifugo.android.progression.DailyMissionRules
@@ -31,7 +30,12 @@ enum class DaifugoScreen {
     MAIN_MENU,
     MULTIPLAYER,
     CPU_SETUP,
-    GACHA,
+    CHALLENGE_SETUP,
+    MISSION,
+    PROFILE,
+    COLLECTION,
+    PRESENT_BOX,
+    SETTINGS,
     ROOM,
     GAME,
     RESULT,
@@ -102,7 +106,6 @@ data class DaifugoUiState(
     val playGamesDisplayName: String? = null,
     val progress: PlayerProgress = PlayerProgress(),
     val lastEarnedExp: Int = 0,
-    val lastGachaPulls: List<GachaItemDefinition> = emptyList(),
     val roomId: String? = null,
     val gameState: GameStateDto? = null,
     val selectedCardIndices: Set<Int> = emptySet(),
@@ -235,29 +238,17 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun openCpuSetup() = update { copy(screen = DaifugoScreen.CPU_SETUP, errorMessage = null, infoMessage = null) }
 
-    fun openGacha() = update {
-        copy(
-            screen = DaifugoScreen.GACHA,
-            lastGachaPulls = emptyList(),
-            errorMessage = null,
-            infoMessage = null,
-        )
-    }
+    fun openChallengeSetup() = update { copy(screen = DaifugoScreen.CHALLENGE_SETUP, errorMessage = null, infoMessage = null) }
 
-    fun pullGacha(count: Int) {
-        runCatching { progressRepository.performGacha(count) }
-            .onSuccess { (progress, result) ->
-                update {
-                    copy(
-                        progress = progress,
-                        lastGachaPulls = result.items,
-                        infoMessage = "${count}回ガチャを引きました",
-                        errorMessage = null,
-                    )
-                }
-            }
-            .onFailure(::handleError)
-    }
+    fun openMission() = update { copy(screen = DaifugoScreen.MISSION, errorMessage = null, infoMessage = null) }
+
+    fun openProfile() = update { copy(screen = DaifugoScreen.PROFILE, errorMessage = null, infoMessage = null) }
+
+    fun openCollection() = update { copy(screen = DaifugoScreen.COLLECTION, errorMessage = null, infoMessage = null) }
+
+    fun openPresentBox() = update { copy(screen = DaifugoScreen.PRESENT_BOX, errorMessage = null, infoMessage = null) }
+
+    fun openSettings() = update { copy(screen = DaifugoScreen.SETTINGS, errorMessage = null, infoMessage = null) }
 
     fun claimDailyMission(missionId: String) {
         runCatching { progressRepository.claimDailyMission(missionId) }

@@ -6,7 +6,13 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -53,7 +59,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.CornerRadius
@@ -89,8 +97,6 @@ import com.example.daifugo.android.DaifugoScreen
 import com.example.daifugo.android.audio.YajuAudioPlayer
 import com.example.daifugo.android.DaifugoUiState
 import com.example.daifugo.android.DaifugoViewModel
-import com.example.daifugo.android.gacha.DefaultGachaCatalog
-import com.example.daifugo.android.gacha.GachaRules
 import com.example.daifugo.android.data.CardDto
 import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.PlayerDto
@@ -189,7 +195,9 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                     .navigationBarsPadding()
                     .imePadding(),
             ) {
-                AppHeader(state)
+                if (state.screen != DaifugoScreen.MAIN_MENU) {
+                    AppHeader(state)
+                }
                 MessageStrip(
                     state = state,
                     onDismiss = viewModel::clearMessage,
@@ -200,22 +208,61 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                         .weight(1f)
                         .fillMaxWidth(),
                 ) {
-                    when (state.screen) {
-                        DaifugoScreen.TITLE -> Unit
-                        DaifugoScreen.LOGIN -> LoginScreen(state, viewModel)
-                        DaifugoScreen.MAIN_MENU -> MainMenuScreen(
-                            state = state,
-                            viewModel = viewModel,
-                            onPlayGamesSignIn = {
-                                playGamesAccountManager?.signIn(::applyPlayGamesAccount)
-                            },
-                        )
-                        DaifugoScreen.MULTIPLAYER -> LobbyScreen(state, viewModel)
-                        DaifugoScreen.CPU_SETUP -> CpuSetupScreen(state, viewModel)
-                        DaifugoScreen.GACHA -> GachaScreen(state, viewModel)
-                        DaifugoScreen.ROOM -> RoomScreen(state, viewModel)
-                        DaifugoScreen.GAME -> GameScreen(state, viewModel)
-                        DaifugoScreen.RESULT -> ResultScreen(state, viewModel)
+                    AnimatedContent(
+                        targetState = state.screen,
+                        transitionSpec = {
+                            (fadeIn(tween(260)) + scaleIn(initialScale = 0.965f, animationSpec = tween(320)))
+                                .togetherWith(fadeOut(tween(150)))
+                        },
+                        label = "dvdCasinoScreenTransition",
+                    ) { screen ->
+                        when (screen) {
+                            DaifugoScreen.TITLE -> Unit
+                            DaifugoScreen.LOGIN -> LoginScreen(state, viewModel)
+                            DaifugoScreen.MAIN_MENU -> MainMenuScreen(
+                                state = state,
+                                viewModel = viewModel,
+                                onPlayGamesSignIn = {
+                                    playGamesAccountManager?.signIn(::applyPlayGamesAccount)
+                                },
+                            )
+                            DaifugoScreen.MULTIPLAYER -> LobbyScreen(state, viewModel)
+                            DaifugoScreen.CPU_SETUP -> CpuSetupScreen(state, viewModel)
+                            DaifugoScreen.CHALLENGE_SETUP -> ChallengeSetupScreen(state, viewModel)
+                            DaifugoScreen.MISSION -> MenuPlaceholderScreen(
+                                title = "MISSION",
+                                subtitle = "ミッション",
+                                description = "デイリー・累計ミッションと報酬を確認する。",
+                                onBack = viewModel::backToMenu,
+                            )
+                            DaifugoScreen.PROFILE -> MenuPlaceholderScreen(
+                                title = "PROFILE",
+                                subtitle = "プロフィール",
+                                description = "戦績・レベル・装備中アバターを確認する。",
+                                onBack = viewModel::backToMenu,
+                            )
+                            DaifugoScreen.COLLECTION -> MenuPlaceholderScreen(
+                                title = "COLLECTION",
+                                subtitle = "コレクション",
+                                description = "アバター・フレーム・トランプ・エフェクトを閲覧する。",
+                                onBack = viewModel::backToMenu,
+                            )
+                            DaifugoScreen.PRESENT_BOX -> MenuPlaceholderScreen(
+                                title = "PRESENT",
+                                subtitle = "プレゼントボックス",
+                                description = "管理者配布やミッション報酬を受け取る。",
+                                onBack = viewModel::backToMenu,
+                            )
+                            DaifugoScreen.SETTINGS -> MenuPlaceholderScreen(
+                                title = "SYSTEM",
+                                subtitle = "設定",
+                                description = "BGM・SE・演出などを設定する。",
+                                onBack = viewModel::backToMenu,
+                            )
+                            DaifugoScreen.ROOM -> RoomScreen(state, viewModel)
+                            DaifugoScreen.GAME -> GameScreen(state, viewModel)
+                            DaifugoScreen.RESULT -> ResultScreen(state, viewModel)
+                        }
                     }
 
                     if (state.loading) {
@@ -480,142 +527,339 @@ private fun LoginScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
     }
 }
 
+private enum class CasinoMenuItem(
+    val symbol: String,
+    val label: String,
+    val english: String,
+    val description: String,
+) {
+    SOLO("♠", "ひとりでいく", "SOLO PLAY", "CPUと自由なルールで対戦する"),
+    MULTI("♦", "みんなでいく", "MULTIPLAYER", "オンラインの同じ卓へ参加する"),
+    CHALLENGE("8→10", "チャレンジモード", "YAJU CHALLENGE", "8と10が揃った状態から野獣上がりを狙う"),
+    MISSION("✓", "ミッション", "MISSION", "遊んで条件を達成し、アイテム報酬を獲得する"),
+    PROFILE("♛", "プロフィール", "PROFILE", "戦績・レベル・アバターを確認する"),
+    COLLECTION("▣", "コレクション", "COLLECTION", "獲得したカスタマイズアイテムを見る"),
+    PRESENT("◆", "プレゼントボックス", "PRESENT", "管理者配布・報酬を受け取る"),
+    SETTINGS("⚙", "設定", "SYSTEM", "BGM・SE・演出などを調整する"),
+}
+
 @Composable
 private fun MainMenuScreen(
     state: DaifugoUiState,
     viewModel: DaifugoViewModel,
     onPlayGamesSignIn: () -> Unit,
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        item {
-            Text("メインメニュー", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-            Text("遊び方を選択してください", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    var selected by remember { mutableStateOf(CasinoMenuItem.SOLO) }
+    val missionBadge = DailyMissionRules.views(state.progress.daily).count { it.claimable }
+
+    fun enterSelected() {
+        when (selected) {
+            CasinoMenuItem.SOLO -> viewModel.openCpuSetup()
+            CasinoMenuItem.MULTI -> viewModel.openMultiplayer()
+            CasinoMenuItem.CHALLENGE -> viewModel.openChallengeSetup()
+            CasinoMenuItem.MISSION -> viewModel.openMission()
+            CasinoMenuItem.PROFILE -> viewModel.openProfile()
+            CasinoMenuItem.COLLECTION -> viewModel.openCollection()
+            CasinoMenuItem.PRESENT -> viewModel.openPresentBox()
+            CasinoMenuItem.SETTINGS -> viewModel.openSettings()
         }
-        item {
-            ProgressProfileCard(
-                progress = state.progress,
-                playGamesConfigured = state.playGamesConfigured,
-                playGamesSignedIn = state.playGamesSignedIn,
-                playGamesDisplayName = state.playGamesDisplayName,
-                onPlayGamesSignIn = onPlayGamesSignIn,
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF070B08),
+                        Color(0xFF102119),
+                        Color(0xFF050706),
+                    )
+                )
+            ),
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            drawCircle(
+                color = Color(0xFFB9913D).copy(alpha = 0.10f),
+                radius = size.minDimension * 0.44f,
+                center = Offset(size.width * 0.84f, size.height * 0.22f),
+            )
+            drawCircle(
+                color = Color(0xFF0E5A39).copy(alpha = 0.22f),
+                radius = size.minDimension * 0.34f,
+                center = Offset(size.width * 0.12f, size.height * 0.76f),
             )
         }
-        item {
-            Card(colors = CardDefaults.cardColors(containerColor = SoftGreen), shape = RoundedCornerShape(20.dp)) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("🌐 マルチプレイ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
-                    Text("サーバーへ接続してPC・Android・iPhoneで同じ卓に参加するオンライン対戦。")
-                    Button(onClick = viewModel::openMultiplayer, modifier = Modifier.fillMaxWidth()) { Text("マルチプレイへ") }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "YAJU DAIFUGO",
+                            color = CasinoGold,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 3.sp,
+                        )
+                        Text(
+                            "CASINO LOUNGE",
+                            color = Color.White,
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp,
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(100.dp),
+                        color = Color.Black.copy(alpha = 0.35f),
+                        border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.55f)),
+                    ) {
+                        Text(
+                            "Lv.${state.progress.level}",
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            color = CasinoGold,
+                            fontWeight = FontWeight.Black,
+                        )
+                    }
                 }
             }
-        }
-        item {
-            DailyMissionCard(state = state, onClaim = viewModel::claimDailyMission)
-        }
-        item {
-            OutlinedButton(
-                onClick = viewModel::openGacha,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("🎰 ガチャ　素材 ${state.progress.gachaMaterial}")
+
+            item {
+                CasinoSelectionPreview(
+                    selected = selected,
+                    onEnter = ::enterSelected,
+                )
             }
-        }
-        item {
-            Card(colors = CardDefaults.cardColors(containerColor = SoftGold), shape = RoundedCornerShape(20.dp)) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("🤖 【ひとりでイク】", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
-                    Text("完全オフライン。サーバー不要でCPU人数・難易度・特殊ルールを設定して即対戦。N-GODは自己対戦学習済み。")
-                    Button(onClick = viewModel::openCpuSetup, modifier = Modifier.fillMaxWidth()) { Text("CPU戦へ") }
+
+            item {
+                Text(
+                    "MAIN PLAY",
+                    color = CasinoGold.copy(alpha = 0.9f),
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp,
+                    fontSize = 12.sp,
+                )
+                Spacer(Modifier.height(8.dp))
+                CasinoMenuTile(
+                    item = CasinoMenuItem.SOLO,
+                    selected = selected == CasinoMenuItem.SOLO,
+                    onSelect = { selected = CasinoMenuItem.SOLO },
+                )
+                Spacer(Modifier.height(8.dp))
+                CasinoMenuTile(
+                    item = CasinoMenuItem.MULTI,
+                    selected = selected == CasinoMenuItem.MULTI,
+                    onSelect = { selected = CasinoMenuItem.MULTI },
+                )
+                Spacer(Modifier.height(8.dp))
+                CasinoMenuTile(
+                    item = CasinoMenuItem.CHALLENGE,
+                    selected = selected == CasinoMenuItem.CHALLENGE,
+                    onSelect = { selected = CasinoMenuItem.CHALLENGE },
+                    accent = Color(0xFF9D2C2C),
+                )
+            }
+
+            item {
+                Text(
+                    "CONTENTS",
+                    color = CasinoGold.copy(alpha = 0.9f),
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp,
+                    fontSize = 12.sp,
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CasinoMenuTile(
+                        item = CasinoMenuItem.MISSION,
+                        selected = selected == CasinoMenuItem.MISSION,
+                        onSelect = { selected = CasinoMenuItem.MISSION },
+                        badge = missionBadge.takeIf { it > 0 },
+                        modifier = Modifier.weight(1f),
+                        compact = true,
+                    )
+                    CasinoMenuTile(
+                        item = CasinoMenuItem.PROFILE,
+                        selected = selected == CasinoMenuItem.PROFILE,
+                        onSelect = { selected = CasinoMenuItem.PROFILE },
+                        modifier = Modifier.weight(1f),
+                        compact = true,
+                    )
                 }
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CasinoMenuTile(
+                        item = CasinoMenuItem.COLLECTION,
+                        selected = selected == CasinoMenuItem.COLLECTION,
+                        onSelect = { selected = CasinoMenuItem.COLLECTION },
+                        modifier = Modifier.weight(1f),
+                        compact = true,
+                    )
+                    CasinoMenuTile(
+                        item = CasinoMenuItem.PRESENT,
+                        selected = selected == CasinoMenuItem.PRESENT,
+                        onSelect = { selected = CasinoMenuItem.PRESENT },
+                        modifier = Modifier.weight(1f),
+                        compact = true,
+                    )
+                }
+            }
+
+            item {
+                CasinoMenuTile(
+                    item = CasinoMenuItem.SETTINGS,
+                    selected = selected == CasinoMenuItem.SETTINGS,
+                    onSelect = { selected = CasinoMenuItem.SETTINGS },
+                    compact = true,
+                )
+            }
+
+            item {
+                ProgressProfileCard(
+                    progress = state.progress,
+                    playGamesConfigured = state.playGamesConfigured,
+                    playGamesSignedIn = state.playGamesSignedIn,
+                    playGamesDisplayName = state.playGamesDisplayName,
+                    onPlayGamesSignIn = onPlayGamesSignIn,
+                )
             }
         }
     }
 }
 
-
-
+@Composable
+private fun CasinoSelectionPreview(
+    selected: CasinoMenuItem,
+    onEnter: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.48f)),
+        border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.55f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Text(
+                selected.english,
+                color = CasinoGold,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+                fontSize = 12.sp,
+            )
+            Text(
+                selected.label,
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+            )
+            Text(
+                selected.description,
+                color = Color.White.copy(alpha = 0.70f),
+            )
+            Button(
+                onClick = onEnter,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = CasinoGold,
+                    contentColor = Color(0xFF171007),
+                ),
+            ) {
+                Text("SELECT", fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+            }
+        }
+    }
+}
 
 @Composable
-private fun GachaScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
-    val catalogReady = DefaultGachaCatalog.items.isNotEmpty()
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+private fun CasinoMenuTile(
+    item: CasinoMenuItem,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    modifier: Modifier = Modifier,
+    badge: Int? = null,
+    compact: Boolean = false,
+    accent: Color = CasinoGreenDark,
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.025f else 1f,
+        animationSpec = tween(180),
+        label = "casinoMenuScale",
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.68f,
+        animationSpec = tween(180),
+        label = "casinoMenuAlpha",
+    )
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.alpha = alpha
+            }
+            .clickable(onClick = onSelect),
+        shape = RoundedCornerShape(if (compact) 15.dp else 19.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) accent.copy(alpha = 0.72f) else Color.Black.copy(alpha = 0.34f),
+        ),
+        border = BorderStroke(
+            if (selected) 2.dp else 1.dp,
+            if (selected) CasinoGold else Color.White.copy(alpha = 0.14f),
+        ),
     ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("ガチャ", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-                    Text("貯めた素材をここでまとめて使用します", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
-            }
-        }
-
-        item {
-            CasinoPanel(title = "所持素材") {
+        Row(
+            modifier = Modifier.padding(
+                horizontal = if (compact) 13.dp else 17.dp,
+                vertical = if (compact) 12.dp else 15.dp,
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                item.symbol,
+                modifier = Modifier.width(if (compact) 36.dp else 48.dp),
+                color = if (selected) CasinoGold else Color.White.copy(alpha = 0.8f),
+                fontWeight = FontWeight.Black,
+                fontSize = if (compact) 17.sp else 21.sp,
+                textAlign = TextAlign.Center,
+            )
+            Column(Modifier.weight(1f)) {
                 Text(
-                    "${state.progress.gachaMaterial}",
-                    fontSize = 36.sp,
+                    item.label,
+                    color = Color.White,
                     fontWeight = FontWeight.Black,
-                    color = CasinoGold,
+                    fontSize = if (compact) 14.sp else 17.sp,
                 )
-            }
-        }
-
-        item {
-            CasinoPanel(title = "ガチャ") {
-                if (!catalogReady) {
-                    Text("ガチャ基盤は準備完了。排出アイテムは次フェーズで登録します。", fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(8.dp))
-                    Text("アイテム登録後、1回引き / 10回まとめ引きが有効になります。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (!compact) {
+                    Text(
+                        item.english,
+                        color = Color.White.copy(alpha = 0.48f),
+                        fontSize = 10.sp,
+                        letterSpacing = 1.sp,
+                    )
                 }
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+            }
+            badge?.let {
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0xFFB72828),
                 ) {
-                    Button(
-                        onClick = { viewModel.pullGacha(1) },
-                        enabled = catalogReady && state.progress.gachaMaterial >= GachaRules.costFor(1),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("1回\n素材×${GachaRules.costFor(1)}", textAlign = TextAlign.Center)
-                    }
-                    Button(
-                        onClick = { viewModel.pullGacha(10) },
-                        enabled = catalogReady && state.progress.gachaMaterial >= GachaRules.costFor(10),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("10回まとめて\n素材×${GachaRules.costFor(10)}", textAlign = TextAlign.Center)
-                    }
-                }
-            }
-        }
-
-        if (state.lastGachaPulls.isNotEmpty()) {
-            item {
-                CasinoPanel(title = "今回の結果") {
-                    state.lastGachaPulls.forEach { item ->
-                        Text("${item.rarity}　${item.displayName}")
-                    }
-                }
-            }
-        }
-
-        item {
-            CasinoPanel(title = "所持アイテム") {
-                if (state.progress.inventory.isEmpty()) {
-                    Text("まだアイテムを所持していません")
-                } else {
-                    state.progress.inventory.forEach { (itemId, count) ->
-                        Text("$itemId × $count")
-                    }
+                    Text(
+                        it.toString(),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 11.sp,
+                    )
                 }
             }
         }
@@ -767,6 +1011,112 @@ private fun StatText(label: String, value: String) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Composable
+private fun ChallengeSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("YAJU CHALLENGE", color = Color(0xFFB43A3A), fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                    Text("チャレンジモード", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+                    Text("初期手札に8と10を保証", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
+            }
+        }
+        item {
+            OutlinedTextField(
+                value = state.playerName,
+                onValueChange = viewModel::setPlayerName,
+                label = { Text("プレイヤー名") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+        }
+        item { CpuCountChoiceRow(state.cpuCount, viewModel::setCpuCount) }
+        item { ChoiceRow("難易度", listOf("EASY","NORMAL","HARD","N_GOD"), state.cpuDifficulty, viewModel::setCpuDifficulty) { difficultyLabel(it) } }
+        item { ChoiceRow("ジョーカー", listOf(0,1,2), state.cpuJokerCount, viewModel::setCpuJokerCount) { "${it}枚" } }
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFE3B3)),
+                shape = RoundedCornerShape(18.dp),
+            ) {
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("特殊条件", fontWeight = FontWeight.Black)
+                    Text("8 + 10 を初期手札に最低1枚ずつ保証")
+                    Text("野獣ルール / 8切り：強制ON", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+        item {
+            Button(
+                onClick = viewModel::startYajuChallenge,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+            ) {
+                Text("チャレンジ開始", fontWeight = FontWeight.Black)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MenuPlaceholderScreen(
+    title: String,
+    subtitle: String,
+    description: String,
+    onBack: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF080B09), Color(0xFF13251C), Color(0xFF080B09))
+                )
+            ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(22.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            TextButton(onClick = onBack) { Text("← CASINO LOUNGE") }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                title,
+                color = CasinoGold,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 3.sp,
+            )
+            Text(
+                subtitle,
+                color = Color.White,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Black,
+            )
+            Text(
+                description,
+                color = Color.White.copy(alpha = 0.72f),
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                "COMING SOON",
+                color = CasinoGold.copy(alpha = 0.45f),
+                fontWeight = FontWeight.Black,
+                letterSpacing = 4.sp,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+        }
     }
 }
 
