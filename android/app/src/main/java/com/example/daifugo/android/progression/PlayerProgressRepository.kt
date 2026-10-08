@@ -19,6 +19,38 @@ class PlayerProgressRepository(context: Context) {
         return normalized
     }
 
+    fun enqueuePresent(present: PresentEntry): PlayerProgress {
+        require(present.id.isNotBlank()) { "present id must not be blank" }
+        require(present.itemId.isNotBlank()) { "item id must not be blank" }
+        require(present.quantity > 0) { "quantity must be greater than zero" }
+
+        val accountKey = activeAccountKey()
+        val current = normalizeDaily(loadFor(accountKey))
+        if (current.presents.any { it.id == present.id }) {
+            return current
+        }
+
+        val updated = current.copy(presents = current.presents + present)
+        saveFor(accountKey, updated)
+        return updated
+    }
+
+    fun receivePresent(presentId: String): PresentReceiveResult {
+        val accountKey = activeAccountKey()
+        val current = normalizeDaily(loadFor(accountKey))
+        val result = PresentService.receiveOne(current, presentId)
+        saveFor(accountKey, result.progress)
+        return result
+    }
+
+    fun receiveAllPresents(): PresentReceiveResult {
+        val accountKey = activeAccountKey()
+        val current = normalizeDaily(loadFor(accountKey))
+        val result = PresentService.receiveAll(current)
+        saveFor(accountKey, result.progress)
+        return result
+    }
+
     fun equipCosmetic(itemId: String): PlayerProgress {
         val accountKey = activeAccountKey()
         val current = normalizeDaily(loadFor(accountKey))

@@ -241,12 +241,7 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                                 },
                             )
                             DaifugoScreen.COLLECTION -> CollectionScreen(state, viewModel)
-                            DaifugoScreen.PRESENT_BOX -> MenuPlaceholderScreen(
-                                title = "PRESENT",
-                                subtitle = "プレゼントボックス",
-                                description = "管理者配布やミッション報酬を受け取る。",
-                                onBack = viewModel::backToMenu,
-                            )
+                            DaifugoScreen.PRESENT_BOX -> PresentBoxScreen(state, viewModel)
                             DaifugoScreen.SETTINGS -> MenuPlaceholderScreen(
                                 title = "SYSTEM",
                                 subtitle = "設定",
@@ -849,6 +844,151 @@ private fun CasinoMenuTile(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PresentBoxScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
+    val presents = state.progress.presents
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "VAULT DELIVERY",
+                        color = CasinoGold,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp,
+                    )
+                    Text(
+                        "プレゼントボックス",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        "ミッション報酬・管理者配布を保管",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
+            }
+        }
+
+        if (presents.isNotEmpty()) {
+            item {
+                Button(
+                    onClick = viewModel::receiveAllPresents,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("すべて受け取る（${presents.size}件）", fontWeight = FontWeight.Black)
+                }
+            }
+        }
+
+        if (presents.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF10261C)),
+                    border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.35f)),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text("◇", color = CasinoGold, fontSize = 36.sp)
+                        Text("EMPTY", color = CasinoGold, fontWeight = FontWeight.Black, letterSpacing = 3.sp)
+                        Text(
+                            "現在受け取れるプレゼントはありません。",
+                            color = Color.White.copy(alpha = 0.68f),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            }
+        } else {
+            presents.forEach { present ->
+                item(key = present.id) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    modifier = Modifier.size(48.dp),
+                                    shape = RoundedCornerShape(13.dp),
+                                    color = CasinoGold.copy(alpha = 0.14f),
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text("◆", color = CasinoGold, fontSize = 20.sp)
+                                    }
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(present.title, fontWeight = FontWeight.Black)
+                                    Text(
+                                        present.source,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.Black.copy(alpha = 0.05f),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        present.itemName,
+                                        modifier = Modifier.weight(1f),
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(
+                                        "×${present.quantity}",
+                                        color = CasinoGold,
+                                        fontWeight = FontWeight.Black,
+                                    )
+                                }
+                            }
+
+                            Button(
+                                onClick = { viewModel.receivePresent(present.id) },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("受け取る")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Text(
+                "管理者配布も同じプレゼント形式で受信できる設計です。",
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
