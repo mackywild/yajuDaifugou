@@ -10,6 +10,10 @@ data class PlayerProgress(
     val totalExp: Int = 0,
     val inventory: Map<String, Int> = emptyMap(),
     val presents: List<PresentEntry> = emptyList(),
+    val equippedAvatarId: String? = null,
+    val equippedFrameId: String? = null,
+    val equippedCardSkinId: String? = null,
+    val equippedEffectId: String? = null,
     val stats: MatchStats = MatchStats(),
     val daily: DailyMissionState = DailyMissionState.today(),
 ) {
@@ -25,6 +29,10 @@ data class PlayerProgress(
 
     val yajuSuccessRatePercent: Double
         get() = if (stats.yajuTargets == 0) 0.0 else stats.yajuSuccesses * 100.0 / stats.yajuTargets
+
+    val challengeWinRatePercent: Double
+        get() = if (stats.challengeMatches == 0) 0.0
+        else stats.challengeWins * 100.0 / stats.challengeMatches
 }
 
 data class MatchStats(

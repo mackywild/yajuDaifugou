@@ -97,6 +97,7 @@ import com.example.daifugo.android.DaifugoScreen
 import com.example.daifugo.android.audio.YajuAudioPlayer
 import com.example.daifugo.android.DaifugoUiState
 import com.example.daifugo.android.DaifugoViewModel
+import com.example.daifugo.android.cosmetics.CosmeticCatalog
 import com.example.daifugo.android.data.CardDto
 import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.PlayerDto
@@ -230,11 +231,12 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                             DaifugoScreen.CPU_SETUP -> CpuSetupScreen(state, viewModel)
                             DaifugoScreen.CHALLENGE_SETUP -> ChallengeSetupScreen(state, viewModel)
                             DaifugoScreen.MISSION -> MissionScreen(state, viewModel)
-                            DaifugoScreen.PROFILE -> MenuPlaceholderScreen(
-                                title = "PROFILE",
-                                subtitle = "プロフィール",
-                                description = "戦績・レベル・装備中アバターを確認する。",
+                            DaifugoScreen.PROFILE -> ProfileScreen(
+                                state = state,
                                 onBack = viewModel::backToMenu,
+                                onPlayGamesSignIn = {
+                                    playGamesAccountManager?.signIn(::applyPlayGamesAccount)
+                                },
                             )
                             DaifugoScreen.COLLECTION -> MenuPlaceholderScreen(
                                 title = "COLLECTION",
@@ -716,15 +718,6 @@ private fun MainMenuScreen(
                 )
             }
 
-            item {
-                ProgressProfileCard(
-                    progress = state.progress,
-                    playGamesConfigured = state.playGamesConfigured,
-                    playGamesSignedIn = state.playGamesSignedIn,
-                    playGamesDisplayName = state.playGamesDisplayName,
-                    onPlayGamesSignIn = onPlayGamesSignIn,
-                )
-            }
         }
     }
 }
@@ -982,86 +975,204 @@ private fun MissionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
 }
 
 @Composable
-private fun ProgressProfileCard(
-    progress: PlayerProgress,
-    playGamesConfigured: Boolean,
-    playGamesSignedIn: Boolean,
-    playGamesDisplayName: String?,
+private fun ProfileScreen(
+    state: DaifugoUiState,
+    onBack: () -> Unit,
     onPlayGamesSignIn: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    val progress = state.progress
+    val avatarName = progress.equippedAvatarId
+        ?.let(CosmeticCatalog::find)
+        ?.displayName
+        ?: "未設定"
+    val frameName = progress.equippedFrameId
+        ?.let(CosmeticCatalog::find)
+        ?.displayName
+        ?: "未設定"
+    val cardName = progress.equippedCardSkinId
+        ?.let(CosmeticCatalog::find)
+        ?.displayName
+        ?: "未設定"
+    val effectName = progress.equippedEffectId
+        ?.let(CosmeticCatalog::find)
+        ?.displayName
+        ?: "未設定"
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        playGamesDisplayName ?: progress.displayName,
-                        style = MaterialTheme.typography.titleLarge,
+                        "MEMBERS CARD",
+                        color = CasinoGold,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp,
+                    )
+                    Text(
+                        "プロフィール",
+                        style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Black,
                     )
+                }
+                TextButton(onClick = onBack) { Text("← メニュー") }
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF10261C)),
+                border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.55f)),
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            modifier = Modifier.size(72.dp),
+                            shape = CircleShape,
+                            color = CasinoGold.copy(alpha = 0.14f),
+                            border = BorderStroke(2.dp, CasinoGold),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("♛", color = CasinoGold, fontSize = 28.sp)
+                            }
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                state.playGamesDisplayName ?: progress.displayName,
+                                color = Color.White,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Black,
+                            )
+                            Text(
+                                if (state.playGamesSignedIn) "Google Play Games 連携済み" else "ゲストプレイ",
+                                color = if (state.playGamesSignedIn) Color(0xFF78D6A1) else Color.White.copy(alpha = 0.55f),
+                            )
+                        }
+                        Text(
+                            "Lv.${progress.level}",
+                            color = CasinoGold,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Black,
+                        )
+                    }
+
+                    val expRatio = if (progress.expToNextLevel <= 0) 0f
+                    else progress.expIntoLevel.toFloat() / progress.expToNextLevel
+                    androidx.compose.material3.LinearProgressIndicator(
+                        progress = { expRatio.coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     Text(
-                        if (playGamesSignedIn) "Google Play Games 連携済み" else "ゲストプレイ",
-                        color = if (playGamesSignedIn) CasinoGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                        "${progress.expIntoLevel} / ${progress.expToNextLevel} EXP",
+                        color = Color.White.copy(alpha = 0.65f),
                         style = MaterialTheme.typography.labelMedium,
                     )
-                }
-                Text(
-                    "Lv.${progress.level}",
-                    color = CasinoGold,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 22.sp,
-                )
-            }
 
-            val expRatio = if (progress.expToNextLevel <= 0) 0f
-            else progress.expIntoLevel.toFloat() / progress.expToNextLevel
-            androidx.compose.material3.LinearProgressIndicator(
-                progress = { expRatio.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(
-                "${progress.expIntoLevel} / ${progress.expToNextLevel} EXP",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                StatText("対戦", "${progress.stats.totalMatches}")
-                StatText("勝率", String.format("%.1f%%", progress.winRatePercent))
-                StatText(
-                    "平均順位",
-                    if (progress.stats.totalMatches == 0) "—"
-                    else String.format("%.2f", progress.averageRank),
-                )
-                StatText("野獣成功", String.format("%.1f%%", progress.yajuSuccessRatePercent))
-            }
-
-            if (!playGamesSignedIn) {
-                if (playGamesConfigured) {
-                    OutlinedButton(
-                        onClick = onPlayGamesSignIn,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Google Play Games と連携")
+                    if (!state.playGamesSignedIn) {
+                        if (state.playGamesConfigured) {
+                            OutlinedButton(
+                                onClick = onPlayGamesSignIn,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("Google Play Games と連携")
+                            }
+                        } else {
+                            Text(
+                                "Play Console設定後にGoogle Play Games連携が有効になります",
+                                color = Color.White.copy(alpha = 0.48f),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
                     }
-                } else {
-                    Text(
-                        "Play Console設定後にGoogle Play Games連携が有効になります",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
         }
+
+        item {
+            CasinoPanel(title = "戦績") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    StatText("対戦", "${progress.stats.totalMatches}")
+                    StatText("勝率", String.format("%.1f%%", progress.winRatePercent))
+                    StatText(
+                        "平均順位",
+                        if (progress.stats.totalMatches == 0) "—"
+                        else String.format("%.2f", progress.averageRank),
+                    )
+                }
+                Spacer(Modifier.height(14.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    StatText("野獣対象", "${progress.stats.yajuTargets}")
+                    StatText("野獣成功", "${progress.stats.yajuSuccesses}")
+                    StatText("成功率", String.format("%.1f%%", progress.yajuSuccessRatePercent))
+                }
+            }
+        }
+
+        item {
+            CasinoPanel(title = "チャレンジ戦績") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    StatText("挑戦", "${progress.stats.challengeMatches}")
+                    StatText("1位", "${progress.stats.challengeWins}")
+                    StatText("勝率", String.format("%.1f%%", progress.challengeWinRatePercent))
+                }
+            }
+        }
+
+        item {
+            CasinoPanel(title = "装備中") {
+                ProfileEquipmentRow("アバター", avatarName)
+                ProfileEquipmentRow("フレーム", frameName)
+                ProfileEquipmentRow("トランプ", cardName)
+                ProfileEquipmentRow("エフェクト", effectName)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "装備変更はコレクションから行います。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileEquipmentRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            modifier = Modifier.width(92.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            value,
+            modifier = Modifier.weight(1f),
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 

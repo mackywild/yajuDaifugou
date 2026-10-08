@@ -155,6 +155,10 @@ class PlayerProgressRepository(context: Context) {
         .put("inventory", JSONObject().apply {
             progress.inventory.forEach { (itemId, count) -> put(itemId, count) }
         })
+        .put("equippedAvatarId", progress.equippedAvatarId ?: JSONObject.NULL)
+        .put("equippedFrameId", progress.equippedFrameId ?: JSONObject.NULL)
+        .put("equippedCardSkinId", progress.equippedCardSkinId ?: JSONObject.NULL)
+        .put("equippedEffectId", progress.equippedEffectId ?: JSONObject.NULL)
         .put("presents", JSONArray().apply {
             progress.presents.forEach { present ->
                 put(JSONObject()
@@ -221,6 +225,10 @@ class PlayerProgressRepository(context: Context) {
             totalExp = root.optInt("totalExp", 0),
             inventory = inventory,
             presents = presents,
+            equippedAvatarId = root.optString("equippedAvatarId").takeIf { it.isNotBlank() },
+            equippedFrameId = root.optString("equippedFrameId").takeIf { it.isNotBlank() },
+            equippedCardSkinId = root.optString("equippedCardSkinId").takeIf { it.isNotBlank() },
+            equippedEffectId = root.optString("equippedEffectId").takeIf { it.isNotBlank() },
             stats = MatchStats(
                 totalMatches = stats.optInt("totalMatches", 0),
                 wins = stats.optInt("wins", 0),
