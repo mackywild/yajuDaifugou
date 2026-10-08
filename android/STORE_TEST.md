@@ -60,3 +60,30 @@ Play Games認証をストアテストする場合、Play Console / Google Cloud�
 
 現状 `game_services_project_id` が `0` の開発設定なら、アプリはゲストモードで起動します。
 PGSまで試験する段階で実際のGame services project IDへ差し替えます。
+
+## 署名エラーの切り分け
+
+GitHub Actions の `Android Store Test AAB` は、releaseビルド前に次を個別確認します。
+
+1. Base64からkeystoreを正常復元できたか
+2. `YAJU_STORE_PASSWORD` でkeystoreを開けるか
+3. `YAJU_KEY_ALIAS` が存在するか
+4. `YAJU_KEY_PASSWORD` で秘密鍵を利用できるか
+
+そのため、Gradleの `:app:signReleaseBundle` まで進んでから曖昧な
+`Keystore was tampered with, or password was incorrect`
+で落ちるのではなく、原因箇所で失敗します。
+
+ローカルでkeystore自体を確認する場合:
+
+```bash
+keytool -list -v \
+  -keystore android/signing/yaju-upload.jks \
+  -alias yaju-upload
+```
+
+ここで入力して通るパスワードが `YAJU_STORE_PASSWORD` です。
+
+鍵生成時に
+`RETURN if same as keystore password`
+でEnterだけ押した場合、`YAJU_KEY_PASSWORD` には `YAJU_STORE_PASSWORD` と同じ値を登録します。
