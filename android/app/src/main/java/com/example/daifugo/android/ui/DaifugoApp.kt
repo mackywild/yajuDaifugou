@@ -229,12 +229,7 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                             DaifugoScreen.MULTIPLAYER -> LobbyScreen(state, viewModel)
                             DaifugoScreen.CPU_SETUP -> CpuSetupScreen(state, viewModel)
                             DaifugoScreen.CHALLENGE_SETUP -> ChallengeSetupScreen(state, viewModel)
-                            DaifugoScreen.MISSION -> MenuPlaceholderScreen(
-                                title = "MISSION",
-                                subtitle = "ミッション",
-                                description = "デイリー・累計ミッションと報酬を確認する。",
-                                onBack = viewModel::backToMenu,
-                            )
+                            DaifugoScreen.MISSION -> MissionScreen(state, viewModel)
                             DaifugoScreen.PROFILE -> MenuPlaceholderScreen(
                                 title = "PROFILE",
                                 subtitle = "プロフィール",
@@ -551,6 +546,7 @@ private fun MainMenuScreen(
 ) {
     var selected by remember { mutableStateOf(CasinoMenuItem.SOLO) }
     val missionBadge = DailyMissionRules.views(state.progress.daily).count { it.claimable }
+    val presentBadge = state.progress.presents.size
 
     fun enterSelected() {
         when (selected) {
@@ -704,6 +700,7 @@ private fun MainMenuScreen(
                         item = CasinoMenuItem.PRESENT,
                         selected = selected == CasinoMenuItem.PRESENT,
                         onSelect = { selected = CasinoMenuItem.PRESENT },
+                        badge = presentBadge.takeIf { it > 0 },
                         modifier = Modifier.weight(1f),
                         compact = true,
                     )
@@ -867,53 +864,119 @@ private fun CasinoMenuTile(
 }
 
 @Composable
-private fun DailyMissionCard(
-    state: DaifugoUiState,
-    onClaim: (String) -> Unit,
-) {
+private fun MissionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
     val missions = DailyMissionRules.views(state.progress.daily)
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "デイリーミッション",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Black,
-                )
-                Text(
-                    "素材 ${state.progress.gachaMaterial}",
-                    color = CasinoGold,
-                    fontWeight = FontWeight.Black,
-                )
-            }
 
-            missions.forEach { mission ->
-                Row(
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "MISSION BOARD",
+                        color = CasinoGold,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp,
+                    )
+                    Text(
+                        "ミッション",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        "達成報酬はプレゼントボックスへ送られます",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
+            }
+        }
+
+        item {
+            Text(
+                "DAILY",
+                color = CasinoGold,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+            )
+        }
+
+        missions.forEach { mission ->
+            item(key = mission.id) {
+                Card(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (mission.completed) SoftGold else MaterialTheme.colorScheme.surface
+                    ),
                 ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(mission.title, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            "${mission.progress.coerceAtMost(mission.target)} / ${mission.target}　報酬: 素材×${mission.rewardMaterial}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(9.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                mission.title,
+                                modifier = Modifier.weight(1f),
+                                fontWeight = FontWeight.Black,
+                            )
+                            Text(
+                                "${mission.progress.coerceAtMost(mission.target)} / ${mission.target}",
+                                color = CasinoGold,
+                                fontWeight = FontWeight.Black,
+                            )
+                        }
+
+                        androidx.compose.material3.LinearProgressIndicator(
+                            progress = {
+                                (mission.progress.toFloat() / mission.target.toFloat())
+                                    .coerceIn(0f, 1f)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
                         )
-                    }
-                    when {
-                        mission.claimed -> Text("受取済", color = CasinoGreen, fontWeight = FontWeight.Bold)
-                        mission.claimable -> Button(onClick = { onClaim(mission.id) }) { Text("受取") }
-                        else -> Text("進行中", style = MaterialTheme.typography.labelSmall)
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color.Black.copy(alpha = 0.06f),
+                        ) {
+                            Text(
+                                "報酬  ◆ ${mission.rewardItemName} ×${mission.rewardQuantity}",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+
+                        when {
+                            mission.claimed -> Text(
+                                "プレゼントBOXへ送付済み",
+                                color = CasinoGreen,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            mission.claimable -> Button(
+                                onClick = { viewModel.claimDailyMission(mission.id) },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("報酬を受け取る")
+                            }
+                            else -> Text(
+                                "進行中",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
+        }
+
+        item {
+            Text(
+                "日付が変わるとデイリー進捗はリセットされます。",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

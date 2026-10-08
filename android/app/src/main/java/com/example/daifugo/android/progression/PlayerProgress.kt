@@ -1,5 +1,6 @@
 package com.example.daifugo.android.progression
 
+import com.example.daifugo.android.cosmetics.CosmeticCatalog
 import java.time.LocalDate
 import kotlin.math.max
 
@@ -7,8 +8,8 @@ data class PlayerProgress(
     val accountKey: String = "guest",
     val displayName: String = "GUEST",
     val totalExp: Int = 0,
-    val gachaMaterial: Int = 0,
     val inventory: Map<String, Int> = emptyMap(),
+    val presents: List<PresentEntry> = emptyList(),
     val stats: MatchStats = MatchStats(),
     val daily: DailyMissionState = DailyMissionState.today(),
 ) {
@@ -98,12 +99,23 @@ data class DailyMissionState(
     }
 }
 
+data class PresentEntry(
+    val id: String,
+    val title: String,
+    val itemId: String,
+    val itemName: String,
+    val quantity: Int = 1,
+    val source: String,
+)
+
 data class DailyMissionView(
     val id: String,
     val title: String,
     val progress: Int,
     val target: Int,
-    val rewardMaterial: Int,
+    val rewardItemId: String,
+    val rewardItemName: String,
+    val rewardQuantity: Int = 1,
     val claimed: Boolean,
 ) {
     val completed: Boolean get() = progress >= target
@@ -121,7 +133,8 @@ object DailyMissionRules {
             title = "対戦を3回完了する",
             progress = state.matchesPlayed,
             target = 3,
-            rewardMaterial = 10,
+            rewardItemId = CosmeticCatalog.FRAME_SILVER_LINE,
+            rewardItemName = "シルバーライン",
             claimed = PLAY_3 in state.claimedMissionIds,
         ),
         DailyMissionView(
@@ -129,7 +142,8 @@ object DailyMissionRules {
             title = "1回大富豪になる",
             progress = state.wins,
             target = 1,
-            rewardMaterial = 20,
+            rewardItemId = CosmeticCatalog.CARD_CLASSIC_RED,
+            rewardItemName = "クラシックレッド",
             claimed = WIN_1 in state.claimedMissionIds,
         ),
         DailyMissionView(
@@ -137,7 +151,8 @@ object DailyMissionRules {
             title = "やりますねぇ！チャレンジを1回プレイ",
             progress = state.challengePlayed,
             target = 1,
-            rewardMaterial = 15,
+            rewardItemId = CosmeticCatalog.AVATAR_BUSINESS,
+            rewardItemName = "ビジネススーツの野獣",
             claimed = CHALLENGE_1 in state.claimedMissionIds,
         ),
     )

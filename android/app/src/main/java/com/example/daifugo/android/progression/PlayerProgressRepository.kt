@@ -27,8 +27,21 @@ class PlayerProgressRepository(context: Context) {
         require(mission.completed) { "ミッション条件をまだ達成していません" }
         require(!mission.claimed) { "報酬は受取済みです" }
 
+        val presentId = "mission:${current.daily.date}:${mission.id}"
+        val present = PresentEntry(
+            id = presentId,
+            title = "ミッション達成報酬",
+            itemId = mission.rewardItemId,
+            itemName = mission.rewardItemName,
+            quantity = mission.rewardQuantity,
+            source = mission.title,
+        )
         val updated = current.copy(
-            gachaMaterial = current.gachaMaterial + mission.rewardMaterial,
+            presents = if (current.presents.any { it.id == presentId }) {
+                current.presents
+            } else {
+                current.presents + present
+            },
             daily = current.daily.copy(
                 claimedMissionIds = current.daily.claimedMissionIds + mission.id,
             ),
@@ -139,9 +152,20 @@ class PlayerProgressRepository(context: Context) {
         .put("accountKey", progress.accountKey)
         .put("displayName", progress.displayName)
         .put("totalExp", progress.totalExp)
-        .put("gachaMaterial", progress.gachaMaterial)
         .put("inventory", JSONObject().apply {
             progress.inventory.forEach { (itemId, count) -> put(itemId, count) }
+        })
+        .put("presents", JSONArray().apply {
+            progress.presents.forEach { present ->
+                put(JSONObject()
+                    .put("id", present.id)
+                    .put("title", present.title)
+                    .put("itemId", present.itemId)
+                    .put("itemName", present.itemName)
+                    .put("quantity", present.quantity)
+                    .put("source", present.source)
+                )
+            }
         })
         .put("daily", JSONObject()
             .put("date", progress.daily.date)
@@ -173,6 +197,20 @@ class PlayerProgressRepository(context: Context) {
                 put(key, inventoryJson.optInt(key, 0))
             }
         }
+        val presentsArray = root.optJSONArray("presents") ?: JSONArray()
+        val presents = (0 until presentsArray.length()).mapNotNull { index ->
+            presentsArray.optJSONObject(index)?.let { present ->
+                PresentEntry(
+                    id = present.optString("id"),
+                    title = present.optString("title", "プレゼント"),
+                    itemId = present.optString("itemId"),
+                    itemName = present.optString("itemName"),
+                    quantity = present.optInt("quantity", 1).coerceAtLeast(1),
+                    source = present.optString("source"),
+                )
+            }
+        }.filter { it.id.isNotBlank() && it.itemId.isNotBlank() }
+
         val claimedArray = daily.optJSONArray("claimedMissionIds") ?: JSONArray()
         val claimed = (0 until claimedArray.length())
             .mapNotNull { index -> claimedArray.optString(index).takeIf { it.isNotBlank() } }
@@ -181,8 +219,8 @@ class PlayerProgressRepository(context: Context) {
             accountKey = root.optString("accountKey", "guest"),
             displayName = root.optString("displayName", "GUEST"),
             totalExp = root.optInt("totalExp", 0),
-            gachaMaterial = root.optInt("gachaMaterial", 0),
             inventory = inventory,
+            presents = presents,
             stats = MatchStats(
                 totalMatches = stats.optInt("totalMatches", 0),
                 wins = stats.optInt("wins", 0),
