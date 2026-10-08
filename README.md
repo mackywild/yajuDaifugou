@@ -132,6 +132,9 @@ gradlew.bat bootRun
 
 ## Android
 
+Google Playストアテスト用のapplicationIdは `jp.YajuDaifugou.app` です。
+ストアテスト手順: [`android/STORE_TEST.md`](android/STORE_TEST.md)
+
 詳細: [`android/README.md`](android/README.md)
 
 実機からはサーバーPCのLAN内IPを指定します。
