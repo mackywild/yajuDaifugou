@@ -250,6 +250,20 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun openSettings() = update { copy(screen = DaifugoScreen.SETTINGS, errorMessage = null, infoMessage = null) }
 
+    fun equipCosmetic(itemId: String) {
+        runCatching { progressRepository.equipCosmetic(itemId) }
+            .onSuccess { progress ->
+                update {
+                    copy(
+                        progress = progress,
+                        infoMessage = "アイテムを装備しました",
+                        errorMessage = null,
+                    )
+                }
+            }
+            .onFailure(::handleError)
+    }
+
     fun claimDailyMission(missionId: String) {
         runCatching { progressRepository.claimDailyMission(missionId) }
             .onSuccess { progress ->

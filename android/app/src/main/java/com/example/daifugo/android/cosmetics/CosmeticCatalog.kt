@@ -22,6 +22,7 @@ object CosmeticCatalog {
     const val AVATAR_BUSINESS = "avatar_business"
     const val FRAME_SILVER_LINE = "frame_silver_line"
     const val CARD_CLASSIC_RED = "card_classic_red"
+    const val EFFECT_SOFT_GLOW = "effect_soft_glow"
 
     val items: List<CosmeticItemDefinition> = listOf(
         CosmeticItemDefinition(
@@ -41,6 +42,12 @@ object CosmeticCatalog {
             displayName = "クラシックレッド",
             category = CosmeticCategory.CARD_SKIN,
             description = "赤を基調にしたクラシックなトランプスキン。",
+        ),
+        CosmeticItemDefinition(
+            id = EFFECT_SOFT_GLOW,
+            displayName = "ソフトグロー",
+            category = CosmeticCategory.EFFECT,
+            description = "カード提出時に淡く光るシンプルなプレイエフェクト。",
         ),
     )
 
