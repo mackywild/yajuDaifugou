@@ -1,9 +1,6 @@
 package com.example.daifugo.android.progression
 
 import android.content.Context
-import com.example.daifugo.android.gacha.DefaultGachaCatalog
-import com.example.daifugo.android.gacha.GachaPullResult
-import com.example.daifugo.android.gacha.GachaService
 import java.time.LocalDate
 import org.json.JSONArray
 import org.json.JSONObject
@@ -11,7 +8,6 @@ import org.json.JSONObject
 class PlayerProgressRepository(context: Context) {
     private val preferences =
         context.getSharedPreferences("daifugo_progression", Context.MODE_PRIVATE)
-    private val gachaService = GachaService()
 
     fun load(): PlayerProgress {
         val accountKey = activeAccountKey()
@@ -19,28 +15,6 @@ class PlayerProgressRepository(context: Context) {
         val normalized = normalizeDaily(loaded)
         if (normalized != loaded) saveFor(accountKey, normalized)
         return normalized
-    }
-
-    fun performGacha(count: Int): Pair<PlayerProgress, GachaPullResult> {
-        val accountKey = activeAccountKey()
-        val current = normalizeDaily(loadFor(accountKey))
-        val result = gachaService.pull(
-            count = count,
-            materialBalance = current.gachaMaterial,
-            catalog = DefaultGachaCatalog.items,
-        )
-
-        val inventory = current.inventory.toMutableMap()
-        result.items.forEach { item ->
-            inventory[item.id] = (inventory[item.id] ?: 0) + 1
-        }
-
-        val updated = current.copy(
-            gachaMaterial = current.gachaMaterial - result.materialSpent,
-            inventory = inventory,
-        )
-        saveFor(accountKey, updated)
-        return updated to result
     }
 
     fun claimDailyMission(missionId: String): PlayerProgress {
