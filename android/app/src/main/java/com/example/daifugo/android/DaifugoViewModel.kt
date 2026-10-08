@@ -250,6 +250,39 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun openSettings() = update { copy(screen = DaifugoScreen.SETTINGS, errorMessage = null, infoMessage = null) }
 
+    fun receivePresent(presentId: String) {
+        runCatching { progressRepository.receivePresent(presentId) }
+            .onSuccess { result ->
+                val name = result.received.firstOrNull()?.itemName ?: "アイテム"
+                update {
+                    copy(
+                        progress = result.progress,
+                        infoMessage = "$name を受け取りました",
+                        errorMessage = null,
+                    )
+                }
+            }
+            .onFailure(::handleError)
+    }
+
+    fun receiveAllPresents() {
+        runCatching { progressRepository.receiveAllPresents() }
+            .onSuccess { result ->
+                update {
+                    copy(
+                        progress = result.progress,
+                        infoMessage = if (result.received.isEmpty()) {
+                            "受け取れるプレゼントはありません"
+                        } else {
+                            "${result.received.size}件のプレゼントを受け取りました"
+                        },
+                        errorMessage = null,
+                    )
+                }
+            }
+            .onFailure(::handleError)
+    }
+
     fun equipCosmetic(itemId: String) {
         runCatching { progressRepository.equipCosmetic(itemId) }
             .onSuccess { progress ->
