@@ -3,23 +3,49 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseKeystorePath = System.getenv("YAJU_KEYSTORE_PATH")
+val releaseStorePassword = System.getenv("YAJU_STORE_PASSWORD")
+val releaseKeyAlias = System.getenv("YAJU_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("YAJU_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseKeystorePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.example.daifugo.android"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.daifugo"
+        // Google Playで公開後は変更不可。ストアテストからこのIDを正本とする。
+        applicationId = "jp.YajuDaifugou.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 8
-        versionName = "0.4.4"
+        versionCode = 9
+        versionName = "0.5.0-test01"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("releaseUpload") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("releaseUpload")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

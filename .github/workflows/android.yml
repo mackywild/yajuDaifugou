@@ -1,4 +1,4 @@
-name: Android APK
+name: Android Build
 
 on:
   push:
@@ -45,15 +45,22 @@ jobs:
         run: |
           sdkmanager "platform-tools" "platforms;android-37.0" "build-tools;36.0.0"
 
-      - name: Build debug APK
+      - name: Build debug APK and AAB
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleDebug
+          ./gradlew --no-daemon :app:assembleDebug :app:bundleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Daifugo-v0.4.4-debug
+          name: YajuDaifugou-v0.5.0-test01-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload debug AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: YajuDaifugou-v0.5.0-test01-debug-aab
+          path: android/app/build/outputs/bundle/debug/app-debug.aab
           if-no-files-found: error
