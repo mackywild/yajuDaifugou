@@ -1,6 +1,8 @@
 package com.example.daifugo.android.progression
 
 import android.content.Context
+import com.example.daifugo.android.cosmetics.CosmeticCatalog
+import com.example.daifugo.android.cosmetics.CosmeticCategory
 import java.time.LocalDate
 import org.json.JSONArray
 import org.json.JSONObject
@@ -15,6 +17,25 @@ class PlayerProgressRepository(context: Context) {
         val normalized = normalizeDaily(loaded)
         if (normalized != loaded) saveFor(accountKey, normalized)
         return normalized
+    }
+
+    fun equipCosmetic(itemId: String): PlayerProgress {
+        val accountKey = activeAccountKey()
+        val current = normalizeDaily(loadFor(accountKey))
+        val ownedCount = current.inventory[itemId] ?: 0
+        require(ownedCount > 0) { "未所持のアイテムは装備できません" }
+
+        val item = CosmeticCatalog.find(itemId)
+            ?: throw IllegalArgumentException("存在しないコレクションアイテムです")
+
+        val updated = when (item.category) {
+            CosmeticCategory.AVATAR -> current.copy(equippedAvatarId = item.id)
+            CosmeticCategory.FRAME -> current.copy(equippedFrameId = item.id)
+            CosmeticCategory.CARD_SKIN -> current.copy(equippedCardSkinId = item.id)
+            CosmeticCategory.EFFECT -> current.copy(equippedEffectId = item.id)
+        }
+        saveFor(accountKey, updated)
+        return updated
     }
 
     fun claimDailyMission(missionId: String): PlayerProgress {

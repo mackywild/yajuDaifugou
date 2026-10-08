@@ -98,6 +98,8 @@ import com.example.daifugo.android.audio.YajuAudioPlayer
 import com.example.daifugo.android.DaifugoUiState
 import com.example.daifugo.android.DaifugoViewModel
 import com.example.daifugo.android.cosmetics.CosmeticCatalog
+import com.example.daifugo.android.cosmetics.CosmeticCategory
+import com.example.daifugo.android.cosmetics.CosmeticItemDefinition
 import com.example.daifugo.android.data.CardDto
 import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.PlayerDto
@@ -238,12 +240,7 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                                     playGamesAccountManager?.signIn(::applyPlayGamesAccount)
                                 },
                             )
-                            DaifugoScreen.COLLECTION -> MenuPlaceholderScreen(
-                                title = "COLLECTION",
-                                subtitle = "コレクション",
-                                description = "アバター・フレーム・トランプ・エフェクトを閲覧する。",
-                                onBack = viewModel::backToMenu,
-                            )
+                            DaifugoScreen.COLLECTION -> CollectionScreen(state, viewModel)
                             DaifugoScreen.PRESENT_BOX -> MenuPlaceholderScreen(
                                 title = "PRESENT",
                                 subtitle = "プレゼントボックス",
@@ -854,6 +851,178 @@ private fun CasinoMenuTile(
             }
         }
     }
+}
+
+@Composable
+private fun CollectionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
+    var category by remember { mutableStateOf(CosmeticCategory.AVATAR) }
+    val items = CosmeticCatalog.items.filter { it.category == category }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "SHOW CASE",
+                        color = CasinoGold,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp,
+                    )
+                    Text(
+                        "コレクション",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        "獲得したアイテムを装備できます",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
+            }
+        }
+
+        item {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                itemsIndexed(CosmeticCategory.entries) { _, value ->
+                    val selected = value == category
+                    if (selected) {
+                        Button(onClick = { category = value }) {
+                            Text(cosmeticCategoryLabel(value))
+                        }
+                    } else {
+                        OutlinedButton(onClick = { category = value }) {
+                            Text(cosmeticCategoryLabel(value))
+                        }
+                    }
+                }
+            }
+        }
+
+        if (items.isEmpty()) {
+            item {
+                CasinoPanel(title = "EMPTY") {
+                    Text("このカテゴリのアイテムはまだ登録されていません。")
+                }
+            }
+        } else {
+            items.forEach { item ->
+                item(key = item.id) {
+                    CollectionItemCard(
+                        item = item,
+                        ownedCount = state.progress.inventory[item.id] ?: 0,
+                        equipped = state.progress.isEquipped(item),
+                        onEquip = { viewModel.equipCosmetic(item.id) },
+                    )
+                }
+            }
+        }
+
+        item {
+            val totalOwned = CosmeticCatalog.items.count {
+                (state.progress.inventory[it.id] ?: 0) > 0
+            }
+            Text(
+                "COLLECTED  $totalOwned / ${CosmeticCatalog.items.size}",
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                color = CasinoGold.copy(alpha = 0.75f),
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CollectionItemCard(
+    item: CosmeticItemDefinition,
+    ownedCount: Int,
+    equipped: Boolean,
+    onEquip: () -> Unit,
+) {
+    val owned = ownedCount > 0
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (owned) MaterialTheme.colorScheme.surface else Color.Black.copy(alpha = 0.08f),
+        ),
+        border = BorderStroke(
+            if (equipped) 2.dp else 1.dp,
+            if (equipped) CasinoGold else MaterialTheme.colorScheme.outlineVariant,
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                modifier = Modifier.size(54.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = if (owned) CasinoGold.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        if (owned) cosmeticCategorySymbol(item.category) else "🔒",
+                        fontSize = 22.sp,
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    item.displayName,
+                    fontWeight = FontWeight.Black,
+                    color = if (owned) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                )
+                Text(
+                    item.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (owned) 1f else 0.5f),
+                )
+                if (ownedCount > 1) {
+                    Text(
+                        "所持 ×$ownedCount",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CasinoGold,
+                    )
+                }
+            }
+            when {
+                equipped -> Text("装備中", color = CasinoGreen, fontWeight = FontWeight.Black)
+                owned -> OutlinedButton(onClick = onEquip) { Text("装備") }
+                else -> Text("未所持", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+private fun cosmeticCategoryLabel(category: CosmeticCategory): String = when (category) {
+    CosmeticCategory.AVATAR -> "アバター"
+    CosmeticCategory.FRAME -> "フレーム"
+    CosmeticCategory.CARD_SKIN -> "トランプ"
+    CosmeticCategory.EFFECT -> "エフェクト"
+}
+
+private fun cosmeticCategorySymbol(category: CosmeticCategory): String = when (category) {
+    CosmeticCategory.AVATAR -> "♛"
+    CosmeticCategory.FRAME -> "◇"
+    CosmeticCategory.CARD_SKIN -> "♠"
+    CosmeticCategory.EFFECT -> "✦"
+}
+
+private fun PlayerProgress.isEquipped(item: CosmeticItemDefinition): Boolean = when (item.category) {
+    CosmeticCategory.AVATAR -> equippedAvatarId == item.id
+    CosmeticCategory.FRAME -> equippedFrameId == item.id
+    CosmeticCategory.CARD_SKIN -> equippedCardSkinId == item.id
+    CosmeticCategory.EFFECT -> equippedEffectId == item.id
 }
 
 @Composable
