@@ -13,6 +13,14 @@ android/local.properties
 android/app/build/
 android/build/
 *.apk
+*.aab
+
+# Android signing secrets (NEVER COMMIT)
+*.jks
+*.keystore
+*.p12
+*.pfx
+android/signing/
 
 # Xcode / iOS
 ios/DaifugoIOS.xcodeproj/xcuserdata/

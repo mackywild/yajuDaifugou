@@ -52,6 +52,17 @@ jobs:
         run: |
           echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/yaju-upload.jks"
 
+      - name: Show upload certificate fingerprints
+        env:
+          YAJU_STORE_PASSWORD: ${{ secrets.YAJU_STORE_PASSWORD }}
+          YAJU_KEY_ALIAS: ${{ secrets.YAJU_KEY_ALIAS }}
+        run: |
+          keytool -list -v \
+            -keystore "$RUNNER_TEMP/yaju-upload.jks" \
+            -alias "$YAJU_KEY_ALIAS" \
+            -storepass "$YAJU_STORE_PASSWORD" \
+            | grep -E "SHA1:|SHA256:"
+
       - name: Build signed release AAB
         working-directory: android
         env:
@@ -62,6 +73,11 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon :app:bundleRelease
+
+      - name: Verify AAB signature
+        run: |
+          jarsigner -verify -verbose -certs \
+            android/app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload signed AAB
         uses: actions/upload-artifact@v4
