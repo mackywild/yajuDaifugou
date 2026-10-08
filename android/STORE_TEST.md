@@ -97,7 +97,7 @@ android/signing/yaju-upload.jks.b64
 - `.pem`: 公開証明書。SHA確認やアップロード鍵リセット時に利用
 - `.b64`: GitHub Secret登録用。一時ファイルだが秘密情報として扱う
 
-RSA 4096-bit / validity 10000 days で生成します。
+JKS形式 / RSA 4096-bit / validity 10000 days で生成します。鍵パスワードはkeystoreパスワードと同じでも別でも構いません。
 
 ### 2. バックアップ
 

@@ -19,7 +19,7 @@ if (Test-Path $Keystore) {
 Write-Host "Creating Google Play upload key..."
 Write-Host "You will be prompted for passwords and certificate owner fields."
 
-keytool -genkeypair -v -keystore $Keystore -alias $Alias -keyalg RSA -keysize 4096 -validity 10000
+keytool -genkeypair -v -storetype JKS -keystore $Keystore -alias $Alias -keyalg RSA -keysize 4096 -validity 10000
 if ($LASTEXITCODE -ne 0) { throw "keytool failed to create the upload key." }
 
 Write-Host ""

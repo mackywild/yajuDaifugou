@@ -18,7 +18,7 @@ fi
 
 echo "Creating Google Play upload key..."
 echo "You will be prompted for passwords and certificate owner fields."
-keytool -genkeypair -v -keystore "$KEYSTORE" -alias "$ALIAS" -keyalg RSA -keysize 4096 -validity 10000
+keytool -genkeypair -v -storetype JKS -keystore "$KEYSTORE" -alias "$ALIAS" -keyalg RSA -keysize 4096 -validity 10000
 
 echo
 echo "Exporting PUBLIC certificate..."
