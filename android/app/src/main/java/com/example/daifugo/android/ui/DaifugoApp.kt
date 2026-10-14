@@ -289,7 +289,13 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                                 ) {
                                     CircularProgressIndicator(modifier = Modifier.size(26.dp))
                                     Spacer(Modifier.width(12.dp))
-                                    Text(if (state.gameState?.gameMode == "CPU_LOCAL" || state.screen == DaifugoScreen.CPU_SETUP) "処理中…" else "通信中…")
+                                    Text(
+                                        if (
+                                            state.gameState?.isLocalCpuGame == true ||
+                                            state.screen == DaifugoScreen.CPU_SETUP ||
+                                            state.screen == DaifugoScreen.CHALLENGE_SETUP
+                                        ) "処理中…" else "通信中…"
+                                    )
                                 }
                             }
                         }
@@ -426,7 +432,7 @@ private fun AppHeader(state: DaifugoUiState) {
             )
         }
         if (state.roomId != null) {
-            val local = state.gameState?.gameMode == "CPU_LOCAL"
+            val local = state.gameState?.isLocalCpuGame == true
             ConnectionPill(connected = state.socketConnected, local = local)
         }
     }
@@ -2487,7 +2493,7 @@ private fun GameScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                         }
                     }
                 }
-                if (game.gameMode == "CPU_LOCAL" && state.cpuActionHistory.isNotEmpty()) {
+                if (game.isLocalCpuGame && state.cpuActionHistory.isNotEmpty()) {
                     item {
                         CpuActionHistoryCard(state.cpuActionHistory)
                     }
@@ -2618,7 +2624,7 @@ private fun GameScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             }
         }
 
-        if (game.gameMode == "CPU_LOCAL") {
+        if (game.isLocalCpuGame) {
             state.cpuTurnAnimation?.let { animation ->
                 CpuTurnAnimationOverlay(
                     animation = animation,
@@ -3605,7 +3611,7 @@ private fun GameStateDto.avatarIndex(playerId: String): Int =
 
 /** CPUローカル戦で使う写真アセット名。CPU以外・通信対戦ではnull。 */
 private fun GameStateDto.cpuAvatarAssetName(playerId: String): String? {
-    if (gameMode != "CPU_LOCAL" && gameMode != "YAJU_CHALLENGE") return null
+    if (!isLocalCpuGame) return null
 
     val cpuIndex = players
         .filter { it.cpu }
