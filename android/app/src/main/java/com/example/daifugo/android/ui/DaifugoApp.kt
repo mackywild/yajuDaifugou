@@ -1628,55 +1628,442 @@ private fun StatText(label: String, value: String) {
 }
 
 @Composable
-private fun ChallengeSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("YAJU CHALLENGE", color = Color(0xFFB43A3A), fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-                    Text("チャレンジモード", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-                    Text("初期手札に8と10を保証", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
-            }
-        }
-        item {
-            OutlinedTextField(
-                value = state.playerName,
-                onValueChange = viewModel::setPlayerName,
-                label = { Text("プレイヤー名") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
+private fun PremiumCasinoBackdrop(
+    accent: Color = CasinoGreen,
+) {
+    val transition = rememberInfiniteTransition(label = "premiumCasinoBackdrop")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(12_000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "premiumBackdropPhase",
+    )
+
+    Canvas(Modifier.fillMaxSize()) {
+        drawCircle(
+            color = CasinoGold.copy(alpha = 0.075f),
+            radius = size.minDimension * 0.48f,
+            center = Offset(size.width * 0.88f, size.height * 0.12f),
+        )
+        drawCircle(
+            color = accent.copy(alpha = 0.15f),
+            radius = size.minDimension * 0.40f,
+            center = Offset(size.width * 0.08f, size.height * 0.78f),
+        )
+
+        repeat(22) { index ->
+            val baseX = ((index * 43) % 101) / 101f
+            val baseY = ((index * 67) % 97) / 97f
+            val x = ((baseX + phase * (0.035f + (index % 4) * 0.012f)) % 1f) * size.width
+            val y = ((baseY + phase * (0.018f + (index % 3) * 0.009f)) % 1f) * size.height
+            drawCircle(
+                color = if (index % 4 == 0) {
+                    CasinoGold.copy(alpha = 0.18f)
+                } else {
+                    Color.White.copy(alpha = 0.055f)
+                },
+                radius = 1.4f + (index % 3) * 0.9f,
+                center = Offset(x, y),
             )
         }
-        item { CpuCountChoiceRow(state.cpuCount, viewModel::setCpuCount) }
-        item { ChoiceRow("難易度", listOf("EASY","NORMAL","HARD","N_GOD"), state.cpuDifficulty, viewModel::setCpuDifficulty) { difficultyLabel(it) } }
-        item { ChoiceRow("ジョーカー", listOf(0,1,2), state.cpuJokerCount, viewModel::setCpuJokerCount) { "${it}枚" } }
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFE3B3)),
-                shape = RoundedCornerShape(18.dp),
-            ) {
-                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("特殊条件", fontWeight = FontWeight.Black)
-                    Text("8 + 10 を初期手札に最低1枚ずつ保証")
-                    Text("野獣ルール / 8切り：強制ON", style = MaterialTheme.typography.labelMedium)
+
+        val sweepX = size.width * (-0.30f + phase * 1.60f)
+        drawLine(
+            color = CasinoGold.copy(alpha = 0.055f),
+            start = Offset(sweepX, 0f),
+            end = Offset(sweepX - size.width * 0.42f, size.height),
+            strokeWidth = 34f,
+        )
+    }
+}
+
+@Composable
+private fun PremiumSectionTitle(
+    title: String,
+    subtitle: String,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(28.dp)
+                .background(CasinoGold, RoundedCornerShape(100.dp)),
+        )
+        Spacer(Modifier.width(9.dp))
+        Column {
+            Text(
+                title,
+                color = CasinoGold,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.5.sp,
+                fontSize = 11.sp,
+            )
+            Text(
+                subtitle,
+                color = Color.White.copy(alpha = 0.36f),
+                letterSpacing = 1.4.sp,
+                fontSize = 8.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PremiumStartButton(
+    label: String,
+    accent: Color = CasinoGold,
+    onClick: () -> Unit,
+) {
+    val transition = rememberInfiniteTransition(label = "premiumStartButton")
+    val pulse by transition.animateFloat(
+        initialValue = 0.68f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(950, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "premiumStartPulse",
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .graphicsLayer {
+                scaleX = 0.995f + pulse * 0.005f
+                scaleY = 0.995f + pulse * 0.005f
+            }
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        accent.copy(alpha = 0.78f + pulse * 0.12f),
+                        accent,
+                        Color(0xFFFFE6A6),
+                    )
+                ),
+                RoundedCornerShape(15.dp),
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            color = Color(0xFF171006),
+            fontWeight = FontWeight.Black,
+            letterSpacing = 2.2.sp,
+            fontSize = 15.sp,
+        )
+    }
+}
+
+@Composable
+private fun <T> PremiumChoiceRow(
+    title: String,
+    values: List<T>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    label: (T) -> String,
+    accent: Color = CasinoGold,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Text(
+            title,
+            color = Color.White.copy(alpha = 0.76f),
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            letterSpacing = 1.sp,
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            itemsIndexed(values) { _, value ->
+                val active = value == selected
+                Surface(
+                    modifier = Modifier
+                        .height(44.dp)
+                        .clickable { onSelect(value) },
+                    shape = RoundedCornerShape(13.dp),
+                    color = if (active) accent.copy(alpha = 0.20f) else Color.White.copy(alpha = 0.045f),
+                    border = BorderStroke(
+                        if (active) 1.5.dp else 1.dp,
+                        if (active) accent else Color.White.copy(alpha = 0.10f),
+                    ),
+                ) {
+                    Box(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            label(value),
+                            color = if (active) Color.White else Color.White.copy(alpha = 0.56f),
+                            fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                        )
+                    }
                 }
             }
         }
-        item {
-            Button(
-                onClick = viewModel::startYajuChallenge,
+    }
+}
+
+@Composable
+private fun PremiumRuleToggle(
+    title: String,
+    checked: Boolean,
+    onChecked: (Boolean) -> Unit,
+    enabled: Boolean = true,
+    accent: Color = CasinoGold,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = if (checked) accent.copy(alpha = 0.11f) else Color.White.copy(alpha = 0.035f),
+        border = BorderStroke(
+            1.dp,
+            if (checked) accent.copy(alpha = 0.44f) else Color.White.copy(alpha = 0.08f),
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                title,
+                modifier = Modifier.weight(1f),
+                color = if (enabled) Color.White else Color.White.copy(alpha = 0.32f),
+                fontWeight = FontWeight.Bold,
+            )
+            Switch(
+                checked = checked,
+                onCheckedChange = onChecked,
+                enabled = enabled,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PremiumPlayerNameField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    accent: Color = CasinoGold,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text("PLAYER NAME") },
+        placeholder = { Text("プレイヤー名") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            focusedBorderColor = accent,
+            unfocusedBorderColor = Color.White.copy(alpha = 0.16f),
+            focusedLabelColor = accent,
+            unfocusedLabelColor = Color.White.copy(alpha = 0.45f),
+            cursorColor = accent,
+            focusedContainerColor = Color.Black.copy(alpha = 0.24f),
+            unfocusedContainerColor = Color.Black.copy(alpha = 0.18f),
+            focusedPlaceholderColor = Color.White.copy(alpha = 0.32f),
+            unfocusedPlaceholderColor = Color.White.copy(alpha = 0.32f),
+        ),
+    )
+}
+
+@Composable
+private fun ChallengeNumberCard(
+    value: String,
+    subtitle: String,
+) {
+    Surface(
+        modifier = Modifier
+            .width(92.dp)
+            .height(122.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFF120607),
+        border = BorderStroke(2.dp, Color(0xFFE34C52)),
+    ) {
+        Box {
+            Text(
+                value,
+                modifier = Modifier.align(Alignment.Center),
+                color = Color.White,
+                fontSize = 50.sp,
+                fontWeight = FontWeight.Black,
+            )
+            Text(
+                subtitle,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
-            ) {
-                Text("チャレンジ開始", fontWeight = FontWeight.Black)
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 10.dp),
+                color = Color(0xFFE34C52),
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.2.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChallengeSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
+    val accent = Color(0xFFE34C52)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF080203),
+                        Color(0xFF26070A),
+                        Color(0xFF050202),
+                    )
+                )
+            ),
+    ) {
+        PremiumCasinoBackdrop(accent = Color(0xFFAA2028))
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 17.dp, vertical = 12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = viewModel::backToMenu) {
+                    Text("‹ BACK", color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "YAJU CHALLENGE",
+                    color = accent,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.5.sp,
+                    fontSize = 11.sp,
+                )
             }
+
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(15.dp),
+            ) {
+                item {
+                    Column {
+                        Text(
+                            "BEAST JACKPOT",
+                            color = accent,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 3.sp,
+                        )
+                        Text(
+                            "チャレンジモード",
+                            color = Color.White,
+                            fontSize = 30.sp,
+                            fontWeight = FontWeight.Black,
+                        )
+                        Text(
+                            "8と10を握って、野獣上がりを決めろ。",
+                            color = Color.White.copy(alpha = 0.56f),
+                        )
+                    }
+                }
+
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        color = Color.Black.copy(alpha = 0.38f),
+                        border = BorderStroke(1.dp, accent.copy(alpha = 0.52f)),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(18.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            ChallengeNumberCard("8", "EIGHT")
+                            Text(
+                                "＋",
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                color = CasinoGold,
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight.Black,
+                            )
+                            ChallengeNumberCard("10", "TEN")
+                        }
+                    }
+                }
+
+                item { PremiumPlayerNameField(state.playerName, viewModel::setPlayerName, accent) }
+
+                item {
+                    PremiumChoiceRow(
+                        title = "CPU PLAYERS",
+                        values = (1..GameLimits.MAX_CPU_COUNT).toList(),
+                        selected = state.cpuCount,
+                        onSelect = viewModel::setCpuCount,
+                        label = { it.toString() + "人" },
+                        accent = accent,
+                    )
+                }
+                item {
+                    PremiumChoiceRow(
+                        title = "DIFFICULTY",
+                        values = listOf("EASY", "NORMAL", "HARD", "N_GOD"),
+                        selected = state.cpuDifficulty,
+                        onSelect = viewModel::setCpuDifficulty,
+                        label = ::difficultyLabel,
+                        accent = accent,
+                    )
+                }
+                item {
+                    PremiumChoiceRow(
+                        title = "JOKER",
+                        values = listOf(0, 1, 2),
+                        selected = state.cpuJokerCount,
+                        onSelect = viewModel::setCpuJokerCount,
+                        label = { it.toString() + "枚" },
+                        accent = accent,
+                    )
+                }
+
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = accent.copy(alpha = 0.10f),
+                        border = BorderStroke(1.dp, accent.copy(alpha = 0.48f)),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(15.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                "CHALLENGE RULE",
+                                color = accent,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 2.sp,
+                                fontSize = 10.sp,
+                            )
+                            Text("初期手札に 8 + 10 を最低1枚ずつ保証", color = Color.White, fontWeight = FontWeight.Black)
+                            Text(
+                                "野獣ルール / 8切りは強制ON",
+                                color = Color.White.copy(alpha = 0.54f),
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
+                }
+            }
+
+            PremiumStartButton(
+                label = "CHALLENGE START  ▶",
+                accent = accent,
+                onClick = viewModel::startYajuChallenge,
+            )
         }
     }
 }
@@ -1735,74 +2122,140 @@ private fun MenuPlaceholderScreen(
 
 @Composable
 private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("【ひとりでイク】", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-                    Text("CPU戦セットアップ · オフライン", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
-            }
-        }
-        item {
-            OutlinedTextField(
-                value = state.playerName,
-                onValueChange = viewModel::setPlayerName,
-                label = { Text("プレイヤー名") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-        }
-        item { CpuCountChoiceRow(state.cpuCount, viewModel::setCpuCount) }
-        item { ChoiceRow("難易度", listOf("EASY","NORMAL","HARD","N_GOD"), state.cpuDifficulty, viewModel::setCpuDifficulty) { difficultyLabel(it) } }
-        item { ChoiceRow("ジョーカー", listOf(0,1,2), state.cpuJokerCount, viewModel::setCpuJokerCount) { "${it}枚" } }
-        item {
-            Card(shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("特殊ルール", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    RuleSwitch("革命", state.ruleRevolution, viewModel::setRuleRevolution)
-                    RuleSwitch("8切り", state.ruleEightCut, viewModel::setRuleEightCut, enabled = !state.ruleYaju)
-                    RuleSwitch("マーク縛り", state.ruleMarkLock, viewModel::setRuleMarkLock)
-                    RuleSwitch("7渡し", state.ruleSevenTransfer, viewModel::setRuleSevenTransfer)
-                    RuleSwitch("野獣ルール", state.ruleYaju, viewModel::setRuleYaju)
-                    RuleSwitch("Jバック", state.ruleJackBack, viewModel::setRuleJackBack)
-                    RuleSwitch("禁止上がり", state.ruleForbiddenFinish, viewModel::setRuleForbiddenFinish)
-                    if (state.ruleYaju) Text("※野獣ルールON時は8切り必須", style = MaterialTheme.typography.labelSmall, color = CasinoGold)
-                }
-            }
-        }
-        item {
-            Button(onClick = viewModel::startCpuGame, modifier = Modifier.fillMaxWidth()) {
-                Text("オフラインでCPU戦スタート", fontWeight = FontWeight.ExtraBold)
-            }
-        }
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFE3B3)),
-                shape = RoundedCornerShape(16.dp),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text("🔥 やりますねぇ！チャレンジ", fontWeight = FontWeight.Black)
-                    Text(
-                        "8と10を初期手札に保証。野獣ルール・8切りは自動でONになります。",
-                        style = MaterialTheme.typography.bodySmall,
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF020504),
+                        Color(0xFF082319),
+                        Color(0xFF030504),
                     )
-                    Button(
-                        onClick = viewModel::startYajuChallenge,
+                )
+            ),
+    ) {
+        PremiumCasinoBackdrop(accent = CasinoGreen)
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 17.dp, vertical = 12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = viewModel::backToMenu) {
+                    Text("‹ BACK", color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "PRIVATE TABLE",
+                    color = CasinoGold,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.5.sp,
+                    fontSize = 11.sp,
+                )
+            }
+
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(15.dp),
+            ) {
+                item {
+                    Surface(
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        color = Color.Black.copy(alpha = 0.36f),
+                        border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.42f)),
                     ) {
-                        Text("チャレンジモード開始", fontWeight = FontWeight.ExtraBold)
+                        Box(modifier = Modifier.padding(18.dp)) {
+                            Column(modifier = Modifier.padding(end = 82.dp)) {
+                                Text(
+                                    "SOLO PLAY",
+                                    color = CasinoGold,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 2.5.sp,
+                                    fontSize = 10.sp,
+                                )
+                                Text(
+                                    "ひとりでイク",
+                                    color = Color.White,
+                                    fontSize = 29.sp,
+                                    fontWeight = FontWeight.Black,
+                                )
+                                Text(
+                                    "ルールを組んで、CPU卓へ。",
+                                    color = Color.White.copy(alpha = 0.56f),
+                                )
+                            }
+                            Text(
+                                "♠",
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .graphicsLayer(alpha = 0.18f),
+                                color = CasinoGold,
+                                fontSize = 76.sp,
+                                fontWeight = FontWeight.Black,
+                            )
+                        }
+                    }
+                }
+
+                item { PremiumPlayerNameField(state.playerName, viewModel::setPlayerName) }
+
+                item {
+                    PremiumChoiceRow(
+                        title = "CPU PLAYERS",
+                        values = (1..GameLimits.MAX_CPU_COUNT).toList(),
+                        selected = state.cpuCount,
+                        onSelect = viewModel::setCpuCount,
+                        label = { it.toString() + "人" },
+                    )
+                }
+                item {
+                    PremiumChoiceRow(
+                        title = "DIFFICULTY",
+                        values = listOf("EASY", "NORMAL", "HARD", "N_GOD"),
+                        selected = state.cpuDifficulty,
+                        onSelect = viewModel::setCpuDifficulty,
+                        label = ::difficultyLabel,
+                    )
+                }
+                item {
+                    PremiumChoiceRow(
+                        title = "JOKER",
+                        values = listOf(0, 1, 2),
+                        selected = state.cpuJokerCount,
+                        onSelect = viewModel::setCpuJokerCount,
+                        label = { it.toString() + "枚" },
+                    )
+                }
+
+                item { PremiumSectionTitle("SPECIAL RULES", "BUILD YOUR TABLE") }
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        PremiumRuleToggle("革命", state.ruleRevolution, viewModel::setRuleRevolution)
+                        PremiumRuleToggle("8切り", state.ruleEightCut, viewModel::setRuleEightCut, enabled = !state.ruleYaju)
+                        PremiumRuleToggle("マーク縛り", state.ruleMarkLock, viewModel::setRuleMarkLock)
+                        PremiumRuleToggle("7渡し", state.ruleSevenTransfer, viewModel::setRuleSevenTransfer)
+                        PremiumRuleToggle("野獣ルール", state.ruleYaju, viewModel::setRuleYaju)
+                        PremiumRuleToggle("Jバック", state.ruleJackBack, viewModel::setRuleJackBack)
+                        PremiumRuleToggle("禁止上がり", state.ruleForbiddenFinish, viewModel::setRuleForbiddenFinish)
+                        if (state.ruleYaju) {
+                            Text(
+                                "※ 野獣ルールON時は8切りが自動で有効になります",
+                                color = CasinoGold.copy(alpha = 0.76f),
+                                fontSize = 11.sp,
+                            )
+                        }
                     }
                 }
             }
+
+            PremiumStartButton(
+                label = "GAME START  ▶",
+                onClick = viewModel::startCpuGame,
+            )
         }
     }
 }
