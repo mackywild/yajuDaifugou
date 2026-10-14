@@ -5,22 +5,23 @@ import android.media.MediaPlayer
 import com.example.daifugo.android.GameAudioCue
 
 /**
- * 野獣ルール専用の差し替え式オーディオプレイヤー。
+ * 野獣大富豪のBGM / SEプレイヤー。
  *
- * app/src/main/res/raw/ に次のファイルを置くと有効になる。
+ * app/src/main/res/raw/ に置く差し替え式音源:
  *
- * - yaju_available.mp3 / .wav : 「野獣上がりできます」用SE
- * - yaju_success.mp3 / .wav   : 「やりますねぇ」用SE
- * - yaju_bgm.mp3 / .wav       : 野獣対象者がいる間にループするBGM
+ * - menu_bgm.mp3 / .wav      : タイトル〜メニュー〜ゲーム開始前の共通ループBGM
+ * - yaju_available.mp3 / .wav: 「野獣上がりできます」用SE
+ * - yaju_success.mp3 / .wav  : 「やりますねぇ」用SE
+ * - yaju_bgm.mp3 / .wav      : 野獣対象者がいる対戦中のループBGM
  *
- * ファイルが存在しない場合は無音で処理を継続するため、
- * 音声未配置の状態でもアプリは通常動作する。
+ * menu_bgm は約2分のループ素材を想定するが、MediaPlayer側は音源長を問わず
+ * 繰り返す。素材未配置時は無音で通常動作する。
  */
 object YajuAudioPlayer {
 
-    private var bgmPlayer: MediaPlayer? = null
+    private var menuBgmPlayer: MediaPlayer? = null
+    private var yajuBgmPlayer: MediaPlayer? = null
 
-    /** カットイン等の短いSEを1回再生する。 */
     fun play(context: Context, cue: GameAudioCue) {
         val resourceName = when (cue) {
             GameAudioCue.YAJU_AVAILABLE -> "yaju_available"
@@ -28,9 +29,7 @@ object YajuAudioPlayer {
         }
 
         val resourceId = rawResourceId(context, resourceName)
-        if (resourceId == 0) {
-            return
-        }
+        if (resourceId == 0) return
 
         MediaPlayer.create(context.applicationContext, resourceId)?.apply {
             setOnCompletionListener { player -> player.release() }
@@ -43,58 +42,84 @@ object YajuAudioPlayer {
     }
 
     /**
-     * 野獣上がり条件を獲得したプレイヤーがいる間のBGMを開始する。
-     * 既に再生中なら先頭へ戻さず、そのまま継続する。
+     * タイトル〜ゲーム開始前で共有するラウンジBGM。
+     * 画面遷移では作り直さず、再生位置を維持する。
      */
     @Synchronized
-    fun startBgm(context: Context) {
-        if (bgmPlayer != null) {
-            return
-        }
+    fun startMenuBgm(context: Context) {
+        if (menuBgmPlayer != null) return
 
-        val resourceId = rawResourceId(context, "yaju_bgm")
-        if (resourceId == 0) {
-            return
-        }
+        val resourceId = rawResourceId(context, "menu_bgm")
+        if (resourceId == 0) return
 
-        val player = MediaPlayer.create(context.applicationContext, resourceId)
-            ?: return
-
+        val player = MediaPlayer.create(context.applicationContext, resourceId) ?: return
         player.isLooping = true
-        // カットインSEを潰さないようBGMは少し下げて再生する。
-        player.setVolume(0.55f, 0.55f)
+        player.setVolume(0.42f, 0.42f)
         player.setOnErrorListener { failedPlayer, _, _ ->
             synchronized(this) {
-                if (bgmPlayer === failedPlayer) {
-                    bgmPlayer = null
-                }
+                if (menuBgmPlayer === failedPlayer) menuBgmPlayer = null
             }
             failedPlayer.release()
             true
         }
-
-        bgmPlayer = player
+        menuBgmPlayer = player
         player.start()
     }
 
-    /** 野獣BGMを停止し、MediaPlayerのリソースを解放する。 */
+    @Synchronized
+    fun stopMenuBgm() {
+        release(menuBgmPlayer)
+        menuBgmPlayer = null
+    }
+
+    /**
+     * 野獣対象者がいる対戦中の専用BGM。
+     * 二重再生を防ぐためラウンジBGMを止めてから開始する。
+     */
+    @Synchronized
+    fun startBgm(context: Context) {
+        stopMenuBgm()
+        if (yajuBgmPlayer != null) return
+
+        val resourceId = rawResourceId(context, "yaju_bgm")
+        if (resourceId == 0) return
+
+        val player = MediaPlayer.create(context.applicationContext, resourceId) ?: return
+        player.isLooping = true
+        player.setVolume(0.55f, 0.55f)
+        player.setOnErrorListener { failedPlayer, _, _ ->
+            synchronized(this) {
+                if (yajuBgmPlayer === failedPlayer) yajuBgmPlayer = null
+            }
+            failedPlayer.release()
+            true
+        }
+        yajuBgmPlayer = player
+        player.start()
+    }
+
     @Synchronized
     fun stopBgm() {
-        val player = bgmPlayer ?: return
-        bgmPlayer = null
+        release(yajuBgmPlayer)
+        yajuBgmPlayer = null
+    }
 
+    @Synchronized
+    fun stopAllBgm() {
+        release(menuBgmPlayer)
+        release(yajuBgmPlayer)
+        menuBgmPlayer = null
+        yajuBgmPlayer = null
+    }
+
+    private fun release(player: MediaPlayer?) {
+        player ?: return
         runCatching {
-            if (player.isPlaying) {
-                player.stop()
-            }
+            if (player.isPlaying) player.stop()
         }
         player.release()
     }
 
     private fun rawResourceId(context: Context, resourceName: String): Int =
-        context.resources.getIdentifier(
-            resourceName,
-            "raw",
-            context.packageName,
-        )
+        context.resources.getIdentifier(resourceName, "raw", context.packageName)
 }
