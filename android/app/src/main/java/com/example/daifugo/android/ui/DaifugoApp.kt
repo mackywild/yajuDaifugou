@@ -582,29 +582,25 @@ private fun MainMenuScreen(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        Color(0xFF070B08),
-                        Color(0xFF102119),
-                        Color(0xFF050706),
+                        Color(0xFF020504),
+                        Color(0xFF071B13),
+                        Color(0xFF020303),
                     )
                 )
             ),
     ) {
-        Canvas(Modifier.fillMaxSize()) {
-            drawCircle(
-                color = Color(0xFFB9913D).copy(alpha = 0.10f),
-                radius = size.minDimension * 0.44f,
-                center = Offset(size.width * 0.84f, size.height * 0.22f),
-            )
-            drawCircle(
-                color = Color(0xFF0E5A39).copy(alpha = 0.22f),
-                radius = size.minDimension * 0.34f,
-                center = Offset(size.width * 0.12f, size.height * 0.76f),
-            )
-        }
+        PremiumCasinoBackdrop(
+            accent = if (selected == CasinoMenuItem.CHALLENGE) Color(0xFF8D2429) else CasinoGreen,
+        )
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(18.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = 30.dp,
+            ),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
@@ -613,29 +609,41 @@ private fun MainMenuScreen(
                         Text(
                             "YAJU DAIFUGO",
                             color = CasinoGold,
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = 3.sp,
+                            letterSpacing = 4.sp,
                         )
                         Text(
-                            "CASINO LOUNGE",
+                            "ROYAL CASINO",
                             color = Color.White,
-                            fontSize = 28.sp,
+                            fontSize = 30.sp,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp,
+                            letterSpacing = 1.5.sp,
+                        )
+                        Text(
+                            "WELCOME TO THE NIGHT TABLE",
+                            color = Color.White.copy(alpha = 0.42f),
+                            fontSize = 9.sp,
+                            letterSpacing = 2.sp,
                         )
                     }
                     Surface(
-                        shape = RoundedCornerShape(100.dp),
-                        color = Color.Black.copy(alpha = 0.35f),
-                        border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.55f)),
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFF0B0E0C).copy(alpha = 0.88f),
+                        border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.72f)),
                     ) {
-                        Text(
-                            "Lv.${state.progress.level}",
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                            color = CasinoGold,
-                            fontWeight = FontWeight.Black,
-                        )
+                        Column(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text("RANK", color = Color.White.copy(alpha = 0.45f), fontSize = 8.sp, letterSpacing = 2.sp)
+                            Text(
+                                "Lv." + state.progress.level,
+                                color = CasinoGold,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 16.sp,
+                            )
+                        }
                     }
                 }
             }
@@ -647,27 +655,23 @@ private fun MainMenuScreen(
                 )
             }
 
+            item { PremiumSectionTitle("MAIN PLAY", "CHOOSE YOUR TABLE") }
+
             item {
-                Text(
-                    "MAIN PLAY",
-                    color = CasinoGold.copy(alpha = 0.9f),
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 2.sp,
-                    fontSize = 12.sp,
-                )
-                Spacer(Modifier.height(8.dp))
                 CasinoMenuTile(
                     item = CasinoMenuItem.SOLO,
                     selected = selected == CasinoMenuItem.SOLO,
                     onSelect = { selected = CasinoMenuItem.SOLO },
                 )
-                Spacer(Modifier.height(8.dp))
+            }
+            item {
                 CasinoMenuTile(
                     item = CasinoMenuItem.MULTI,
                     selected = selected == CasinoMenuItem.MULTI,
                     onSelect = { selected = CasinoMenuItem.MULTI },
                 )
-                Spacer(Modifier.height(8.dp))
+            }
+            item {
                 CasinoMenuTile(
                     item = CasinoMenuItem.CHALLENGE,
                     selected = selected == CasinoMenuItem.CHALLENGE,
@@ -676,15 +680,9 @@ private fun MainMenuScreen(
                 )
             }
 
+            item { PremiumSectionTitle("CASINO FLOOR", "REWARDS & COLLECTION") }
+
             item {
-                Text(
-                    "CONTENTS",
-                    color = CasinoGold.copy(alpha = 0.9f),
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 2.sp,
-                    fontSize = 12.sp,
-                )
-                Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CasinoMenuTile(
                         item = CasinoMenuItem.MISSION,
@@ -702,7 +700,8 @@ private fun MainMenuScreen(
                         compact = true,
                     )
                 }
-                Spacer(Modifier.height(8.dp))
+            }
+            item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CasinoMenuTile(
                         item = CasinoMenuItem.COLLECTION,
@@ -730,7 +729,6 @@ private fun MainMenuScreen(
                     compact = true,
                 )
             }
-
         }
     }
 }
@@ -740,43 +738,105 @@ private fun CasinoSelectionPreview(
     selected: CasinoMenuItem,
     onEnter: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.48f)),
-        border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.55f)),
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            Text(
-                selected.english,
-                color = CasinoGold,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp,
-                fontSize = 12.sp,
-            )
-            Text(
-                selected.label,
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Black,
-            )
-            Text(
-                selected.description,
-                color = Color.White.copy(alpha = 0.70f),
-            )
-            Button(
-                onClick = onEnter,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = CasinoGold,
-                    contentColor = Color(0xFF171007),
+    val transition = rememberInfiniteTransition(label = "heroGlow")
+    val glow by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0.92f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1300, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "heroGlowAlpha",
+    )
+    val challenge = selected == CasinoMenuItem.CHALLENGE
+    val accent = if (challenge) Color(0xFFD94A4A) else CasinoGold
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(210.dp)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        if (challenge) Color(0xFF3A080B) else Color(0xFF09271B),
+                        Color(0xFF090B0A),
+                        Color(0xFF020303),
+                    )
                 ),
-            ) {
-                Text("SELECT", fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                RoundedCornerShape(26.dp),
+            )
+            .clickable(onClick = onEnter),
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            drawCircle(
+                color = accent.copy(alpha = 0.09f + glow * 0.07f),
+                radius = size.minDimension * 0.72f,
+                center = Offset(size.width * 0.92f, size.height * 0.20f),
+            )
+            drawLine(
+                color = accent.copy(alpha = 0.28f),
+                start = Offset(size.width * 0.05f, size.height * 0.07f),
+                end = Offset(size.width * 0.62f, size.height * 0.07f),
+                strokeWidth = 2f,
+            )
+        }
+
+        Text(
+            selected.symbol,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 24.dp)
+                .graphicsLayer {
+                    alpha = 0.13f + glow * 0.09f
+                    scaleX = 1f + glow * 0.05f
+                    scaleY = 1f + glow * 0.05f
+                },
+            color = accent,
+            fontSize = if (selected == CasinoMenuItem.CHALLENGE) 54.sp else 92.sp,
+            fontWeight = FontWeight.Black,
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column {
+                Text(
+                    "SELECTED MODE",
+                    color = accent,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 3.sp,
+                    fontSize = 10.sp,
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    selected.label,
+                    color = Color.White,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(
+                    selected.english,
+                    color = Color.White.copy(alpha = 0.46f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                )
+                Spacer(Modifier.height(7.dp))
+                Text(
+                    selected.description,
+                    color = Color.White.copy(alpha = 0.72f),
+                    fontSize = 13.sp,
+                )
             }
+
+            PremiumStartButton(
+                label = "ENTER  ▶",
+                accent = accent,
+                onClick = onEnter,
+            )
         }
     }
 }
@@ -797,12 +857,13 @@ private fun CasinoMenuTile(
         label = "casinoMenuScale",
     )
     val alpha by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.68f,
+        targetValue = if (selected) 1f else 0.76f,
         animationSpec = tween(180),
         label = "casinoMenuAlpha",
     )
+    val tileAccent = if (item == CasinoMenuItem.CHALLENGE) Color(0xFFE14A4A) else CasinoGold
 
-    Card(
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
@@ -810,51 +871,90 @@ private fun CasinoMenuTile(
                 scaleY = scale
                 this.alpha = alpha
             }
+            .background(
+                Brush.horizontalGradient(
+                    if (selected) {
+                        listOf(
+                            accent.copy(alpha = 0.94f),
+                            Color(0xFF101512),
+                            Color(0xFF050706),
+                        )
+                    } else {
+                        listOf(
+                            Color(0xFF111714).copy(alpha = 0.92f),
+                            Color(0xFF070908).copy(alpha = 0.94f),
+                        )
+                    }
+                ),
+                RoundedCornerShape(if (compact) 16.dp else 20.dp),
+            )
             .clickable(onClick = onSelect),
-        shape = RoundedCornerShape(if (compact) 15.dp else 19.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) accent.copy(alpha = 0.72f) else Color.Black.copy(alpha = 0.34f),
-        ),
-        border = BorderStroke(
-            if (selected) 2.dp else 1.dp,
-            if (selected) CasinoGold else Color.White.copy(alpha = 0.14f),
-        ),
     ) {
+        if (selected) {
+            Canvas(Modifier.fillMaxSize()) {
+                drawLine(
+                    color = tileAccent.copy(alpha = 0.75f),
+                    start = Offset(0f, 0f),
+                    end = Offset(size.width * 0.72f, 0f),
+                    strokeWidth = 5f,
+                )
+                drawCircle(
+                    color = tileAccent.copy(alpha = 0.10f),
+                    radius = size.height * 1.1f,
+                    center = Offset(size.width * 0.06f, size.height * 0.5f),
+                )
+            }
+        }
+
         Row(
             modifier = Modifier.padding(
-                horizontal = if (compact) 13.dp else 17.dp,
+                horizontal = if (compact) 13.dp else 15.dp,
                 vertical = if (compact) 12.dp else 15.dp,
             ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                item.symbol,
-                modifier = Modifier.width(if (compact) 36.dp else 48.dp),
-                color = if (selected) CasinoGold else Color.White.copy(alpha = 0.8f),
-                fontWeight = FontWeight.Black,
-                fontSize = if (compact) 17.sp else 21.sp,
-                textAlign = TextAlign.Center,
-            )
+            Surface(
+                modifier = Modifier.size(if (compact) 38.dp else 52.dp),
+                shape = RoundedCornerShape(if (compact) 12.dp else 16.dp),
+                color = if (selected) tileAccent.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.05f),
+                border = BorderStroke(
+                    1.dp,
+                    if (selected) tileAccent.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.10f),
+                ),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        item.symbol,
+                        color = if (selected) tileAccent else Color.White.copy(alpha = 0.78f),
+                        fontWeight = FontWeight.Black,
+                        fontSize = if (compact) 15.sp else 19.sp,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+            Spacer(Modifier.width(if (compact) 9.dp else 13.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     item.label,
                     color = Color.White,
                     fontWeight = FontWeight.Black,
-                    fontSize = if (compact) 14.sp else 17.sp,
+                    fontSize = if (compact) 13.sp else 17.sp,
                 )
                 if (!compact) {
+                    Spacer(Modifier.height(2.dp))
                     Text(
                         item.english,
-                        color = Color.White.copy(alpha = 0.48f),
-                        fontSize = 10.sp,
-                        letterSpacing = 1.sp,
+                        color = tileAccent.copy(alpha = if (selected) 0.82f else 0.48f),
+                        fontSize = 9.sp,
+                        letterSpacing = 1.4.sp,
                     )
                 }
             }
             badge?.let {
                 Surface(
                     shape = CircleShape,
-                    color = Color(0xFFB72828),
+                    color = Color(0xFFD12D39),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
                 ) {
                     Text(
                         it.toString(),
@@ -864,6 +964,15 @@ private fun CasinoMenuTile(
                         fontSize = 11.sp,
                     )
                 }
+                Spacer(Modifier.width(7.dp))
+            }
+            if (!compact) {
+                Text(
+                    "›",
+                    color = if (selected) tileAccent else Color.White.copy(alpha = 0.28f),
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Light,
+                )
             }
         }
     }
