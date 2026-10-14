@@ -14,6 +14,11 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -50,6 +55,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -170,6 +176,17 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
         }
     } == true
 
+    val menuBgmActive = state.screen != DaifugoScreen.GAME &&
+        state.screen != DaifugoScreen.RESULT
+
+    LaunchedEffect(menuBgmActive) {
+        if (menuBgmActive) {
+            YajuAudioPlayer.startMenuBgm(context)
+        } else {
+            YajuAudioPlayer.stopMenuBgm()
+        }
+    }
+
     LaunchedEffect(yajuBgmActive) {
         if (yajuBgmActive) {
             YajuAudioPlayer.startBgm(context)
@@ -180,7 +197,7 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
 
     DisposableEffect(Unit) {
         onDispose {
-            YajuAudioPlayer.stopBgm()
+            YajuAudioPlayer.stopAllBgm()
         }
     }
 
@@ -198,7 +215,11 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                     .navigationBarsPadding()
                     .imePadding(),
             ) {
-                if (state.screen != DaifugoScreen.MAIN_MENU) {
+                if (
+                    state.screen != DaifugoScreen.MAIN_MENU &&
+                    state.screen != DaifugoScreen.CPU_SETUP &&
+                    state.screen != DaifugoScreen.CHALLENGE_SETUP
+                ) {
                     AppHeader(state)
                 }
                 MessageStrip(
