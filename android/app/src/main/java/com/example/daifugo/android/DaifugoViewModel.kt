@@ -418,10 +418,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun refreshState(silent: Boolean = true) {
-        if (_uiState.value.gameState?.let {
-                it.gameMode == "CPU_LOCAL" || it.gameMode == "YAJU_CHALLENGE"
-            } == true
-        ) return
+        if (_uiState.value.gameState?.isLocalCpuGame == true) return
         val roomId = _uiState.value.roomId ?: return
         viewModelScope.launch {
             if (!silent) update { copy(loading = true) }
@@ -458,7 +455,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             .mapNotNull { self.hand.getOrNull(it) }
         require(selectedCards.isNotEmpty()) { "カードを選択してください" }
 
-        val nextState = if ((game.gameMode == "CPU_LOCAL" || game.gameMode == "YAJU_CHALLENGE")) {
+        val nextState = if (game.isLocalCpuGame) {
             if (game.isMySevenTransfer) {
                 require(selectedCards.size == game.sevenTransfer.cardCount) {
                     "7渡しでは${game.sevenTransfer.cardCount}枚選択してください"
@@ -476,28 +473,28 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
         applyGameState(nextState)
         update { copy(selectedCardIndices = emptySet()) }
-        if ((game.gameMode == "CPU_LOCAL" || game.gameMode == "YAJU_CHALLENGE")) {
+        if (game.isLocalCpuGame) {
             startCpuTurnSequence()
         }
     }
 
     fun pass() = launchAction {
         val game = _uiState.value.gameState ?: error("ゲーム状態を取得できません")
-        val nextState = if ((game.gameMode == "CPU_LOCAL" || game.gameMode == "YAJU_CHALLENGE")) {
+        val nextState = if (game.isLocalCpuGame) {
             localCpu.pass()
         } else {
             api.pass(requireRoomId())
         }
         applyGameState(nextState)
         update { copy(selectedCardIndices = emptySet()) }
-        if ((game.gameMode == "CPU_LOCAL" || game.gameMode == "YAJU_CHALLENGE")) {
+        if (game.isLocalCpuGame) {
             startCpuTurnSequence()
         }
     }
 
     fun leaveRoom() = launchAction {
         val game = _uiState.value.gameState
-        if ((game?.gameMode == "CPU_LOCAL" || game?.gameMode == "YAJU_CHALLENGE")) {
+        if (game?.isLocalCpuGame == true) {
             cpuTurnJob?.cancel()
             cpuTurnJob = null
             localCpu.close()
@@ -519,7 +516,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 cpuActionHistory = emptyList(),
                 yajuCutIn = null,
                 ruleCutIns = emptyList(),
-                infoMessage = if ((game?.gameMode == "CPU_LOCAL" || game?.gameMode == "YAJU_CHALLENGE")) "CPU戦を終了しました" else "部屋から退出しました",
+                infoMessage = if (game?.isLocalCpuGame == true) "CPU戦を終了しました" else "部屋から退出しました",
             )
         }
     }

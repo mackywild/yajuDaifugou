@@ -124,6 +124,15 @@ data class GameStateDto(
     val isMySevenTransfer: Boolean
         get() = sevenTransfer.pending && players.firstOrNull { it.self }?.playerId == sevenTransfer.sourcePlayerId
 
+    /**
+     * 端末内で進行するCPUゲーム。
+     *
+     * YAJU_CHALLENGEは通常CPU戦の全機能を継承し、
+     * 初期8/10保証などチャレンジ固有条件だけを上乗せする。
+     */
+    val isLocalCpuGame: Boolean
+        get() = gameMode == "CPU_LOCAL" || gameMode == "YAJU_CHALLENGE"
+
     val sevenTransferTarget: PlayerDto?
         get() = players.firstOrNull { it.playerId == sevenTransfer.targetPlayerId }
 }
