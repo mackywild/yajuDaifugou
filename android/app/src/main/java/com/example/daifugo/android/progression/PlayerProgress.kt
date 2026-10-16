@@ -6,7 +6,8 @@ import kotlin.math.max
 
 data class PlayerProgress(
     val accountKey: String = "guest",
-    val displayName: String = "GUEST",
+    val displayName: String = "PLAYER",
+    val profileConfigured: Boolean = false,
     val totalExp: Int = 0,
     val inventory: Map<String, Int> = emptyMap(),
     val presents: List<PresentEntry> = emptyList(),
