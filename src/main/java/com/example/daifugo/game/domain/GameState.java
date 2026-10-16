@@ -197,6 +197,16 @@ public class GameState {
         this.earlyShotEligiblePlayerId = null;
         this.earlyShotArmPending = false;
 
+        clearPasses();
+    }
+
+    /**
+     * パス状態を全員解除する。
+     *
+     * パスはトリック終了まで固定ではなく、誰かが新しいカードを出した時点で
+     * 次の周回から再参加できる仕様のため、通常プレイ成功時にも呼び出す。
+     */
+    public void clearPasses() {
         players.forEach(Player::clearPass);
     }
 

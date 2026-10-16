@@ -3,6 +3,7 @@ package com.example.daifugo.game.rule;
 import java.util.Objects;
 
 import com.example.daifugo.game.domain.CardCombination;
+import com.example.daifugo.game.domain.CombinationType;
 import com.example.daifugo.game.domain.Mark;
 
 /**
@@ -99,6 +100,21 @@ public class PlayValidator {
             return false;
         }
 
+        /*
+         * 階段は「一番強い札だけ」で比較しない。
+         * 例: 場が 5-6-7 の場合、6-7-8 / 7-8-9 は重なっているため出せず、
+         * 次に出せる最弱の階段は 8-9-10 となる。
+         *
+         * 革命/Jバック中も実効強度へ変換した上で同じ考え方を使う。
+         */
+        if (selected.getType() == CombinationType.STRAIGHT) {
+            return beatsStraightWithoutOverlap(
+                selected,
+                field,
+                strengthReversed
+            );
+        }
+
         int selectedStrength = selected.getBaseStrength();
         int fieldStrength = field.getBaseStrength();
 
@@ -107,6 +123,26 @@ public class PlayValidator {
         }
 
         return selectedStrength > fieldStrength;
+    }
+
+    private boolean beatsStraightWithoutOverlap(
+            CardCombination selected,
+            CardCombination field,
+            boolean strengthReversed
+    ) {
+        int weakestSelected = selected.getCards()
+            .stream()
+            .mapToInt(card -> card.getStrength(strengthReversed))
+            .min()
+            .orElseThrow();
+
+        int strongestField = field.getCards()
+            .stream()
+            .mapToInt(card -> card.getStrength(strengthReversed))
+            .max()
+            .orElseThrow();
+
+        return weakestSelected > strongestField;
     }
 
     /** マーク縛りに適合するか判定する。 */

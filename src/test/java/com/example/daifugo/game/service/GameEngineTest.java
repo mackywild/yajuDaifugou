@@ -214,6 +214,56 @@ public class GameEngineTest {
     }
 
     @Test
+    void パス後に誰かがカードを出したら次周から復帰する() {
+        Player player1 = playerWithCards(
+            "p1",
+            Rank.FIVE,
+            Rank.KING
+        );
+        Player player2 = playerWithCards(
+            "p2",
+            Rank.SEVEN,
+            Rank.NINE
+        );
+        Player player3 = playerWithCards(
+            "p3",
+            Rank.SIX,
+            Rank.QUEEN
+        );
+
+        GameState state = startedState(
+            player1,
+            player2,
+            player3
+        );
+
+        gameEngine.play(
+            state,
+            "p1",
+            List.of(player1.getHand().get(0))
+        );
+
+        gameEngine.pass(state, "p2");
+        assertTrue(player2.isPassed());
+
+        gameEngine.play(
+            state,
+            "p3",
+            List.of(player3.getHand().get(0))
+        );
+
+        assertFalse(player2.isPassed());
+        assertEquals("p1", state.getCurrentPlayer().getId());
+
+        gameEngine.pass(state, "p1");
+
+        assertEquals(
+            "p2",
+            state.getCurrentPlayer().getId()
+        );
+    }
+
+    @Test
     void 最後の一枚を出すと順位が確定する() {
         Player player1 = playerWithCard(
             "p1",
