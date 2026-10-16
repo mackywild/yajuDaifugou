@@ -199,11 +199,12 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    /** タイトル画面から、未設定なら必須アカウント設定へ進む。 */
+    /**
+     * タイトル画面から、端末プロフィール未設定時だけ初回設定へ進む。
+     * Google Play Gamesは任意連携で、PC版とのクロスプレイ条件にはしない。
+     */
     fun enterMainMenu() = update {
-        val ready = playGamesSignedIn &&
-            progress.accountKey != "guest" &&
-            progress.profileConfigured
+        val ready = progress.profileConfigured
         copy(
             screen = if (ready) DaifugoScreen.MAIN_MENU else DaifugoScreen.ACCOUNT_SETUP,
             playerName = if (progress.profileConfigured) progress.displayName else playerName,
@@ -215,7 +216,6 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     fun completeAccountSetup() {
         val state = _uiState.value
         runCatching {
-            require(state.playGamesSignedIn) { "Google Play Gamesへのログインが必要です" }
             progressRepository.updateDisplayName(state.playerName)
         }
             .onSuccess { progress ->
@@ -235,7 +235,6 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     fun saveProfileName() {
         val state = _uiState.value
         runCatching {
-            require(state.playGamesSignedIn) { "Google Play Gamesへのログインが必要です" }
             progressRepository.updateDisplayName(state.playerName)
         }
             .onSuccess { progress ->
@@ -854,7 +853,6 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     private fun validatedPlayerName(): String {
         val state = _uiState.value
-        require(state.playGamesSignedIn) { "Google Play Gamesへのログインが必要です" }
         require(state.progress.profileConfigured) { "プロフィール設定を完了してください" }
         val playerName = state.progress.displayName.trim()
         require(playerName.isNotBlank()) { "プレイヤー名をプロフィールで設定してください" }
