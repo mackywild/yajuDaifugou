@@ -165,6 +165,13 @@ public class GameEngine {
         );
 
         /*
+         * パスは「そのトリック中ずっと脱落」ではない。
+         * 誰かがカードを出した時点で全員のパスを解除し、
+         * 次の周回から再び手番対象へ戻す。
+         */
+        state.clearPasses();
+
+        /*
          * JOKERをスペード3で返した場合、そのスペード3をこのトリックの最強札とする。
          * 場が流れるまでは他のカードを一切提出できず、残りプレイヤーはPASSのみ。
          */
@@ -173,8 +180,6 @@ public class GameEngine {
                 && selectedCombination.isSingleSpadeThree()) {
             state.activateSpadeThreeJokerReturn();
         }
-
-        player.clearPass();
 
         /*
          * 早漏判定はカード除去と場更新が成功した後に確定する。

@@ -78,6 +78,78 @@ public class PlayValidatorTest {
     }
 
     @Test
+    void 階段は場の連番と重なる組み合わせでは返せない() {
+        CardCombination field = straight(
+            Rank.FIVE,
+            Rank.SIX,
+            Rank.SEVEN
+        );
+
+        assertFalse(
+            validator.canPlay(
+                straight(Rank.SIX, Rank.SEVEN, Rank.EIGHT),
+                field,
+                false,
+                null
+            )
+        );
+
+        assertFalse(
+            validator.canPlay(
+                straight(Rank.SEVEN, Rank.EIGHT, Rank.NINE),
+                field,
+                false,
+                null
+            )
+        );
+    }
+
+    @Test
+    void 五六七の階段に出せる最弱は八九十() {
+        CardCombination field = straight(
+            Rank.FIVE,
+            Rank.SIX,
+            Rank.SEVEN
+        );
+
+        assertTrue(
+            validator.canPlay(
+                straight(Rank.EIGHT, Rank.NINE, Rank.TEN),
+                field,
+                false,
+                null
+            )
+        );
+    }
+
+    @Test
+    void 革命中の階段も場の範囲をまたいでは出せない() {
+        CardCombination field = straight(
+            Rank.EIGHT,
+            Rank.NINE,
+            Rank.TEN
+        );
+
+        assertFalse(
+            validator.canPlay(
+                straight(Rank.SEVEN, Rank.EIGHT, Rank.NINE),
+                field,
+                true,
+                null
+            )
+        );
+
+        assertTrue(
+            validator.canPlay(
+                straight(Rank.FIVE, Rank.SIX, Rank.SEVEN),
+                field,
+                true,
+                null
+            )
+        );
+    }
+
+    @Test
     void 無効な組み合わせは出せない() {
         CardCombination selected = CardCombination.of(List.of(
             new Card(Mark.SPADE, Rank.FIVE),
@@ -131,6 +203,14 @@ public class PlayValidatorTest {
         return CardCombination.of(List.of(
             new Card(Mark.SPADE, rank)
         ));
+    }
+
+    private CardCombination straight(Rank... ranks) {
+        return CardCombination.of(
+            java.util.Arrays.stream(ranks)
+                .map(rank -> new Card(Mark.SPADE, rank))
+                .toList()
+        );
     }
 
     @Test
