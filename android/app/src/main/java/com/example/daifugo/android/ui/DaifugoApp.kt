@@ -216,9 +216,17 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                     .imePadding(),
             ) {
                 if (
-                    state.screen != DaifugoScreen.MAIN_MENU &&
-                    state.screen != DaifugoScreen.CPU_SETUP &&
-                    state.screen != DaifugoScreen.CHALLENGE_SETUP
+                    state.screen !in setOf(
+                        DaifugoScreen.ACCOUNT_SETUP,
+                        DaifugoScreen.MAIN_MENU,
+                        DaifugoScreen.CPU_SETUP,
+                        DaifugoScreen.CHALLENGE_SETUP,
+                        DaifugoScreen.MISSION,
+                        DaifugoScreen.PROFILE,
+                        DaifugoScreen.COLLECTION,
+                        DaifugoScreen.PRESENT_BOX,
+                        DaifugoScreen.SETTINGS,
+                    )
                 ) {
                     AppHeader(state)
                 }
@@ -242,6 +250,13 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                     ) { screen ->
                         when (screen) {
                             DaifugoScreen.TITLE -> Unit
+                            DaifugoScreen.ACCOUNT_SETUP -> AccountSetupScreen(
+                                state = state,
+                                viewModel = viewModel,
+                                onPlayGamesSignIn = {
+                                    playGamesAccountManager?.signIn(::applyPlayGamesAccount)
+                                },
+                            )
                             DaifugoScreen.LOGIN -> LoginScreen(state, viewModel)
                             DaifugoScreen.MAIN_MENU -> MainMenuScreen(
                                 state = state,
@@ -256,7 +271,7 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                             DaifugoScreen.MISSION -> MissionScreen(state, viewModel)
                             DaifugoScreen.PROFILE -> ProfileScreen(
                                 state = state,
-                                onBack = viewModel::backToMenu,
+                                viewModel = viewModel,
                                 onPlayGamesSignIn = {
                                     playGamesAccountManager?.signIn(::applyPlayGamesAccount)
                                 },
@@ -479,6 +494,132 @@ private fun MessageStrip(state: DaifugoUiState, onDismiss: () -> Unit) {
 }
 
 @Composable
+private fun AccountSetupScreen(
+    state: DaifugoUiState,
+    viewModel: DaifugoViewModel,
+    onPlayGamesSignIn: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF020504),
+                        Color(0xFF082319),
+                        Color(0xFF030504),
+                    )
+                )
+            ),
+    ) {
+        PremiumCasinoBackdrop(accent = CasinoGreen)
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
+                Text(
+                    "FIRST ENTRY",
+                    color = CasinoGold,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 3.sp,
+                    fontSize = 11.sp,
+                )
+                Text(
+                    "アカウント設定",
+                    color = Color.White,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(
+                    "コレクション・戦績・ミッションをあなたのアカウントに保存します。",
+                    color = Color.White.copy(alpha = 0.60f),
+                )
+            }
+
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    color = Color.Black.copy(alpha = 0.36f),
+                    border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.42f)),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        Text(
+                            "GOOGLE PLAY GAMES",
+                            color = CasinoGold,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 2.sp,
+                            fontSize = 10.sp,
+                        )
+                        Text(
+                            when {
+                                state.playGamesSignedIn -> "✓ アカウント連携済み"
+                                state.playGamesConfigured -> "Play Gamesへのログインが必要です"
+                                else -> "Play Games設定がまだ有効になっていません"
+                            },
+                            color = if (state.playGamesSignedIn) Color(0xFF78D6A1) else Color.White,
+                            fontWeight = FontWeight.Black,
+                        )
+                        if (!state.playGamesSignedIn) {
+                            PremiumStartButton(
+                                label = "PLAY GAMES LOGIN  ▶",
+                                onClick = onPlayGamesSignIn,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (state.playGamesSignedIn) {
+                item {
+                    Text(
+                        "PLAYER PROFILE",
+                        color = CasinoGold,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp,
+                        fontSize = 10.sp,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    PremiumPlayerNameField(
+                        value = state.playerName,
+                        onValueChange = viewModel::setPlayerName,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "この名前がSOLO・CHALLENGE・マルチ対戦で使用されます。後からプロフィールで変更できます。",
+                        color = Color.White.copy(alpha = 0.48f),
+                        fontSize = 11.sp,
+                    )
+                }
+
+                item {
+                    PremiumStartButton(
+                        label = "登録してゲームを始める  ▶",
+                        onClick = viewModel::completeAccountSetup,
+                    )
+                }
+            }
+
+            item {
+                Text(
+                    "ゲストプレイには対応していません。",
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White.copy(alpha = 0.42f),
+                    textAlign = TextAlign.Center,
+                    fontSize = 11.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun LoginScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -551,7 +692,7 @@ private enum class CasinoMenuItem(
 ) {
     SOLO("♠", "ひとりでいく", "SOLO PLAY", "CPUと自由なルールで対戦する"),
     MULTI("♦", "みんなでいく", "MULTIPLAYER", "オンラインの同じ卓へ参加する"),
-    CHALLENGE("8→10", "チャレンジモード", "YAJU CHALLENGE", "8と10が揃った状態から野獣上がりを狙う"),
+    CHALLENGE("8 + 10", "チャレンジモード", "YAJU CHALLENGE", "野獣状態でゲームを開始する"),
     MISSION("✓", "ミッション", "MISSION", "遊んで条件を達成し、アイテム報酬を獲得する"),
     PROFILE("♛", "プロフィール", "PROFILE", "戦績・レベル・アバターを確認する"),
     COLLECTION("▣", "コレクション", "COLLECTION", "獲得したカスタマイズアイテムを見る"),
@@ -989,7 +1130,13 @@ private fun PresentBoxScreen(state: DaifugoUiState, viewModel: DaifugoViewModel)
     val presents = state.progress.presents
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF020504), Color(0xFF082319), Color(0xFF030504))
+                )
+            ),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -1006,13 +1153,14 @@ private fun PresentBoxScreen(state: DaifugoUiState, viewModel: DaifugoViewModel)
                         "プレゼントボックス",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Black,
+                        color = Color.White,
                     )
                     Text(
                         "ミッション報酬・管理者配布を保管",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
+                TextButton(onClick = viewModel::backToMenu) { Text("‹ BACK", color = Color.White.copy(alpha = 0.72f)) }
             }
         }
 
@@ -1056,7 +1204,11 @@ private fun PresentBoxScreen(state: DaifugoUiState, viewModel: DaifugoViewModel)
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF0D1712),
+                            contentColor = Color.White,
+                        ),
+                        border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.18f)),
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
@@ -1135,7 +1287,13 @@ private fun CollectionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel)
     val items = CosmeticCatalog.items.filter { it.category == category }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF020504), Color(0xFF082319), Color(0xFF030504))
+                )
+            ),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -1152,13 +1310,14 @@ private fun CollectionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel)
                         "コレクション",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Black,
+                        color = Color.White,
                     )
                     Text(
                         "獲得したアイテムを装備できます",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
+                TextButton(onClick = viewModel::backToMenu) { Text("‹ BACK", color = Color.White.copy(alpha = 0.72f)) }
             }
         }
 
@@ -1227,7 +1386,8 @@ private fun CollectionItemCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (owned) MaterialTheme.colorScheme.surface else Color.Black.copy(alpha = 0.08f),
+            containerColor = if (owned) Color(0xFF0D1712) else Color(0xFF070A08),
+            contentColor = Color.White,
         ),
         border = BorderStroke(
             if (equipped) 2.dp else 1.dp,
@@ -1255,13 +1415,12 @@ private fun CollectionItemCard(
                 Text(
                     item.displayName,
                     fontWeight = FontWeight.Black,
-                    color = if (owned) MaterialTheme.colorScheme.onSurface
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                    color = if (owned) Color.White else Color.White.copy(alpha = 0.35f),
                 )
                 Text(
                     item.description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (owned) 1f else 0.5f),
+                    color = Color.White.copy(alpha = if (owned) 0.58f else 0.28f),
                 )
                 if (ownedCount > 1) {
                     Text(
@@ -1306,7 +1465,13 @@ private fun MissionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
     val missions = DailyMissionRules.views(state.progress.daily)
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF020504), Color(0xFF082319), Color(0xFF030504))
+                )
+            ),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -1323,13 +1488,14 @@ private fun MissionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                         "ミッション",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Black,
+                        color = Color.White,
                     )
                     Text(
                         "達成報酬はプレゼントボックスへ送られます",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
+                TextButton(onClick = viewModel::backToMenu) { Text("‹ BACK", color = Color.White.copy(alpha = 0.72f)) }
             }
         }
 
@@ -1348,7 +1514,12 @@ private fun MissionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (mission.completed) SoftGold else MaterialTheme.colorScheme.surface
+                        containerColor = if (mission.completed) Color(0xFF193322) else Color(0xFF0D1712),
+                        contentColor = Color.White,
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        if (mission.completed) CasinoGold.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.08f),
                     ),
                 ) {
                     Column(
@@ -1378,7 +1549,7 @@ private fun MissionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
 
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = Color.Black.copy(alpha = 0.06f),
+                            color = Color.White.copy(alpha = 0.06f),
                         ) {
                             Text(
                                 "報酬  ◆ ${mission.rewardItemName} ×${mission.rewardQuantity}",
@@ -1422,61 +1593,48 @@ private fun MissionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
 @Composable
 private fun ProfileScreen(
     state: DaifugoUiState,
-    onBack: () -> Unit,
+    viewModel: DaifugoViewModel,
     onPlayGamesSignIn: () -> Unit,
 ) {
     val progress = state.progress
-    val avatarName = progress.equippedAvatarId
-        ?.let(CosmeticCatalog::find)
-        ?.displayName
-        ?: "未設定"
-    val frameName = progress.equippedFrameId
-        ?.let(CosmeticCatalog::find)
-        ?.displayName
-        ?: "未設定"
-    val cardName = progress.equippedCardSkinId
-        ?.let(CosmeticCatalog::find)
-        ?.displayName
-        ?: "未設定"
-    val effectName = progress.equippedEffectId
-        ?.let(CosmeticCatalog::find)
-        ?.displayName
-        ?: "未設定"
+    val avatarName = progress.equippedAvatarId?.let(CosmeticCatalog::find)?.displayName ?: "未設定"
+    val frameName = progress.equippedFrameId?.let(CosmeticCatalog::find)?.displayName ?: "未設定"
+    val cardName = progress.equippedCardSkinId?.let(CosmeticCatalog::find)?.displayName ?: "未設定"
+    val effectName = progress.equippedEffectId?.let(CosmeticCatalog::find)?.displayName ?: "未設定"
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF020504), Color(0xFF082319), Color(0xFF030504))
+                )
+            ),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        "MEMBERS CARD",
-                        color = CasinoGold,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp,
-                    )
-                    Text(
-                        "プロフィール",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Black,
-                    )
+                    Text("MEMBERS CARD", color = CasinoGold, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                    Text("プロフィール", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black)
                 }
-                TextButton(onClick = onBack) { Text("← メニュー") }
+                TextButton(onClick = viewModel::backToMenu) {
+                    Text("‹ BACK", color = Color.White.copy(alpha = 0.72f))
+                }
             }
         }
 
         item {
-            Card(
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF10261C)),
+                color = Color(0xFF10261C),
                 border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.55f)),
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
@@ -1491,23 +1649,13 @@ private fun ProfileScreen(
                         }
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
+                            Text(progress.displayName, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
                             Text(
-                                state.playGamesDisplayName ?: progress.displayName,
-                                color = Color.White,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Black,
-                            )
-                            Text(
-                                if (state.playGamesSignedIn) "Google Play Games 連携済み" else "ゲストプレイ",
-                                color = if (state.playGamesSignedIn) Color(0xFF78D6A1) else Color.White.copy(alpha = 0.55f),
+                                if (state.playGamesSignedIn) "Google Play Games 連携済み" else "再ログインが必要です",
+                                color = if (state.playGamesSignedIn) Color(0xFF78D6A1) else Color(0xFFE34C52),
                             )
                         }
-                        Text(
-                            "Lv.${progress.level}",
-                            color = CasinoGold,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Black,
-                        )
+                        Text("Lv." + progress.level, color = CasinoGold, fontSize = 22.sp, fontWeight = FontWeight.Black)
                     }
 
                     val expRatio = if (progress.expToNextLevel <= 0) 0f
@@ -1517,83 +1665,75 @@ private fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text(
-                        "${progress.expIntoLevel} / ${progress.expToNextLevel} EXP",
+                        progress.expIntoLevel.toString() + " / " + progress.expToNextLevel + " EXP",
                         color = Color.White.copy(alpha = 0.65f),
                         style = MaterialTheme.typography.labelMedium,
                     )
-
-                    if (!state.playGamesSignedIn) {
-                        if (state.playGamesConfigured) {
-                            OutlinedButton(
-                                onClick = onPlayGamesSignIn,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text("Google Play Games と連携")
-                            }
-                        } else {
-                            Text(
-                                "Play Console設定後にGoogle Play Games連携が有効になります",
-                                color = Color.White.copy(alpha = 0.48f),
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        }
-                    }
                 }
             }
         }
 
         item {
-            CasinoPanel(title = "戦績") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    StatText("対戦", "${progress.stats.totalMatches}")
-                    StatText("勝率", String.format("%.1f%%", progress.winRatePercent))
-                    StatText(
+            PremiumCasinoInfoPanel("PLAYER NAME") {
+                PremiumPlayerNameField(
+                    value = state.playerName,
+                    onValueChange = viewModel::setPlayerName,
+                )
+                Spacer(Modifier.height(10.dp))
+                PremiumStartButton(
+                    label = "名前を保存",
+                    onClick = viewModel::saveProfileName,
+                )
+            }
+        }
+
+        item {
+            PremiumCasinoInfoPanel("戦績") {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    PremiumStatText("対戦", progress.stats.totalMatches.toString())
+                    PremiumStatText("勝率", String.format("%.1f%%", progress.winRatePercent))
+                    PremiumStatText(
                         "平均順位",
-                        if (progress.stats.totalMatches == 0) "—"
-                        else String.format("%.2f", progress.averageRank),
+                        if (progress.stats.totalMatches == 0) "—" else String.format("%.2f", progress.averageRank),
                     )
                 }
                 Spacer(Modifier.height(14.dp))
-                HorizontalDivider()
+                HorizontalDivider(color = Color.White.copy(alpha = 0.10f))
                 Spacer(Modifier.height(14.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    StatText("野獣対象", "${progress.stats.yajuTargets}")
-                    StatText("野獣成功", "${progress.stats.yajuSuccesses}")
-                    StatText("成功率", String.format("%.1f%%", progress.yajuSuccessRatePercent))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    PremiumStatText("野獣対象", progress.stats.yajuTargets.toString())
+                    PremiumStatText("野獣成功", progress.stats.yajuSuccesses.toString())
+                    PremiumStatText("成功率", String.format("%.1f%%", progress.yajuSuccessRatePercent))
                 }
             }
         }
 
         item {
-            CasinoPanel(title = "チャレンジ戦績") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    StatText("挑戦", "${progress.stats.challengeMatches}")
-                    StatText("1位", "${progress.stats.challengeWins}")
-                    StatText("勝率", String.format("%.1f%%", progress.challengeWinRatePercent))
+            PremiumCasinoInfoPanel("チャレンジ戦績") {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    PremiumStatText("挑戦", progress.stats.challengeMatches.toString())
+                    PremiumStatText("1位", progress.stats.challengeWins.toString())
+                    PremiumStatText("勝率", String.format("%.1f%%", progress.challengeWinRatePercent))
                 }
             }
         }
 
         item {
-            CasinoPanel(title = "装備中") {
-                ProfileEquipmentRow("アバター", avatarName)
-                ProfileEquipmentRow("フレーム", frameName)
-                ProfileEquipmentRow("トランプ", cardName)
-                ProfileEquipmentRow("エフェクト", effectName)
+            PremiumCasinoInfoPanel("装備中") {
+                PremiumEquipmentRow("アバター", avatarName)
+                PremiumEquipmentRow("フレーム", frameName)
+                PremiumEquipmentRow("トランプ", cardName)
+                PremiumEquipmentRow("エフェクト", effectName)
                 Spacer(Modifier.height(6.dp))
-                Text(
-                    "装備変更はコレクションから行います。",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Text("装備変更はコレクションから行います。", color = Color.White.copy(alpha = 0.46f), fontSize = 11.sp)
+            }
+        }
+
+        if (!state.playGamesSignedIn) {
+            item {
+                PremiumStartButton(
+                    label = "PLAY GAMES 再ログイン",
+                    onClick = onPlayGamesSignIn,
                 )
             }
         }
@@ -1601,23 +1741,40 @@ private fun ProfileScreen(
 }
 
 @Composable
-private fun ProfileEquipmentRow(label: String, value: String) {
+private fun PremiumCasinoInfoPanel(
+    title: String,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = Color(0xFF0D1712).copy(alpha = 0.96f),
+        border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.28f)),
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text(title, color = CasinoGold, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+            Spacer(Modifier.height(14.dp))
+            content()
+        }
+    }
+}
+
+@Composable
+private fun PremiumStatText(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, color = Color.White, fontWeight = FontWeight.Black)
+        Text(label, color = Color.White.copy(alpha = 0.48f), fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun PremiumEquipmentRow(label: String, value: String) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            label,
-            modifier = Modifier.width(92.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            value,
-            modifier = Modifier.weight(1f),
-            fontWeight = FontWeight.Bold,
-        )
+        Text(label, modifier = Modifier.width(92.dp), color = Color.White.copy(alpha = 0.50f))
+        Text(value, modifier = Modifier.weight(1f), color = Color.White, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -1959,7 +2116,7 @@ private fun ChallengeSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewMo
                 item {
                     Column {
                         Text(
-                            "BEAST JACKPOT",
+                            "TADOKORO BEAST",
                             color = accent,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
@@ -2002,8 +2159,6 @@ private fun ChallengeSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewMo
                         }
                     }
                 }
-
-                item { PremiumPlayerNameField(state.playerName, viewModel::setPlayerName, accent) }
 
                 item {
                     PremiumChoiceRow(
@@ -2054,11 +2209,10 @@ private fun ChallengeSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewMo
                                 letterSpacing = 2.sp,
                                 fontSize = 10.sp,
                             )
-                            Text("初期手札に 8 + 10 を最低1枚ずつ保証", color = Color.White, fontWeight = FontWeight.Black)
                             Text(
-                                "野獣ルール / 8切りは強制ON",
-                                color = Color.White.copy(alpha = 0.54f),
-                                fontSize = 12.sp,
+                                "野獣状態でゲームを開始します",
+                                color = Color.White,
+                                fontWeight = FontWeight.Black,
                             )
                         }
                     }
@@ -2190,7 +2344,7 @@ private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                                     fontWeight = FontWeight.Black,
                                 )
                                 Text(
-                                    "ルールを組んで、CPU卓へ。",
+                                    "CPUとバトル！！",
                                     color = Color.White.copy(alpha = 0.56f),
                                 )
                             }
@@ -2206,8 +2360,6 @@ private fun CpuSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                         }
                     }
                 }
-
-                item { PremiumPlayerNameField(state.playerName, viewModel::setPlayerName) }
 
                 item {
                     PremiumChoiceRow(
@@ -2335,17 +2487,21 @@ private fun LobbyScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                     Text("ロビー", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
                     Text(state.serverUrl, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                TextButton(onClick = viewModel::backToMenu) { Text("← メニュー") }
+                TextButton(onClick = viewModel::backToMenu) { Text("‹ BACK", color = Color.White.copy(alpha = 0.72f)) }
             }
         }
         item {
             CasinoPanel(title = "プレイヤー") {
-                OutlinedTextField(
-                    value = state.playerName,
-                    onValueChange = viewModel::setPlayerName,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("プレイヤー名") },
-                    singleLine = true,
+                Text(
+                    state.progress.displayName,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Black,
+                    color = CasinoGreenDark,
+                )
+                Text(
+                    "プレイヤー名はプロフィールから変更できます。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
