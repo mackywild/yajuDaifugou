@@ -567,10 +567,26 @@ private fun AccountSetupScreen(
                             fontWeight = FontWeight.Black,
                         )
                         if (!state.playGamesSignedIn) {
-                            PremiumStartButton(
-                                label = "PLAY GAMES LOGIN  ▶",
-                                onClick = onPlayGamesSignIn,
-                            )
+                            if (state.playGamesConfigured) {
+                                PremiumStartButton(
+                                    label = "PLAY GAMES LOGIN  ▶",
+                                    onClick = onPlayGamesSignIn,
+                                )
+                            } else {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = Color(0xFF321317),
+                                    border = BorderStroke(1.dp, Color(0xFFE34C52).copy(alpha = 0.45f)),
+                                ) {
+                                    Text(
+                                        "Play Games設定完了後にアカウント登録できます。",
+                                        modifier = Modifier.padding(14.dp),
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -1157,7 +1173,7 @@ private fun PresentBoxScreen(state: DaifugoUiState, viewModel: DaifugoViewModel)
                     )
                     Text(
                         "ミッション報酬・管理者配布を保管",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = Color.White.copy(alpha = 0.52f),
                     )
                 }
                 TextButton(onClick = viewModel::backToMenu) { Text("‹ BACK", color = Color.White.copy(alpha = 0.72f)) }
@@ -1238,7 +1254,8 @@ private fun PresentBoxScreen(state: DaifugoUiState, viewModel: DaifugoViewModel)
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
-                                color = Color.Black.copy(alpha = 0.05f),
+                                color = Color.White.copy(alpha = 0.06f),
+                                contentColor = Color.White,
                             ) {
                                 Row(
                                     modifier = Modifier.padding(12.dp),
@@ -1314,7 +1331,7 @@ private fun CollectionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel)
                     )
                     Text(
                         "獲得したアイテムを装備できます",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = Color.White.copy(alpha = 0.52f),
                     )
                 }
                 TextButton(onClick = viewModel::backToMenu) { Text("‹ BACK", color = Color.White.copy(alpha = 0.72f)) }
@@ -1492,7 +1509,7 @@ private fun MissionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                     )
                     Text(
                         "達成報酬はプレゼントボックスへ送られます",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = Color.White.copy(alpha = 0.52f),
                     )
                 }
                 TextButton(onClick = viewModel::backToMenu) { Text("‹ BACK", color = Color.White.copy(alpha = 0.72f)) }
@@ -1572,7 +1589,7 @@ private fun MissionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                             }
                             else -> Text(
                                 "進行中",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = Color.White.copy(alpha = 0.48f),
                             )
                         }
                     }
