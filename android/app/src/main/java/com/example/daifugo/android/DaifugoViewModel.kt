@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 /** アプリ内の主要画面。 */
 enum class DaifugoScreen {
     TITLE,
+    ACCOUNT_SETUP,
     LOGIN,
     MAIN_MENU,
     MULTIPLAYER,
@@ -129,13 +130,14 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     private val localCpu = LocalCpuGameManager()
     private val preferences = application.getSharedPreferences("daifugo", 0)
     private val progressRepository = PlayerProgressRepository(application)
+    private val initialProgress = progressRepository.load()
 
     private val _uiState = MutableStateFlow(
         DaifugoUiState(
             serverUrl = preferences.getString("serverUrl", "http://10.0.2.2:8080")
                 ?: "http://10.0.2.2:8080",
-            playerName = preferences.getString("playerName", "") ?: "",
-            progress = progressRepository.load(),
+            playerName = if (initialProgress.profileConfigured) initialProgress.displayName else "",
+            progress = initialProgress,
         )
     )
     val uiState: StateFlow<DaifugoUiState> = _uiState.asStateFlow()
@@ -185,23 +187,64 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         }
 
         update {
+            val signedInProgress = if (authenticated) progress else this.progress
             copy(
                 playGamesConfigured = configured,
                 playGamesSignedIn = authenticated,
                 playGamesDisplayName = displayName,
-                progress = progress,
+                progress = signedInProgress,
+                playerName = if (signedInProgress.profileConfigured) signedInProgress.displayName else playerName,
                 errorMessage = errorMessage,
             )
         }
     }
 
-    /** タイトル画面のTAP TO STARTからメインメニューへ進む。 */
+    /** タイトル画面から、未設定なら必須アカウント設定へ進む。 */
     fun enterMainMenu() = update {
+        val ready = playGamesSignedIn &&
+            progress.accountKey != "guest" &&
+            progress.profileConfigured
         copy(
-            screen = DaifugoScreen.MAIN_MENU,
+            screen = if (ready) DaifugoScreen.MAIN_MENU else DaifugoScreen.ACCOUNT_SETUP,
+            playerName = if (progress.profileConfigured) progress.displayName else playerName,
             errorMessage = null,
             infoMessage = null,
         )
+    }
+
+    fun completeAccountSetup() {
+        val state = _uiState.value
+        require(state.playGamesSignedIn) { "Google Play Gamesへのログインが必要です" }
+        runCatching { progressRepository.updateDisplayName(state.playerName) }
+            .onSuccess { progress ->
+                update {
+                    copy(
+                        progress = progress,
+                        playerName = progress.displayName,
+                        screen = DaifugoScreen.MAIN_MENU,
+                        errorMessage = null,
+                        infoMessage = "アカウント設定が完了しました",
+                    )
+                }
+            }
+            .onFailure(::handleError)
+    }
+
+    fun saveProfileName() {
+        val state = _uiState.value
+        require(state.playGamesSignedIn) { "Google Play Gamesへのログインが必要です" }
+        runCatching { progressRepository.updateDisplayName(state.playerName) }
+            .onSuccess { progress ->
+                update {
+                    copy(
+                        progress = progress,
+                        playerName = progress.displayName,
+                        errorMessage = null,
+                        infoMessage = "プレイヤー名を更新しました",
+                    )
+                }
+            }
+            .onFailure(::handleError)
     }
 
     /** 表示中の野獣確定カットインを、同一イベントの場合だけ閉じる。 */
@@ -242,7 +285,14 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun openMission() = update { copy(screen = DaifugoScreen.MISSION, errorMessage = null, infoMessage = null) }
 
-    fun openProfile() = update { copy(screen = DaifugoScreen.PROFILE, errorMessage = null, infoMessage = null) }
+    fun openProfile() = update {
+        copy(
+            screen = DaifugoScreen.PROFILE,
+            playerName = progress.displayName,
+            errorMessage = null,
+            infoMessage = null,
+        )
+    }
 
     fun openCollection() = update { copy(screen = DaifugoScreen.COLLECTION, errorMessage = null, infoMessage = null) }
 
@@ -355,7 +405,6 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             difficulty = state.cpuDifficulty,
             rules = rules,
         )
-        savePlayerName(playerName)
         lastHandledEventId = 0L
         stopRoomRealtime()
         update { copy(cpuActionHistory = emptyList(), cpuTurnAnimation = null, cpuTurnInProgress = false, yajuCutIn = null, ruleCutIns = emptyList()) }
@@ -383,7 +432,6 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             rules = rules,
             yajuChallenge = true,
         )
-        savePlayerName(playerName)
         lastHandledEventId = 0L
         stopRoomRealtime()
         update {
@@ -402,7 +450,6 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     fun createRoom() = launchAction {
         val playerName = validatedPlayerName()
         val response = api.createRoom(playerName)
-        savePlayerName(playerName)
         enterRoom(response.roomId)
     }
 
@@ -413,7 +460,6 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         require(roomId.isNotBlank()) { "ルームIDを入力してください" }
 
         val response = api.joinRoom(roomId, playerName)
-        savePlayerName(playerName)
         enterRoom(response.roomId)
     }
 
@@ -803,14 +849,12 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun validatedPlayerName(): String {
-        val playerName = _uiState.value.playerName.trim()
-        require(playerName.isNotBlank()) { "プレイヤー名を入力してください" }
-        require(playerName.length <= 20) { "プレイヤー名は20文字以内にしてください" }
+        val state = _uiState.value
+        require(state.playGamesSignedIn) { "Google Play Gamesへのログインが必要です" }
+        require(state.progress.profileConfigured) { "プロフィール設定を完了してください" }
+        val playerName = state.progress.displayName.trim()
+        require(playerName.isNotBlank()) { "プレイヤー名をプロフィールで設定してください" }
         return playerName
-    }
-
-    private fun savePlayerName(playerName: String) {
-        preferences.edit().putString("playerName", playerName).apply()
     }
 
     private fun requireRoomId(): String =
