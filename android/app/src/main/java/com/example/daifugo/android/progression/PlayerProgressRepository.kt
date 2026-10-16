@@ -108,11 +108,16 @@ class PlayerProgressRepository(context: Context) {
         val key = "pgs:$playerId"
         val existing = preferences.getString(profileKey(key), null)
         val progress = if (existing == null) {
-            val guest = loadFor("guest")
-            guest.copy(accountKey = key, displayName = displayName.ifBlank { "PLAYER" })
+            // 旧ゲストデータが存在する端末だけは進捗を引き継ぐが、
+            // 新規プレイではアカウント設定完了までゲームへ進ませない。
+            val legacy = loadFor("guest")
+            legacy.copy(
+                accountKey = key,
+                displayName = "PLAYER",
+                profileConfigured = false,
+            )
         } else {
-            val decoded = decode(existing)
-            decoded.copy(displayName = displayName.ifBlank { decoded.displayName })
+            decode(existing)
         }
 
         saveFor(key, progress)
@@ -120,9 +125,21 @@ class PlayerProgressRepository(context: Context) {
         return progress
     }
 
-    fun useGuest(): PlayerProgress {
-        preferences.edit().putString(KEY_ACTIVE_ACCOUNT, "guest").apply()
-        return loadFor("guest")
+    fun updateDisplayName(displayName: String): PlayerProgress {
+        val trimmed = displayName.trim()
+        require(trimmed.isNotBlank()) { "プレイヤー名を入力してください" }
+        require(trimmed.length <= 20) { "プレイヤー名は20文字以内にしてください" }
+
+        val accountKey = activeAccountKey()
+        require(accountKey != "guest") { "Play Gamesアカウント連携が必要です" }
+
+        val current = normalizeDaily(loadFor(accountKey))
+        val updated = current.copy(
+            displayName = trimmed,
+            profileConfigured = true,
+        )
+        saveFor(accountKey, updated)
+        return updated
     }
 
     fun recordMatch(
@@ -183,7 +200,8 @@ class PlayerProgressRepository(context: Context) {
         if (raw == null) {
             val created = PlayerProgress(
                 accountKey = accountKey,
-                displayName = if (accountKey == "guest") "GUEST" else "PLAYER",
+                displayName = "PLAYER",
+                profileConfigured = false,
             )
             saveFor(accountKey, created)
             return created
@@ -192,7 +210,8 @@ class PlayerProgressRepository(context: Context) {
             .getOrElse {
                 PlayerProgress(
                     accountKey = accountKey,
-                    displayName = if (accountKey == "guest") "GUEST" else "PLAYER",
+                    displayName = "PLAYER",
+                    profileConfigured = false,
                 )
             }
     }
@@ -204,6 +223,7 @@ class PlayerProgressRepository(context: Context) {
     private fun encode(progress: PlayerProgress): String = JSONObject()
         .put("accountKey", progress.accountKey)
         .put("displayName", progress.displayName)
+        .put("profileConfigured", progress.profileConfigured)
         .put("totalExp", progress.totalExp)
         .put("inventory", JSONObject().apply {
             progress.inventory.forEach { (itemId, count) -> put(itemId, count) }
@@ -274,7 +294,8 @@ class PlayerProgressRepository(context: Context) {
             .toSet()
         return PlayerProgress(
             accountKey = root.optString("accountKey", "guest"),
-            displayName = root.optString("displayName", "GUEST"),
+            displayName = root.optString("displayName", "PLAYER"),
+            profileConfigured = root.optBoolean("profileConfigured", false),
             totalExp = root.optInt("totalExp", 0),
             inventory = inventory,
             presents = presents,
