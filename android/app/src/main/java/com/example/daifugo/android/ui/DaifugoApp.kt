@@ -534,7 +534,7 @@ private fun AccountSetupScreen(
                     fontWeight = FontWeight.Black,
                 )
                 Text(
-                    "コレクション・戦績・ミッションをあなたのアカウントに保存します。",
+                    "プレイヤー名を設定すればすぐ遊べます。Google Play Games連携は任意です。",
                     color = Color.White.copy(alpha = 0.60f),
                 )
             }
@@ -559,72 +559,59 @@ private fun AccountSetupScreen(
                         )
                         Text(
                             when {
-                                state.playGamesSignedIn -> "✓ アカウント連携済み"
-                                state.playGamesConfigured -> "Play Gamesへのログインが必要です"
-                                else -> "Play Games設定がまだ有効になっていません"
+                                state.playGamesSignedIn -> "✓ Play Games連携済み（任意）"
+                                state.playGamesConfigured -> "未連携でもそのままプレイできます"
+                                else -> "Play Games未設定でもプレイできます"
                             },
                             color = if (state.playGamesSignedIn) Color(0xFF78D6A1) else Color.White,
                             fontWeight = FontWeight.Black,
                         )
-                        if (!state.playGamesSignedIn) {
-                            if (state.playGamesConfigured) {
-                                PremiumStartButton(
-                                    label = "PLAY GAMES LOGIN  ▶",
-                                    onClick = onPlayGamesSignIn,
-                                )
-                            } else {
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(14.dp),
-                                    color = Color(0xFF321317),
-                                    border = BorderStroke(1.dp, Color(0xFFE34C52).copy(alpha = 0.45f)),
-                                ) {
-                                    Text(
-                                        "Play Games設定完了後にアカウント登録できます。",
-                                        modifier = Modifier.padding(14.dp),
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
-                            }
+                        Text(
+                            "Android向けの任意連携です。PC版とのクロスプレイにGoogleアカウントは不要です。",
+                            color = Color.White.copy(alpha = 0.48f),
+                            fontSize = 11.sp,
+                        )
+                        if (!state.playGamesSignedIn && state.playGamesConfigured) {
+                            PremiumStartButton(
+                                label = "PLAY GAMESを連携（任意）",
+                                onClick = onPlayGamesSignIn,
+                            )
                         }
                     }
                 }
             }
 
-            if (state.playGamesSignedIn) {
-                item {
-                    Text(
-                        "PLAYER PROFILE",
-                        color = CasinoGold,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp,
-                        fontSize = 10.sp,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    PremiumPlayerNameField(
-                        value = state.playerName,
-                        onValueChange = viewModel::setPlayerName,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "この名前がSOLO・CHALLENGE・マルチ対戦で使用されます。後からプロフィールで変更できます。",
-                        color = Color.White.copy(alpha = 0.48f),
-                        fontSize = 11.sp,
-                    )
-                }
+            item {
+                Text(
+                    "PLAYER PROFILE",
+                    color = CasinoGold,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp,
+                    fontSize = 10.sp,
+                )
+                Spacer(Modifier.height(8.dp))
+                PremiumPlayerNameField(
+                    value = state.playerName,
+                    onValueChange = viewModel::setPlayerName,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "この名前がSOLO・CHALLENGE・マルチ対戦で使用されます。後からプロフィールで変更できます。",
+                    color = Color.White.copy(alpha = 0.48f),
+                    fontSize = 11.sp,
+                )
+            }
 
-                item {
-                    PremiumStartButton(
-                        label = "登録してゲームを始める  ▶",
-                        onClick = viewModel::completeAccountSetup,
-                    )
-                }
+            item {
+                PremiumStartButton(
+                    label = "この名前でゲームを始める  ▶",
+                    onClick = viewModel::completeAccountSetup,
+                )
             }
 
             item {
                 Text(
-                    "ゲストプレイには対応していません。",
+                    "Google Play Gamesなしでも全ゲームモードを利用できます。",
                     modifier = Modifier.fillMaxWidth(),
                     color = Color.White.copy(alpha = 0.42f),
                     textAlign = TextAlign.Center,
@@ -1668,8 +1655,8 @@ private fun ProfileScreen(
                         Column(Modifier.weight(1f)) {
                             Text(progress.displayName, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
                             Text(
-                                if (state.playGamesSignedIn) "Google Play Games 連携済み" else "再ログインが必要です",
-                                color = if (state.playGamesSignedIn) Color(0xFF78D6A1) else Color(0xFFE34C52),
+                                if (state.playGamesSignedIn) "Google Play Games 連携済み" else "未連携（任意）",
+                                color = if (state.playGamesSignedIn) Color(0xFF78D6A1) else Color.White.copy(alpha = 0.56f),
                             )
                         }
                         Text("Lv." + progress.level, color = CasinoGold, fontSize = 22.sp, fontWeight = FontWeight.Black)
@@ -1746,10 +1733,10 @@ private fun ProfileScreen(
             }
         }
 
-        if (!state.playGamesSignedIn) {
+        if (!state.playGamesSignedIn && state.playGamesConfigured) {
             item {
                 PremiumStartButton(
-                    label = "PLAY GAMES 再ログイン",
+                    label = "PLAY GAMESを連携（任意）",
                     onClick = onPlayGamesSignIn,
                 )
             }
