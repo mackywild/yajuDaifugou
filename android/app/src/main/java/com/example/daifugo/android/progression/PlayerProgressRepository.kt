@@ -108,14 +108,10 @@ class PlayerProgressRepository(context: Context) {
         val key = "pgs:$playerId"
         val existing = preferences.getString(profileKey(key), null)
         val progress = if (existing == null) {
-            // 旧ゲストデータが存在する端末だけは進捗を引き継ぐが、
-            // 新規プレイではアカウント設定完了までゲームへ進ませない。
-            val legacy = loadFor("guest")
-            legacy.copy(
-                accountKey = key,
-                displayName = "PLAYER",
-                profileConfigured = false,
-            )
+            // Play Gamesは任意連携。
+            // 先に端末プロフィールで遊んでいた場合は、名前・戦績・所持品をそのまま引き継ぐ。
+            val local = normalizeDaily(loadFor("guest"))
+            local.copy(accountKey = key)
         } else {
             decode(existing)
         }
@@ -131,8 +127,6 @@ class PlayerProgressRepository(context: Context) {
         require(trimmed.length <= 20) { "プレイヤー名は20文字以内にしてください" }
 
         val accountKey = activeAccountKey()
-        require(accountKey != "guest") { "Play Gamesアカウント連携が必要です" }
-
         val current = normalizeDaily(loadFor(accountKey))
         val updated = current.copy(
             displayName = trimmed,
