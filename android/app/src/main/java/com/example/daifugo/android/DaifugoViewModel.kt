@@ -214,8 +214,10 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun completeAccountSetup() {
         val state = _uiState.value
-        require(state.playGamesSignedIn) { "Google Play Gamesへのログインが必要です" }
-        runCatching { progressRepository.updateDisplayName(state.playerName) }
+        runCatching {
+            require(state.playGamesSignedIn) { "Google Play Gamesへのログインが必要です" }
+            progressRepository.updateDisplayName(state.playerName)
+        }
             .onSuccess { progress ->
                 update {
                     copy(
@@ -232,8 +234,10 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun saveProfileName() {
         val state = _uiState.value
-        require(state.playGamesSignedIn) { "Google Play Gamesへのログインが必要です" }
-        runCatching { progressRepository.updateDisplayName(state.playerName) }
+        runCatching {
+            require(state.playGamesSignedIn) { "Google Play Gamesへのログインが必要です" }
+            progressRepository.updateDisplayName(state.playerName)
+        }
             .onSuccess { progress ->
                 update {
                     copy(
