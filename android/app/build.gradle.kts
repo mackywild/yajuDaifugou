@@ -14,6 +14,14 @@ val hasReleaseSigning = listOf(
     releaseKeyPassword,
 ).all { !it.isNullOrBlank() }
 
+val appVersionCode = providers.gradleProperty("YAJU_VERSION_CODE")
+    .orNull
+    ?.toIntOrNull()
+    ?: 10
+val appVersionName = providers.gradleProperty("YAJU_VERSION_NAME")
+    .orNull
+    ?: "0.5.0"
+
 android {
     namespace = "com.example.daifugo.android"
     compileSdk = 37
@@ -23,8 +31,8 @@ android {
         applicationId = "jp.YajuDaifugou.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 9
-        versionName = "0.5.0-test01"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
