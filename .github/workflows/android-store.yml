@@ -98,7 +98,7 @@ jobs:
       - name: Upload signed AAB
         uses: actions/upload-artifact@v4
         with:
-          name: YajuDaifugou-v0.5.0-test01-store-aab
+          name: YajuDaifugou-v0.5.0-test02-store-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 

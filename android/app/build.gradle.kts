@@ -23,8 +23,8 @@ android {
         applicationId = "jp.YajuDaifugou.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 9
-        versionName = "0.5.0-test01"
+        versionCode = 10
+        versionName = "0.5.0-test02"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
