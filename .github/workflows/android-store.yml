@@ -80,6 +80,17 @@ jobs:
         run: |
           keytool -list -v             -keystore "$RUNNER_TEMP/yaju-upload.jks"             -alias "$YAJU_KEY_ALIAS"             -storepass "$YAJU_STORE_PASSWORD"             | grep -E "SHA1:|SHA256:"
 
+      - name: Resolve release version
+        working-directory: android
+        run: |
+          VERSION_NAME="$(grep '^YAJU_VERSION_NAME=' gradle.properties | cut -d= -f2-)"
+          VERSION_CODE="$((100000 + GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT))"
+          test -n "$VERSION_NAME" || (echo "YAJU_VERSION_NAME is missing" && exit 1)
+          test "$VERSION_CODE" -gt 9 || (echo "versionCode must be greater than the last Play versionCode" && exit 1)
+          echo "YAJU_VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "YAJU_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "Building versionName=$VERSION_NAME / versionCode=$VERSION_CODE"
+
       - name: Build signed release AAB
         working-directory: android
         env:
@@ -89,7 +100,14 @@ jobs:
           YAJU_KEY_PASSWORD: ${{ secrets.YAJU_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:bundleRelease
+          ./gradlew --no-daemon :app:bundleRelease \
+            -PYAJU_VERSION_CODE="$YAJU_VERSION_CODE" \
+            -PYAJU_VERSION_NAME="$YAJU_VERSION_NAME"
+
+      - name: Show built version
+        run: |
+          echo "versionName=$YAJU_VERSION_NAME"
+          echo "versionCode=$YAJU_VERSION_CODE"
 
       - name: Verify release AAB signature
         run: |
@@ -98,7 +116,7 @@ jobs:
       - name: Upload signed AAB
         uses: actions/upload-artifact@v4
         with:
-          name: YajuDaifugou-v0.5.0-test01-store-aab
+          name: YajuDaifugou-store-aab-${{ github.run_number }}-${{ github.run_attempt }}
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
