@@ -87,9 +87,22 @@ jobs:
           YAJU_STORE_PASSWORD: ${{ secrets.YAJU_STORE_PASSWORD }}
           YAJU_KEY_ALIAS: ${{ secrets.YAJU_KEY_ALIAS }}
           YAJU_KEY_PASSWORD: ${{ secrets.YAJU_KEY_PASSWORD }}
+          YAJU_VERSION_CODE: ${{ 1000 + github.run_number }}
+          YAJU_VERSION_NAME: 0.6.0
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:bundleRelease
+          ./gradlew --no-daemon :app:bundleRelease \
+            -PYAJU_VERSION_CODE="$YAJU_VERSION_CODE" \
+            -PYAJU_VERSION_NAME="$YAJU_VERSION_NAME"
+
+      - name: Show built version
+        working-directory: android
+        env:
+          YAJU_VERSION_CODE: ${{ 1000 + github.run_number }}
+          YAJU_VERSION_NAME: 0.6.0
+        run: |
+          echo "versionName=$YAJU_VERSION_NAME"
+          echo "versionCode=$YAJU_VERSION_CODE"
 
       - name: Verify release AAB signature
         run: |
@@ -98,7 +111,7 @@ jobs:
       - name: Upload signed AAB
         uses: actions/upload-artifact@v4
         with:
-          name: YajuDaifugou-v0.5.0-test02-store-aab
+          name: YajuDaifugou-v0.6.0-build-${{ 1000 + github.run_number }}-store-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
