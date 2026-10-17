@@ -20,7 +20,7 @@ val appVersionCode = providers.gradleProperty("YAJU_VERSION_CODE")
     ?: 10
 val appVersionName = providers.gradleProperty("YAJU_VERSION_NAME")
     .orNull
-    ?: "0.6.0"
+    ?: "0.5.0"
 
 android {
     namespace = "com.example.daifugo.android"

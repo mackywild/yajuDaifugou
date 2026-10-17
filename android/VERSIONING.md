@@ -1,21 +1,32 @@
 # Android バージョン管理
 
-野獣大富豪のAndroid版では、ユーザー向けバージョンとGoogle Play用の内部番号を分離します。
+Android版では、製品バージョンとGoogle Play用ビルド番号を分離して管理します。
 
-- `versionName`: リリースの意味を表す。Semantic Versioningベースで管理する。
-  - 例: `0.6.0`, `0.6.1`, `0.7.0`
-- `versionCode`: Google Play用の内部通し番号。必ず前回より大きくする。
-  - GitHub ActionsのStore AABでは `1000 + github.run_number` を使用して自動採番する。
+## versionName
 
-## 現在
+ユーザーが見る製品バージョンです。現在は `0.5.0`。
 
-- versionName: `0.6.0`
-- ローカル既定versionCode: `10`
-- Store AAB: CIがversionCodeを自動採番
+`android/gradle.properties` の `YAJU_VERSION_NAME` を正本とします。
 
-## 運用
+- 内部テストAABを作り直しただけでは変更しない
+- バグ修正版を製品として出すときは patch を上げる
+- 後方互換の機能追加を製品として出すときは minor を上げる
+- `test01` / `test02` のようなアップロード回数は付けない
 
-- バグ修正のみ: patchを上げる（例 `0.6.0 -> 0.6.1`）
-- 後方互換の機能追加: minorを上げる（例 `0.6.x -> 0.7.0`）
-- Play Consoleへの再アップロード都合だけではversionNameを変更しない
-- `test01`, `test02` のようなアップロード回数をversionNameには使わない
+## versionCode
+
+Google Playが識別する内部ビルド番号です。過去に使用した値は再利用しません。
+
+- ローカル既定値は `android/gradle.properties` の `YAJU_VERSION_CODE`
+- Store AABのGitHub Actionsでは `1000 + GITHUB_RUN_NUMBER` を自動採番
+- Play Consoleへ再投入しても `versionName` はそのまま、`versionCode` だけ新しくなる
+
+例:
+
+```
+versionName 0.5.0 / versionCode 1007
+versionName 0.5.0 / versionCode 1008
+versionName 0.5.0 / versionCode 1009
+```
+
+これは同じ0.5.0の内部テストビルド違いです。製品バージョンを増やしたことにはなりません。
