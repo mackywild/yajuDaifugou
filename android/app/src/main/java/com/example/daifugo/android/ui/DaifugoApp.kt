@@ -226,6 +226,8 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                         DaifugoScreen.COLLECTION,
                         DaifugoScreen.PRESENT_BOX,
                         DaifugoScreen.SETTINGS,
+                        DaifugoScreen.GAME,
+                        DaifugoScreen.RESULT,
                     )
                 ) {
                     AppHeader(state)
@@ -2628,21 +2630,82 @@ private fun GameScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
     val game = state.gameState ?: return
     val self = game.selfPlayer ?: return
     val opponents = game.players.filterNot { it.self }
+    val actionEnabled = !state.cpuTurnInProgress && game.isMyTurn
+    val canPass = actionEnabled && !game.isMySevenTransfer && game.field.cards.isNotEmpty()
+    val canPlay = actionEnabled &&
+        state.selectedCardIndices.isNotEmpty() &&
+        (!game.isMySevenTransfer || state.selectedCardIndices.size == game.sevenTransfer.cardCount)
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF010403),
+                        Color(0xFF04150F),
+                        Color(0xFF020303),
+                    )
+                )
+            ),
+    ) {
+        PremiumCasinoBackdrop(
+            accent = if (game.players.any { it.yajuActive }) Color(0xFF8B221E) else CasinoGreen,
+        )
+
         Column(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    horizontal = 12.dp,
+                    vertical = 10.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 item {
-                    StatusBar(game)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                if (game.isLocalCpuGame) "PRIVATE TABLE" else "ONLINE TABLE",
+                                color = CasinoGold,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 2.5.sp,
+                            )
+                            Text(
+                                "BATTLE TABLE",
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp,
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.Black.copy(alpha = 0.48f),
+                            border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.42f)),
+                        ) {
+                            Text(
+                                if (game.isLocalCpuGame) "LOCAL" else if (state.socketConnected) "LIVE" else "SYNC",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                color = if (game.isLocalCpuGame || state.socketConnected) Color(0xFF77D69D) else CasinoGold,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 10.sp,
+                                letterSpacing = 1.5.sp,
+                            )
+                        }
+                    }
                 }
+
+                item { StatusBar(game) }
+
                 item {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 2.dp),
+                    ) {
                         itemsIndexed(opponents) { _, player ->
                             OpponentPlayerPanel(
                                 player = player,
@@ -2653,131 +2716,186 @@ private fun GameScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                         }
                     }
                 }
-                if (game.isLocalCpuGame && state.cpuActionHistory.isNotEmpty()) {
-                    item {
-                        CpuActionHistoryCard(state.cpuActionHistory)
-                    }
-                }
+
+                item { GameTable(game) }
+
                 item {
-                    GameTable(game)
-                }
-                item {
-                    val turnLabel = when {
-                        state.cpuTurnAnimation?.type == CpuAnimationType.THINKING ->
-                            "${state.cpuTurnAnimation.playerName} が考えています…"
-                        state.cpuTurnInProgress ->
-                            "${state.cpuTurnAnimation?.playerName ?: game.currentPlayer?.playerName ?: "CPU"} のプレイ中"
-                        game.isMyTurn -> "あなたの手番です"
-                        else -> "${game.currentPlayer?.playerName ?: "-"} の手番"
-                    }
-                    Text(
-                        turnLabel,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black,
-                        color = if (game.isMyTurn && !state.cpuTurnInProgress) {
-                            CasinoGreen
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                    BattleTurnBanner(
+                        game = game,
+                        state = state,
                     )
                 }
+
                 if (game.isMySevenTransfer) {
                     item {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = SoftGold),
-                            border = BorderStroke(1.dp, CasinoGold),
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(17.dp),
+                            color = Color(0xFF2A1A06).copy(alpha = 0.92f),
+                            border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.72f)),
                         ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Text("7渡し", fontWeight = FontWeight.Black, color = CasinoGold)
+                            Column(
+                                modifier = Modifier.padding(horizontal = 15.dp, vertical = 11.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
                                 Text(
-                                    "${game.sevenTransferTarget?.playerName ?: "隣のプレイヤー"}へ" +
-                                        " ${game.sevenTransfer.cardCount}枚渡してください",
-                                    fontWeight = FontWeight.Bold,
+                                    "7 TRANSFER",
+                                    color = CasinoGold,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 2.sp,
+                                )
+                                Text(
+                                    (game.sevenTransferTarget?.playerName ?: "隣のプレイヤー") +
+                                        "へ " + game.sevenTransfer.cardCount + "枚選択",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Black,
                                 )
                                 Text(
                                     "野獣対象者は最後の8・10を渡すことはできません。",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = Color.White.copy(alpha = 0.52f),
+                                    fontSize = 11.sp,
                                 )
                             }
                         }
                     }
                 }
+
                 item {
-                    Row(
+                    Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
+                        shape = RoundedCornerShape(22.dp),
+                        color = Color(0xFF07100D).copy(alpha = 0.96f),
+                        border = BorderStroke(
+                            if (game.isMyTurn && !state.cpuTurnInProgress) 1.5.dp else 1.dp,
+                            if (game.isMyTurn && !state.cpuTurnInProgress) CasinoGold.copy(alpha = 0.72f)
+                            else Color.White.copy(alpha = 0.08f),
+                        ),
                     ) {
-                        PlayerAvatar(
-                            avatarIndex = game.avatarIndex(self.playerId),
-                            size = 42.dp,
-                            highlighted = game.isMyTurn && !state.cpuTurnInProgress,
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(self.playerName, fontWeight = FontWeight.Black)
-                            Text(
-                                "あなたの手札  ${self.handCount}枚" +
-                                    if (self.yajuActive) "  ·  野獣:${self.yajuStatus}" else "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                        Column(modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                PlayerAvatar(
+                                    avatarIndex = game.avatarIndex(self.playerId),
+                                    size = 46.dp,
+                                    highlighted = game.isMyTurn && !state.cpuTurnInProgress,
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        self.playerName,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Black,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        "HAND  " + self.handCount + " CARDS" +
+                                            if (self.yajuActive) "   •   YAJU " + self.yajuStatus else "",
+                                        color = if (self.yajuActive) CasinoGold else Color.White.copy(alpha = 0.44f),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.7.sp,
+                                    )
+                                }
+                                if (state.selectedCardIndices.isNotEmpty()) {
+                                    Surface(
+                                        shape = RoundedCornerShape(100.dp),
+                                        color = CasinoGold.copy(alpha = 0.14f),
+                                        border = BorderStroke(1.dp, CasinoGold.copy(alpha = 0.48f)),
+                                    ) {
+                                        Text(
+                                            "SELECT " + state.selectedCardIndices.size,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                            color = CasinoGold,
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 9.sp,
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(Modifier.height(6.dp))
+
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy((-4).dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                    start = 12.dp,
+                                    end = 18.dp,
+                                    top = 13.dp,
+                                    bottom = 13.dp,
+                                ),
+                            ) {
+                                itemsIndexed(self.hand) { index, card ->
+                                    PlayingCard(
+                                        card = card,
+                                        selected = index in state.selectedCardIndices,
+                                        enabled = actionEnabled,
+                                        onClick = { viewModel.toggleCard(index) },
+                                    )
+                                }
+                            }
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp),
-                    ) {
-                        itemsIndexed(self.hand) { index, card ->
-                            PlayingCard(
-                                card = card,
-                                selected = index in state.selectedCardIndices,
-                                enabled = game.isMyTurn && !state.cpuTurnInProgress,
-                                onClick = { viewModel.toggleCard(index) },
-                            )
-                        }
-                    }
+                }
+
+                if (game.isLocalCpuGame && state.cpuActionHistory.isNotEmpty()) {
+                    item { CpuActionHistoryCard(state.cpuActionHistory) }
                 }
             }
 
             Surface(
-                shadowElevation = 8.dp,
-                tonalElevation = 2.dp,
-                color = MaterialTheme.colorScheme.surface,
+                color = Color(0xFF030605).copy(alpha = 0.98f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
+                shadowElevation = 12.dp,
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(9.dp),
                 ) {
                     OutlinedButton(
                         onClick = viewModel::pass,
-                        enabled = !state.cpuTurnInProgress &&
-                            game.isMyTurn &&
-                            !game.isMySevenTransfer &&
-                            game.field.cards.isNotEmpty(),
-                        modifier = Modifier.weight(1f),
-                    ) { Text("パス") }
+                        enabled = canPass,
+                        modifier = Modifier
+                            .weight(0.9f)
+                            .height(52.dp),
+                        border = BorderStroke(
+                            1.dp,
+                            if (canPass) Color.White.copy(alpha = 0.34f) else Color.White.copy(alpha = 0.10f),
+                        ),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color.White,
+                            disabledContentColor = Color.White.copy(alpha = 0.28f),
+                        ),
+                    ) {
+                        Text("PASS", fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                    }
+
                     Button(
                         onClick = viewModel::playSelected,
-                        enabled = !state.cpuTurnInProgress &&
-                            game.isMyTurn &&
-                            state.selectedCardIndices.isNotEmpty() &&
-                            (!game.isMySevenTransfer ||
-                                state.selectedCardIndices.size == game.sevenTransfer.cardCount),
-                        modifier = Modifier.weight(1.5f),
+                        enabled = canPlay,
+                        modifier = Modifier
+                            .weight(1.5f)
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CasinoGold,
+                            contentColor = Color(0xFF171006),
+                            disabledContainerColor = Color.White.copy(alpha = 0.08f),
+                            disabledContentColor = Color.White.copy(alpha = 0.28f),
+                        ),
                     ) {
                         Text(
                             if (game.isMySevenTransfer) {
-                                "渡す (${state.selectedCardIndices.size}/${game.sevenTransfer.cardCount})"
+                                "TRANSFER  " + state.selectedCardIndices.size + "/" + game.sevenTransfer.cardCount + "  ▶"
                             } else {
-                                "出す (${state.selectedCardIndices.size})"
+                                "PLAY  " + state.selectedCardIndices.size + "  ▶"
                             },
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.2.sp,
                         )
                     }
                 }
@@ -2795,24 +2913,97 @@ private fun GameScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
     }
 }
 
+@Composable
+private fun BattleTurnBanner(
+    game: GameStateDto,
+    state: DaifugoUiState,
+) {
+    val myTurn = game.isMyTurn && !state.cpuTurnInProgress
+    val label = when {
+        state.cpuTurnAnimation?.type == CpuAnimationType.THINKING ->
+            state.cpuTurnAnimation.playerName + "  THINKING..."
+        state.cpuTurnInProgress ->
+            (state.cpuTurnAnimation?.playerName ?: game.currentPlayer?.playerName ?: "CPU") + "  PLAYING"
+        myTurn -> "YOUR TURN"
+        else -> (game.currentPlayer?.playerName ?: "-") + "  TURN"
+    }
+
+    val glow by animateFloatAsState(
+        targetValue = if (myTurn) 1f else 0.35f,
+        animationSpec = tween(240),
+        label = "battleTurnGlow",
+    )
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(15.dp),
+        color = if (myTurn) CasinoGold.copy(alpha = 0.10f + glow * 0.08f)
+        else Color.Black.copy(alpha = 0.34f),
+        border = BorderStroke(
+            1.dp,
+            if (myTurn) CasinoGold.copy(alpha = 0.50f + glow * 0.30f)
+            else Color.White.copy(alpha = 0.08f),
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                if (myTurn) "◆" else "◇",
+                color = if (myTurn) CasinoGold else Color.White.copy(alpha = 0.28f),
+                fontSize = 12.sp,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                label,
+                modifier = Modifier.weight(1f),
+                color = if (myTurn) Color.White else Color.White.copy(alpha = 0.62f),
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.5.sp,
+                fontSize = 12.sp,
+            )
+            if (myTurn) {
+                Text(
+                    "SELECT CARDS",
+                    color = CasinoGold,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.2.sp,
+                )
+            }
+        }
+    }
+}
+
 /** 直近のCPU行動を残し、8切りなどで場が流れても何を出したか確認できるようにする。 */
 @Composable
 private fun CpuActionHistoryCard(history: List<String>) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.58f)),
-        shape = RoundedCornerShape(14.dp),
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFF070B09).copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            Text("PLAY LOG", color = CasinoGold, fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelLarge)
-            history.take(6).forEachIndexed { index, line ->
+            Text(
+                "PLAY LOG",
+                color = CasinoGold,
+                fontWeight = FontWeight.Black,
+                fontSize = 9.sp,
+                letterSpacing = 2.sp,
+            )
+            history.take(4).forEachIndexed { index, line ->
                 Text(
-                    text = if (index == 0) "▶ $line" else "  $line",
+                    text = if (index == 0) "▶  " + line else "    " + line,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal,
-                    color = if (index == 0) CasinoGreenDark else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (index == 0) Color.White else Color.White.copy(alpha = 0.40f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
