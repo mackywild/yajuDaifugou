@@ -993,6 +993,12 @@ function setupBody(){
 
 async function startConfiguredGame(){
   try{
+    cancelCpuSequence();
+    cutinQueue.length=0;
+    playLog.length=0;
+    cutinBusy=false;
+    lastEventId=0;
+    sessionStorage.setItem('yaju.pc.lastEventId','0');
     const endpoint=setupMode==='challenge'?'/api/rooms/challenge':'/api/rooms/cpu';
     const state=await api(endpoint,{method:'POST',body:JSON.stringify(setupBody())});
     bindRoom(state.roomId);
@@ -1047,6 +1053,11 @@ async function refreshState(){
   }
 }
 
+function startPolling(intervalMs){
+  if(pollTimer)clearInterval(pollTimer);
+  pollTimer=setInterval(refreshState,intervalMs);
+}
+
 function connectSocket(){
   closeRealtime();
   if(!roomId)return;
@@ -1054,13 +1065,18 @@ function connectSocket(){
     byId('networkPill').textContent='● SOLO';
     return;
   }
+
+  // WebSocketが開けない環境でもゲーム進行を止めない。
+  // 接続結果に関係なく最初からREST同期を開始し、LIVE時だけ間隔を緩める。
+  startPolling(1500);
+
   const protocol=location.protocol==='https:'?'wss:':'ws:';
   const url=protocol+'//'+location.host+'/ws/game?roomId='+encodeURIComponent(roomId);
   try{
     socket=new WebSocket(url);
     socket.onopen=function(){
       byId('networkPill').textContent='● LIVE';
-      pollTimer=setInterval(refreshState,5000);
+      startPolling(5000);
     };
     socket.onmessage=function(ev){
       try{
@@ -1069,12 +1085,19 @@ function connectSocket(){
       }catch(_){}
     };
     socket.onclose=function(){
-      byId('networkPill').textContent='○ RECONNECT';
+      byId('networkPill').textContent='○ SYNC';
+      startPolling(1500);
       if(roomId) reconnectTimer=setTimeout(connectSocket,2500);
     };
-    socket.onerror=function(){ if(socket)socket.close(); };
+    socket.onerror=function(){
+      byId('networkPill').textContent='○ SYNC';
+      startPolling(1500);
+      if(socket)socket.close();
+    };
   }catch(_){
-    pollTimer=setInterval(refreshState,1500);
+    byId('networkPill').textContent='○ SYNC';
+    startPolling(1500);
+    if(roomId) reconnectTimer=setTimeout(connectSocket,2500);
   }
 }
 
@@ -1471,6 +1494,14 @@ async function runCpuSequence(token){
       await delay(250);
     }
   }catch(e){
+    // CPU API側だけ先に進んだ／演出側で例外になった場合も、
+    // サーバー正本のstateへ戻して操作不能状態を残さない。
+    try{
+      const recovered=await api('/api/rooms/'+encodeURIComponent(roomId)+'/state');
+      currentState=recovered;
+      selected.clear();
+      render(recovered);
+    }catch(_){}
     toast(e.message||'CPU処理でエラーが発生しました',true);
   }finally{
     if(token===cpuSequenceToken){
@@ -1512,6 +1543,24 @@ function centerOf(element){
   return {x:rect.left+rect.width/2,y:rect.top+rect.height/2};
 }
 
+async function waitForVisualAnimation(element,keyframes,options,duration){
+  // Safari等でWeb Animations APIのfinishedが解決しない場合でも、
+  // ゲームstate反映そのものは必ず続行する。
+  if(!element || typeof element.animate!=='function'){
+    await delay(duration);
+    return;
+  }
+  try{
+    const animation=element.animate(keyframes,options);
+    await Promise.race([
+      animation.finished.catch(function(){}),
+      delay(duration+180)
+    ]);
+  }catch(_){
+    await delay(duration);
+  }
+}
+
 async function showCpuAction(action,token){
   const overlay=byId('cpuActionOverlay');
   const host=byId('cpuActionStage');
@@ -1523,12 +1572,16 @@ async function showCpuAction(action,token){
     burst.className='cpu-pass-burst';
     burst.textContent=action.playerName+'   PASS';
     host.appendChild(burst);
-    const animation=burst.animate([
-      {transform:'translate(-50%,-50%) scale(.86)',opacity:0},
-      {transform:'translate(-50%,-50%) scale(1.06)',opacity:1,offset:.28},
-      {transform:'translate(-50%,-43%) scale(1)',opacity:.72}
-    ],{duration:1500,easing:'cubic-bezier(.2,.8,.2,1)',fill:'forwards'});
-    try{await animation.finished;}catch(_){}
+    await waitForVisualAnimation(
+      burst,
+      [
+        {transform:'translate(-50%,-50%) scale(.86)',opacity:0},
+        {transform:'translate(-50%,-50%) scale(1.06)',opacity:1,offset:.28},
+        {transform:'translate(-50%,-43%) scale(1)',opacity:.72}
+      ],
+      {duration:1500,easing:'cubic-bezier(.2,.8,.2,1)',fill:'forwards'},
+      1500
+    );
     return;
   }
 
@@ -1569,12 +1622,16 @@ async function showCpuAction(action,token){
   const dx=target.x-from.x;
   const dy=target.y-from.y;
   const duration=action.type==='PLAY'?3000:2000;
-  const animation=flight.animate([
-    {transform:'translate(0,0) scale(.80) rotate(-5deg)',opacity:.74},
-    {transform:'translate('+(dx*.35)+'px,'+(dy*.28)+'px) scale(.9) rotate(3deg)',opacity:1,offset:.42},
-    {transform:'translate('+dx+'px,'+dy+'px) scale(1) rotate(0deg)',opacity:1}
-  ],{duration:duration,easing:'cubic-bezier(.2,.72,.18,1)',fill:'forwards'});
-  try{await animation.finished;}catch(_){}
+  await waitForVisualAnimation(
+    flight,
+    [
+      {transform:'translate(0,0) scale(.80) rotate(-5deg)',opacity:.74},
+      {transform:'translate('+(dx*.35)+'px,'+(dy*.28)+'px) scale(.9) rotate(3deg)',opacity:1,offset:.42},
+      {transform:'translate('+dx+'px,'+dy+'px) scale(1) rotate(0deg)',opacity:1}
+    ],
+    {duration:duration,easing:'cubic-bezier(.2,.72,.18,1)',fill:'forwards'},
+    duration
+  );
 }
 
 function playerAnchorByName(name){

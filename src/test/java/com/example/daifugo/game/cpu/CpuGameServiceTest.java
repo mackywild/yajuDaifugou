@@ -1,6 +1,7 @@
 package com.example.daifugo.game.cpu;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -88,4 +89,51 @@ class CpuGameServiceTest {
                 )
         );
     }
+    @Test
+    void animatedBrowserCpuGameCanAdvanceCpuTurnsOneByOne() {
+        GameRoomService rooms = new GameRoomService();
+        CpuGameService service = new CpuGameService(rooms);
+
+        boolean exercisedCpuTurn = false;
+
+        /*
+         * 先手はダイヤ3の配牌先で決まるため複数回生成する。
+         * ブラウザ向け生成ではCPUを自動消化せず、executeNextCpuTurnで
+         * 1手ずつ確実に前進できることを確認する。
+         */
+        for (int attempt = 0; attempt < 24 && !exercisedCpuTurn; attempt++) {
+            GameRoom room = service.createGameForAnimatedClient(
+                    "browser-human",
+                    3,
+                    CpuDifficulty.HARD,
+                    GameRuleSettings.standard()
+            ).room();
+
+            int steps = 0;
+            while (!room.isFinished()
+                    && room.getGameState().getCurrentPlayer().isCpu()
+                    && steps < 32) {
+
+                String actingPlayerId = room.getGameState().getCurrentPlayer().getId();
+                CpuGameService.CpuTurnResult result =
+                        service.executeNextCpuTurn(room.getRoomId());
+
+                assertEquals(actingPlayerId, result.playerId());
+                assertEquals(room, result.room());
+                assertTrue(result.type() != null);
+                steps++;
+                exercisedCpuTurn = true;
+            }
+
+            assertTrue(
+                    room.isFinished()
+                            || !room.getGameState().getCurrentPlayer().isCpu()
+                            || steps < 32,
+                    "ブラウザCPU進行がCPU手番で停止してはいけない"
+            );
+        }
+
+        assertTrue(exercisedCpuTurn, "CPU先手のブラウザゲームを生成できませんでした");
+    }
+
 }
