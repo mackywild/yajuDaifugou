@@ -20,6 +20,7 @@ import com.example.daifugo.game.mode.GameMode;
 import com.example.daifugo.game.domain.Mark;
 import com.example.daifugo.game.domain.Player;
 import com.example.daifugo.game.domain.Rank;
+import com.example.daifugo.response.CardResponse;
 import com.example.daifugo.response.GameStateResponse;
 import com.example.daifugo.response.GameStateResponseMapper;
 import com.example.daifugo.room.GameRoom;
@@ -104,7 +105,7 @@ public class GameApiController {
                 request.forbiddenFinish()
         );
 
-        CpuGameService.CpuGameCreation creation = cpuGameService.createGame(
+        CpuGameService.CpuGameCreation creation = cpuGameService.createGameForAnimatedClient(
                 request.playerName().trim(),
                 request.cpuCount(),
                 difficulty,
@@ -148,7 +149,7 @@ public class GameApiController {
                 request.forbiddenFinish()
         );
 
-        CpuGameService.CpuGameCreation creation = cpuGameService.createYajuChallenge(
+        CpuGameService.CpuGameCreation creation = cpuGameService.createYajuChallengeForAnimatedClient(
                 request.playerName().trim(),
                 request.cpuCount(),
                 difficulty,
@@ -248,7 +249,6 @@ public class GameApiController {
                 .toList();
 
         roomService.play(roomId, playerId, selectedCards);
-        processCpuIfNeeded(room);
 
         GameStateResponse response;
         synchronized (room) {
@@ -283,7 +283,6 @@ public class GameApiController {
                 .toList();
 
         roomService.transferSeven(roomId, playerId, selectedCards);
-        processCpuIfNeeded(room);
 
         GameStateResponse response;
         synchronized (room) {
@@ -306,7 +305,6 @@ public class GameApiController {
         ensureStarted(room);
 
         roomService.pass(roomId, playerId);
-        processCpuIfNeeded(room);
 
         GameStateResponse response;
         synchronized (room) {
@@ -314,6 +312,49 @@ public class GameApiController {
         }
         webSocketHandler.broadcastStateChanged(roomId);
         return response;
+    }
+
+    /**
+     * CPU戦の現在手番を1手だけ進める。
+     *
+     * Android版のローカルCPU戦と同じく、ブラウザ側がTHINKING→PLAY/PASS/7渡し
+     * の演出を表示してからstateを反映できるよう、アクションと実行後状態を同時に返す。
+     */
+    @PostMapping("/{roomId}/cpu/next")
+    public CpuTurnResponse nextCpuTurn(
+            @PathVariable String roomId,
+            HttpSession session) {
+
+        String playerId = requireBoundPlayer(session, roomId);
+        GameRoom room = roomService.getRoom(roomId);
+        ensureStarted(room);
+        ensureMember(room, playerId);
+
+        if (room.getGameMode() != GameMode.CPU
+                && room.getGameMode() != GameMode.YAJU_CHALLENGE) {
+            throw new IllegalStateException("CPU戦ではありません");
+        }
+
+        CpuGameService.CpuTurnResult result = cpuGameService.executeNextCpuTurn(roomId);
+
+        GameStateResponse state;
+        synchronized (room) {
+            state = responseMapper.map(room, playerId);
+        }
+
+        List<CardResponse> cards = result.cards().stream()
+                .map(CardResponse::from)
+                .toList();
+
+        return new CpuTurnResponse(
+                result.playerId(),
+                result.playerName(),
+                result.type().name(),
+                cards,
+                result.cardCount(),
+                result.targetPlayerName(),
+                state
+        );
     }
 
     /**
@@ -329,15 +370,6 @@ public class GameApiController {
         roomService.leaveRoom(roomId, playerId);
         clearRoomBinding(session);
         webSocketHandler.broadcastStateChanged(roomId);
-    }
-
-    /** CPU戦の場合、人間の操作後に次の人間手番までCPUを自動進行する。 */
-    private void processCpuIfNeeded(GameRoom room) {
-        if ((room.getGameMode() == GameMode.CPU
-                || room.getGameMode() == GameMode.YAJU_CHALLENGE)
-                && !room.isFinished()) {
-            cpuGameService.processCpuTurns(room.getRoomId());
-        }
     }
 
     /**
@@ -456,5 +488,16 @@ public class GameApiController {
     }
 
     public record JoinResponse(String roomId, boolean host) {
+    }
+
+    public record CpuTurnResponse(
+            String playerId,
+            String playerName,
+            String type,
+            List<CardResponse> cards,
+            int cardCount,
+            String targetPlayerName,
+            GameStateResponse state
+    ) {
     }
 }
