@@ -43,13 +43,39 @@ public class CpuGameService {
             CpuDifficulty difficulty,
             GameRuleSettings settings
     ) {
+        return createGameInternal(humanName, cpuCount, difficulty, settings, false);
+    }
+
+    /** 野獣チャレンジ戦を作成する。 */
+    public CpuGameCreation createYajuChallenge(
+            String humanName,
+            int cpuCount,
+            CpuDifficulty difficulty,
+            GameRuleSettings settings
+    ) {
+        if (!settings.yajuRule() || !settings.eightCut()) {
+            throw new IllegalArgumentException("チャレンジモードでは野獣ルールと8切りが必要です");
+        }
+        return createGameInternal(humanName, cpuCount, difficulty, settings, true);
+    }
+
+    private CpuGameCreation createGameInternal(
+            String humanName,
+            int cpuCount,
+            CpuDifficulty difficulty,
+            GameRuleSettings settings,
+            boolean challenge
+    ) {
         Objects.requireNonNull(difficulty, "difficulty must not be null");
         Objects.requireNonNull(settings, "settings must not be null");
         if (cpuCount < 1 || cpuCount > GameLimits.MAX_CPU_COUNT) {
             throw new IllegalArgumentException("CPU人数は1～7人で指定してください");
         }
 
-        GameRoom room = roomService.createRoom(GameMode.CPU, settings);
+        GameRoom room = roomService.createRoom(
+                challenge ? GameMode.YAJU_CHALLENGE : GameMode.CPU,
+                settings
+        );
         Player human = new Player(UUID.randomUUID().toString(), humanName);
         roomService.joinRoom(room.getRoomId(), human);
 
@@ -62,7 +88,11 @@ public class CpuGameService {
             roomService.joinRoom(room.getRoomId(), cpu);
         }
 
-        roomService.startGame(room.getRoomId());
+        if (challenge) {
+            roomService.startYajuChallenge(room.getRoomId(), human.getId());
+        } else {
+            roomService.startGame(room.getRoomId());
+        }
         processCpuTurns(room.getRoomId());
         return new CpuGameCreation(room, human);
     }
@@ -72,7 +102,9 @@ public class CpuGameService {
      */
     public GameRoom processCpuTurns(String roomId) {
         GameRoom room = roomService.getRoom(roomId);
-        if (room.getGameMode() != GameMode.CPU || !room.isStarted()) {
+        if ((room.getGameMode() != GameMode.CPU
+                && room.getGameMode() != GameMode.YAJU_CHALLENGE)
+                || !room.isStarted()) {
             return room;
         }
 

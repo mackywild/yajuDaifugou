@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -88,6 +89,27 @@ public class AuthController {
 
         loginAttemptService.recordSuccess(attemptKey);
 
+        return establishSession(request);
+    }
+
+    /**
+     * PCブラウザ版向けの公開セッションを開始する。
+     *
+     * ブラウザ版はURLを開くだけで遊べる製品仕様とし、共通パスワードを
+     * エンドユーザーへ要求しない。本人識別はHTTPセッションと部屋参加時に
+     * 発行されるプレイヤーIDで行い、更新APIは引き続きCSRFトークンで保護する。
+     *
+     * Android旧クライアントとの互換性のため /login は残す。
+     */
+    @GetMapping("/session")
+    public Map<String, Object> publicSession(HttpServletRequest request) {
+        return establishSession(request);
+    }
+
+    /**
+     * 認証済みセッションとCSRFトークンを作成する。
+     */
+    private Map<String, Object> establishSession(HttpServletRequest request) {
         HttpSession session = request.getSession(true);
         request.changeSessionId();
         session.setAttribute(AUTHENTICATED_SESSION_KEY, Boolean.TRUE);
