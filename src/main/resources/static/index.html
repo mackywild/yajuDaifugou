@@ -3,185 +3,873 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Daifugo v0.4.4</title>
+  <meta name="theme-color" content="#030605">
+  <title>野獣大富豪 | PC Browser</title>
   <style>
-    :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f5f5f5;background:#111}
-    *{box-sizing:border-box} body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#27312b,#111 48%);padding:24px}
-    .wrap{max-width:1100px;margin:auto}.panel{background:#1c1f1d;border:1px solid #3d4741;border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 12px 35px #0006}
-    h1,h2,h3{margin-top:0}.row{display:flex;gap:10px;flex-wrap:wrap}.grow{flex:1;min-width:180px}.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
-    input,select,button{font:inherit;border-radius:10px;border:1px solid #59645e;padding:11px 13px}input,select{background:#0e110f;color:#fff;width:100%}
-    button{cursor:pointer;background:#f0f0f0;color:#111;font-weight:700}button.secondary{background:#2a302c;color:#fff}button.gold{background:#d4b94f;color:#111}button.danger{background:#7a2929;color:#fff}button:disabled{opacity:.4;cursor:not-allowed}
-    .menu-card{padding:24px;border:1px solid #4a554f;border-radius:18px;background:#141816;min-height:180px;display:flex;flex-direction:column;justify-content:space-between}.menu-card h2{font-size:1.6rem}.menu-card.cpu{border-color:#8b6e32;background:linear-gradient(145deg,#181a17,#2a2112)}
-    .hidden{display:none!important}.status{padding:10px 12px;border-radius:10px;background:#121512;margin-top:10px;white-space:pre-wrap}.error{background:#431f1f;color:#ffb7b7}
-    .players{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.player{background:#121512;padding:12px;border-radius:12px;border:1px solid #343b37}.turn{border-color:#d4b94f;box-shadow:0 0 0 1px #d4b94f inset}
-    .field{min-height:110px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;background:#0d301c;border-radius:14px;padding:15px;margin:12px 0}
-    .hand{display:flex;gap:8px;flex-wrap:wrap}.card{width:82px;min-height:112px;background:#f8f8f5;color:#111;border:3px solid transparent;border-radius:10px;padding:8px;display:flex;flex-direction:column;justify-content:space-between;user-select:none}.card.red{color:#b11818}.card.selected{transform:translateY(-8px);border-color:#e2c94e}.card.joker{background:#222;color:#fff}
-    .cutin{position:fixed;inset:0;z-index:9999;background:#000d;display:flex;align-items:center;justify-content:center;text-align:center}.cutin-box{padding:28px 34px;border:2px solid #d4b94f;border-radius:20px;background:linear-gradient(145deg,#19151f,#2a2238);box-shadow:0 0 60px #8a6dff66}.cutin-title{font-size:1.1rem;font-weight:900;letter-spacing:.18em;color:#b7a8ff}.cutin-main{font-size:clamp(2rem,7vw,4rem);font-weight:1000;margin:8px 0;color:#fff}.cutin.early .cutin-box{border-color:#ff6666;background:linear-gradient(145deg,#241515,#3c1e1e)}.cutin.early .cutin-title{color:#ff7777}.small{font-size:.85rem;color:#aeb8b2}.room-code{font-family:ui-monospace,monospace;font-size:1.4rem;letter-spacing:.08em}.badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#303832;font-size:.8rem;margin-left:5px}.badge.cpu{background:#503f18;color:#f4d976}.rule-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}.rule{background:#121512;border-radius:10px;padding:10px}.rule label{display:flex;align-items:center;gap:8px}.rule input{width:auto}.hint{color:#d8c471;font-size:.9rem}
+    :root{
+      color-scheme:dark;
+      --bg:#020403;--panel:#08100c;--panel2:#0d1712;--green:#0d5a3f;
+      --green2:#083825;--gold:#d8b85a;--gold2:#ffe19a;--red:#d4464f;
+      --text:#f7f4ea;--muted:#86938c;--line:rgba(255,255,255,.09);
+      font-family:Inter,"Segoe UI","Noto Sans JP",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+    body{min-height:100vh;overflow-x:hidden}
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+    button:disabled{cursor:not-allowed;opacity:.35}
+    .hidden{display:none!important}
+    .app-bg{position:fixed;inset:0;z-index:-2;background:
+      radial-gradient(circle at 88% 6%,rgba(216,184,90,.12),transparent 25%),
+      radial-gradient(circle at 8% 82%,rgba(13,90,63,.24),transparent 32%),
+      linear-gradient(180deg,#020403 0%,#06150f 47%,#020303 100%)}
+    .app-bg:after{content:"";position:absolute;inset:-20%;background:
+      repeating-linear-gradient(116deg,transparent 0 46px,rgba(255,255,255,.018) 47px,transparent 49px);
+      animation:sweep 18s linear infinite}
+    @keyframes sweep{to{transform:translateX(14%)}}
+    @keyframes pulse{50%{filter:brightness(1.2);box-shadow:0 0 34px rgba(216,184,90,.22)}}
+    @keyframes float{50%{transform:translateY(-7px)}}
+    .shell{width:min(1240px,100%);margin:auto;padding:18px 22px 30px}
+    .topbar{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+    .brand{flex:1}
+    .eyebrow{font-size:.69rem;color:var(--gold);font-weight:900;letter-spacing:.32em}
+    .brand h1{margin:3px 0 0;font-size:clamp(1.8rem,4vw,3rem);letter-spacing:.04em}
+    .status-pill{border:1px solid rgba(216,184,90,.38);background:#070b09cc;border-radius:999px;
+      padding:9px 14px;color:var(--gold);font-size:.75rem;font-weight:900;letter-spacing:.12em}
+    .screen{animation:screenIn .22s ease-out}
+    @keyframes screenIn{from{opacity:0;transform:translateY(6px)}}
+    .panel{background:linear-gradient(150deg,rgba(12,25,18,.96),rgba(4,8,6,.96));
+      border:1px solid var(--line);border-radius:22px;box-shadow:0 18px 60px #0007}
+    .p24{padding:24px}
+    .title-screen{min-height:calc(100vh - 44px);display:grid;place-items:center;text-align:center}
+    .title-card{width:min(780px,94vw);padding:54px 28px;border:1px solid rgba(216,184,90,.34);
+      border-radius:34px;background:radial-gradient(circle at 50% 15%,rgba(216,184,90,.1),transparent 35%),
+      linear-gradient(160deg,rgba(8,31,21,.95),rgba(2,4,3,.98));box-shadow:0 24px 100px #000b}
+    .title-logo{font-size:clamp(3rem,9vw,6.4rem);font-weight:1000;letter-spacing:.04em;margin:6px 0;
+      background:linear-gradient(180deg,#fff8d8,#d6ad45);-webkit-background-clip:text;color:transparent}
+    .suits{color:var(--gold);font-size:1.3rem;letter-spacing:.6em;margin-left:.6em}
+    .tap{margin-top:42px;display:inline-flex;align-items:center;gap:12px;color:#171006;background:
+      linear-gradient(90deg,#b99136,#ffe7a4,#cfaa4c);border:none;border-radius:16px;padding:15px 28px;
+      font-weight:1000;letter-spacing:.15em;animation:pulse 1.6s ease-in-out infinite}
+    .subtitle{color:var(--muted);line-height:1.75}
+    .hero{padding:26px;border-radius:28px;background:
+      radial-gradient(circle at 90% 10%,rgba(216,184,90,.1),transparent 35%),
+      linear-gradient(110deg,#0b2c1e,#080d0a 64%,#030504);border:1px solid rgba(216,184,90,.35);
+      min-height:220px;display:flex;flex-direction:column;justify-content:space-between}
+    .hero.red{background:linear-gradient(110deg,#3a090d,#0b0808 64%,#030303);border-color:#a83c43}
+    .hero h2{font-size:clamp(2rem,5vw,3.7rem);margin:5px 0}
+    .menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
+    .mode-card{min-height:190px;padding:20px;border-radius:22px;border:1px solid var(--line);
+      background:linear-gradient(145deg,#0d1712,#050806);display:flex;flex-direction:column;justify-content:space-between;
+      transition:.16s ease}
+    .mode-card:hover{transform:translateY(-4px);border-color:rgba(216,184,90,.55);box-shadow:0 16px 44px #0008}
+    .mode-card.challenge:hover{border-color:#d4464f}
+    .mode-icon{font-size:2rem;color:var(--gold)}
+    .mode-card.challenge .mode-icon{color:#ff747c}
+    .mode-card h3{font-size:1.45rem;margin:10px 0 5px}
+    .mode-card p{color:var(--muted);font-size:.9rem;line-height:1.6}
+    .btn{border:1px solid transparent;border-radius:13px;padding:12px 17px;font-weight:900;letter-spacing:.05em}
+    .btn.gold{background:linear-gradient(90deg,#b99136,#f1d37e);color:#171006}
+    .btn.dark{background:#0b100d;color:#fff;border-color:rgba(255,255,255,.12)}
+    .btn.red{background:linear-gradient(90deg,#922b33,#d64a54);color:#fff}
+    .btn.green{background:#12583f;color:#fff;border-color:#28785b}
+    .btn.wide{width:100%}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .form-section{padding:20px;border-radius:18px;background:#070b09;border:1px solid var(--line)}
+    .form-section h3{margin-top:0;color:var(--gold);font-size:.85rem;letter-spacing:.14em}
+    label{display:block;color:#c7cec9;font-size:.82rem;font-weight:700;margin-bottom:12px}
+    input,select{width:100%;margin-top:6px;padding:12px 13px;border-radius:12px;border:1px solid rgba(255,255,255,.13);
+      background:#030605;color:#fff;outline:none}
+    input:focus,select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(216,184,90,.08)}
+    .rule-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .rule{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;background:#0b120e;border:1px solid var(--line)}
+    .rule input{width:auto;margin:0}
+    .section-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+    .section-head .copy{flex:1}
+    .section-head h2{margin:0;font-size:1.7rem}
+    .section-head p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
+    .room-code{font-family:ui-monospace,SFMono-Regular,monospace;color:var(--gold);font-size:1.2rem;letter-spacing:.12em}
+    .players{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+    .player{padding:13px;border:1px solid var(--line);border-radius:15px;background:#060a08}
+    .player.turn{border-color:var(--gold);box-shadow:0 0 25px rgba(216,184,90,.12)}
+    .player strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mini{color:var(--muted);font-size:.75rem}
+    .badge{display:inline-block;margin-top:6px;padding:3px 7px;border-radius:999px;background:#151d18;color:#b8c0bb;font-size:.68rem}
+    .badge.gold{color:var(--gold);border:1px solid rgba(216,184,90,.25)}
+    .game-layout{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:12px}
+    .table-panel{padding:16px}
+    .opponents{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px}
+    .opponent{min-width:155px;padding:10px;border-radius:14px;border:1px solid var(--line);background:#060a08}
+    .opponent.active{border-color:var(--gold)}
+    .felt{min-height:270px;margin:9px 0;padding:24px;border-radius:34px;border:2px solid rgba(216,184,90,.55);
+      background:radial-gradient(circle,#146747 0%,#0a4933 48%,#05291d 100%);display:grid;place-items:center;
+      box-shadow:inset 0 0 60px #0007,0 16px 36px #0007;position:relative}
+    .felt:before{content:"ROYAL TABLE";position:absolute;top:15px;color:rgba(255,225,154,.55);font-size:.66rem;
+      font-weight:900;letter-spacing:.25em}
+    .field{display:flex;align-items:center;justify-content:center;gap:-10px;min-height:110px}
+    .hand-wrap{margin-top:12px;padding:14px;border-radius:18px;background:#060a08;border:1px solid var(--line)}
+    .hand-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .hand{display:flex;gap:5px;overflow-x:auto;padding:15px 4px 8px}
+    .card{flex:0 0 68px;width:68px;height:98px;background:#fffdf7;color:#161616;border:2px solid #d3cbbd;
+      border-radius:8px;padding:7px;display:flex;flex-direction:column;justify-content:space-between;text-align:left;
+      transition:.13s ease;box-shadow:0 4px 12px #0007}
+    .card.red-suit{color:#b71e2b}.card.joker{color:#b98a20}
+    .card.selectable:hover{transform:translateY(-7px)}
+    .card.selected{transform:translateY(-14px) scale(1.05);border-color:var(--gold);background:#fff2c9}
+    .card .center{text-align:center;font-size:1.8rem}.card .rank{font-weight:1000}
+    .card.back{width:28px;height:41px;flex-basis:28px;padding:0;background:
+      repeating-linear-gradient(45deg,#11294a 0 5px,#1d3b67 5px 9px);border-color:#c0a15c}
+    .actions{display:grid;grid-template-columns:.75fr 1.25fr;gap:8px;margin-top:10px}
+    .side{padding:14px}
+    .hud-title{font-size:.68rem;color:var(--gold);font-weight:900;letter-spacing:.18em;margin-bottom:8px}
+    .turn-banner{padding:14px;border-radius:14px;background:#080e0a;border:1px solid var(--line);font-weight:1000;letter-spacing:.08em}
+    .turn-banner.mine{border-color:var(--gold);color:var(--gold);animation:pulse 1.5s infinite}
+    .rules{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .pill{padding:5px 8px;border-radius:999px;border:1px solid rgba(216,184,90,.25);background:#090e0b;color:#c7cec9;font-size:.68rem}
+    .play-log{margin-top:12px;max-height:210px;overflow:auto}
+    .log{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);color:#adb7b0;font-size:.77rem}
+    .result-list{display:grid;gap:9px}
+    .result-row{display:flex;align-items:center;gap:12px;padding:13px;border-radius:15px;background:#070b09;border:1px solid var(--line)}
+    .result-row.first{border-color:var(--gold);background:#181509}
+    .rank{font-size:1.5rem;font-weight:1000;color:var(--gold);width:52px}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:1000;max-width:min(700px,90vw);
+      padding:12px 17px;border-radius:13px;background:#0c1510;border:1px solid rgba(216,184,90,.35);
+      box-shadow:0 12px 36px #000a;color:#fff}
+    .toast.error{border-color:#b33d46;background:#291014;color:#ffc4c8}
+    .cutin{position:fixed;inset:0;z-index:2000;background:#000c;display:grid;place-items:center}
+    .cutin-box{min-width:min(500px,88vw);padding:30px;text-align:center;border-radius:25px;background:#090d0b;
+      border:2px solid var(--gold);box-shadow:0 0 90px rgba(216,184,90,.25)}
+    .cutin-title{color:var(--gold);font-size:.85rem;font-weight:1000;letter-spacing:.25em}
+    .cutin-main{font-size:clamp(2rem,7vw,4.5rem);font-weight:1000;margin:10px 0}
+    .loading{min-height:100vh;display:grid;place-items:center;color:var(--gold);font-weight:900;letter-spacing:.15em}
+    .spinner{width:32px;height:32px;border:3px solid rgba(216,184,90,.15);border-top-color:var(--gold);border-radius:50%;
+      animation:spin .7s linear infinite;margin:auto auto 14px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media(max-width:900px){
+      .menu-grid{grid-template-columns:1fr}.game-layout{grid-template-columns:1fr}.side{order:-1}
+    }
+    @media(max-width:620px){
+      .shell{padding:12px}.form-grid{grid-template-columns:1fr}.rule-grid{grid-template-columns:1fr}
+      .title-card{padding:42px 18px}.hero{min-height:190px}.card{flex-basis:60px;width:60px;height:90px}
+    }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>♠ Daifugo <span class="small">v0.4.4 8-PLAYER UPDATE</span></h1>
+<div class="app-bg"></div>
 
-  <section id="loginPanel" class="panel">
-    <h2>アクセス認証</h2>
-    <div class="row"><div class="grow"><input id="password" type="password" placeholder="共通パスワード"></div><button onclick="login()">入る</button></div>
-  </section>
-
-  <section id="mainMenuPanel" class="panel hidden">
-    <div class="row" style="align-items:center;justify-content:space-between"><div><h2>メインメニュー</h2><span class="small">遊び方を選択してください</span></div><button class="secondary" onclick="logout()">ログアウト</button></div>
-    <div class="grid2" style="margin-top:14px">
-      <div class="menu-card"><div><h2>🌐 マルチプレイ</h2><p>PC / Android / iPhoneで同じ卓に参加するオンライン対戦。</p></div><button onclick="openMultiplayer()">マルチプレイへ</button></div>
-      <div class="menu-card cpu"><div><h2>🤖 【ひとりでイク】</h2><p>CPU人数・難易度・特殊ルールを設定して即対戦。バグ検証にも使えるCPU戦。</p></div><button class="gold" onclick="openCpuSetup()">CPU戦へ</button></div>
-    </div>
-  </section>
-
-  <section id="multiplayerPanel" class="panel hidden">
-    <div class="row" style="align-items:center;justify-content:space-between"><h2>マルチプレイ</h2><button class="secondary" onclick="backToMenu()">← メニュー</button></div>
-    <div class="row"><div class="grow"><input id="playerName" maxlength="20" placeholder="プレイヤー名"></div><button onclick="createRoom()">部屋を作る</button></div>
-    <div class="row" style="margin-top:10px"><div class="grow"><input id="roomIdInput" maxlength="8" placeholder="8文字の部屋ID"></div><button class="secondary" onclick="joinRoom()">部屋に参加</button></div>
-  </section>
-
-  <section id="cpuSetupPanel" class="panel hidden">
-    <div class="row" style="align-items:center;justify-content:space-between"><div><h2>【ひとりでイク】</h2><span class="small">CPU戦セットアップ</span></div><button class="secondary" onclick="backToMenu()">← メニュー</button></div>
-    <div class="grid2">
-      <div>
-        <h3>対戦設定</h3>
-        <label>プレイヤー名<input id="cpuPlayerName" maxlength="20" placeholder="プレイヤー名"></label><br>
-        <label>CPU人数<select id="cpuCount">
-          <option value="1">1人（2人戦）</option>
-          <option value="2">2人（3人戦）</option>
-          <option value="3" selected>3人（4人戦）</option>
-          <option value="4">4人（5人戦）</option>
-          <option value="5">5人（6人戦）</option>
-          <option value="6">6人（7人戦）</option>
-          <option value="7">7人（8人戦）</option>
-        </select></label><br>
-        <label>難易度<select id="cpuDifficulty"><option value="EASY">簡単</option><option value="NORMAL">普通</option><option value="HARD" selected>難しい</option><option value="N_GOD">N-GOD（最強・学習済み）</option></select></label><br>
-        <label>ジョーカー枚数<select id="jokerCount"><option value="0">0枚</option><option value="1" selected>1枚</option><option value="2">2枚</option></select></label>
-      </div>
-      <div>
-        <h3>特殊ルール</h3>
-        <div class="rule-grid">
-          <div class="rule"><label><input id="ruleRevolution" type="checkbox" checked>革命</label></div>
-          <div class="rule"><label><input id="ruleEightCut" type="checkbox" checked>8切り</label></div>
-          <div class="rule"><label><input id="ruleMarkLock" type="checkbox" checked>マーク縛り</label></div>
-          <div class="rule"><label><input id="ruleSevenTransfer" type="checkbox" checked>7渡し</label></div>
-          <div class="rule"><label><input id="ruleYaju" type="checkbox" checked onchange="syncYajuRule()">野獣ルール</label></div>
-          <div class="rule"><label><input id="ruleJackBack" type="checkbox" checked>Jバック</label></div>
-          <div class="rule"><label><input id="ruleForbidden" type="checkbox" checked>禁止上がり</label></div>
-        </div>
-        <p class="hint">※野獣ルールON時は8切りが必須です。</p>
-      </div>
-    </div>
-    <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="gold" onclick="startCpuGame()">CPU戦スタート</button></div>
-  </section>
-
-  <section id="roomPanel" class="panel hidden">
-    <div class="row" style="align-items:center;justify-content:space-between"><div><h2 style="margin-bottom:4px"><span id="roomTitle">ROOM</span> <span id="roomCode" class="room-code"></span></h2><span id="gameFlags" class="small"></span></div><div class="row"><button id="startButton" onclick="startGame()">ゲーム開始</button><button id="leaveButton" class="danger" onclick="leaveRoom()">退出</button></div></div>
-    <div id="players" class="players"></div>
-  </section>
-
-  <section id="gamePanel" class="panel hidden">
-    <h2>場</h2>
-    <div id="field" class="field"></div>
-    <div class="row" style="justify-content:center"><button id="playButton" onclick="playCards()">選択カードを出す</button><button id="passButton" class="secondary" onclick="passTurn()">パス</button></div>
-    <h2 style="margin-top:20px">あなたの手札</h2>
-    <div id="hand" class="hand"></div>
-    <div id="resultActions" class="row hidden" style="justify-content:center;margin-top:18px"><button class="gold" onclick="leaveRoom()">メインメニューへ戻る</button></div>
-  </section>
-
-  <div id="message" class="status hidden"></div>
+<div id="bootScreen" class="loading">
+  <div><div class="spinner"></div>CONNECTING TO ROYAL TABLE...</div>
 </div>
-<div id="ruleCutIn" class="cutin hidden"><div class="cutin-box"><div id="cutInTitle" class="cutin-title"></div><div id="cutInMain" class="cutin-main"></div><div id="cutInPlayer" class="small"></div></div></div>
+
+<div id="titleScreen" class="title-screen hidden screen">
+  <div class="title-card">
+    <div class="eyebrow">ONLINE CARD GAME</div>
+    <div class="title-logo">野獣大富豪</div>
+    <div class="suits">♠ ♥ ♦ ♣</div>
+    <p class="subtitle">PC BROWSER EDITION<br>インストール不要。Androidプレイヤーと同じ卓へ。</p>
+    <button class="tap" onclick="startFromTitle()">TAP TO START ▶</button>
+  </div>
+</div>
+
+<div id="appShell" class="shell hidden">
+  <header class="topbar">
+    <div class="brand">
+      <div class="eyebrow">YAJU DAIFUGO</div>
+      <h1>ROYAL CASINO</h1>
+    </div>
+    <div id="networkPill" class="status-pill">● BROWSER</div>
+  </header>
+
+  <main>
+    <section id="profileScreen" class="screen hidden">
+      <div class="panel p24">
+        <div class="section-head">
+          <div class="copy">
+            <div class="eyebrow">FIRST ENTRY</div>
+            <h2>PLAYER PROFILE</h2>
+            <p>Googleアカウント不要。PC版ではこのブラウザにプレイヤー名を保存します。</p>
+          </div>
+        </div>
+        <div class="form-section">
+          <label>PLAYER NAME
+            <input id="profileName" maxlength="20" autocomplete="nickname" placeholder="プレイヤー名">
+          </label>
+          <button class="btn gold wide" onclick="saveProfile()">この名前でゲームを始める ▶</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="menuScreen" class="screen hidden">
+      <div class="hero">
+        <div>
+          <div class="eyebrow">PC BROWSER EDITION</div>
+          <h2>CHOOSE YOUR TABLE</h2>
+          <p class="subtitle">ブラウザ版からSOLO / CHALLENGE / MULTIPLAYERへ。<br>マルチはAndroid版と同じSpring Bootゲームサーバを使用します。</p>
+        </div>
+        <div class="mini">PLAYER <strong id="menuPlayerName" style="color:#fff"></strong></div>
+      </div>
+
+      <div class="menu-grid">
+        <article class="mode-card">
+          <div><div class="mode-icon">♠</div><h3>ひとりでいく</h3><p>CPU人数・難易度・ルールを選んで即対戦。</p></div>
+          <button class="btn gold" onclick="openSetup('solo')">SOLO PLAY ▶</button>
+        </article>
+        <article class="mode-card">
+          <div><div class="mode-icon">♦</div><h3>みんなでいく</h3><p>部屋を作るか、Android/PC共通のルームIDで参加。</p></div>
+          <button class="btn green" onclick="openMultiplayer()">MULTIPLAYER ▶</button>
+        </article>
+        <article class="mode-card challenge">
+          <div><div class="mode-icon">8 + 10</div><h3>チャレンジ</h3><p>初期手札に8と10を保証。野獣上がりを決めろ。</p></div>
+          <button class="btn red" onclick="openSetup('challenge')">CHALLENGE ▶</button>
+        </article>
+      </div>
+    </section>
+
+    <section id="multiScreen" class="screen hidden">
+      <div class="panel p24">
+        <div class="section-head">
+          <div class="copy"><div class="eyebrow">MULTIPLAYER</div><h2>ONLINE TABLE</h2><p>PC / Android 共通ルーム</p></div>
+          <button class="btn dark" onclick="showMenu()">← BACK</button>
+        </div>
+        <div id="inviteNotice" class="form-section hidden" style="margin-bottom:14px;border-color:rgba(216,184,90,.4)">
+          <div class="hud-title">ROOM INVITE DETECTED</div>
+          <div id="inviteText"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-section">
+            <h3>CREATE ROOM</h3>
+            <p class="subtitle">新しい卓を作成して、招待リンクを共有します。</p>
+            <button class="btn gold wide" onclick="createRoom()">部屋を作る ▶</button>
+          </div>
+          <div class="form-section">
+            <h3>JOIN ROOM</h3>
+            <label>ROOM ID
+              <input id="roomIdInput" maxlength="8" autocomplete="off" placeholder="8文字のルームID">
+            </label>
+            <button class="btn green wide" onclick="joinRoom()">参加する ▶</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="setupScreen" class="screen hidden">
+      <div class="panel p24">
+        <div class="section-head">
+          <div class="copy"><div id="setupEyebrow" class="eyebrow">SOLO PLAY</div><h2 id="setupTitle">PRIVATE TABLE</h2><p id="setupDesc">CPU戦セットアップ</p></div>
+          <button class="btn dark" onclick="showMenu()">← BACK</button>
+        </div>
+        <div class="form-grid">
+          <div class="form-section">
+            <h3>TABLE SETTINGS</h3>
+            <label>CPU PLAYERS
+              <select id="cpuCount">
+                <option value="1">1人（2人戦）</option><option value="2">2人（3人戦）</option>
+                <option value="3" selected>3人（4人戦）</option><option value="4">4人（5人戦）</option>
+                <option value="5">5人（6人戦）</option><option value="6">6人（7人戦）</option><option value="7">7人（8人戦）</option>
+              </select>
+            </label>
+            <label>DIFFICULTY
+              <select id="cpuDifficulty">
+                <option value="EASY">EASY</option><option value="NORMAL">NORMAL</option>
+                <option value="HARD" selected>HARD</option><option value="N_GOD">N-GOD</option>
+              </select>
+            </label>
+            <label>JOKER
+              <select id="jokerCount"><option value="0">0枚</option><option value="1" selected>1枚</option><option value="2">2枚</option></select>
+            </label>
+          </div>
+          <div class="form-section">
+            <h3>SPECIAL RULES</h3>
+            <div class="rule-grid">
+              <label class="rule"><input id="ruleRevolution" type="checkbox" checked> 革命</label>
+              <label class="rule"><input id="ruleEightCut" type="checkbox" checked> 8切り</label>
+              <label class="rule"><input id="ruleMarkLock" type="checkbox" checked> マーク縛り</label>
+              <label class="rule"><input id="ruleSevenTransfer" type="checkbox" checked> 7渡し</label>
+              <label class="rule"><input id="ruleYaju" type="checkbox" checked> 野獣ルール</label>
+              <label class="rule"><input id="ruleJackBack" type="checkbox" checked> Jバック</label>
+              <label class="rule"><input id="ruleForbidden" type="checkbox" checked> 禁止上がり</label>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <button id="setupStartButton" class="btn gold wide" onclick="startConfiguredGame()">GAME START ▶</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="roomScreen" class="screen hidden">
+      <div class="panel p24">
+        <div class="section-head">
+          <div class="copy">
+            <div class="eyebrow">WAITING ROOM</div>
+            <h2>ROOM <span id="roomCode" class="room-code"></span></h2>
+            <p id="roomMeta">プレイヤーを待っています</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button id="shareRoomButton" class="btn dark" onclick="copyInvite()">招待リンクをコピー</button>
+            <button id="startRoomButton" class="btn gold" onclick="startRoomGame()">GAME START</button>
+            <button class="btn dark" onclick="leaveRoom()">退出</button>
+          </div>
+        </div>
+        <div id="roomPlayers" class="players"></div>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="screen hidden">
+      <div class="game-layout">
+        <div class="panel table-panel">
+          <div id="opponents" class="opponents"></div>
+          <div class="felt">
+            <div id="field" class="field"></div>
+          </div>
+          <div class="hand-wrap">
+            <div class="hand-head">
+              <div><div class="hud-title">YOUR HAND</div><strong id="selfName"></strong></div>
+              <div id="handCount" class="status-pill">0 CARDS</div>
+            </div>
+            <div id="hand" class="hand"></div>
+            <div class="actions">
+              <button id="passButton" class="btn dark" onclick="passTurn()">PASS</button>
+              <button id="playButton" class="btn gold" onclick="playCards()">PLAY ▶</button>
+            </div>
+          </div>
+        </div>
+        <aside class="panel side">
+          <div class="hud-title">MATCH STATUS</div>
+          <div id="turnBanner" class="turn-banner">WAITING...</div>
+          <div id="rulePills" class="rules"></div>
+          <div id="transferNotice" class="form-section hidden" style="margin-top:12px"></div>
+          <div class="hud-title" style="margin-top:16px">PLAY LOG</div>
+          <div id="playLog" class="play-log"></div>
+          <button id="leaveAfterGameButton" class="btn gold wide hidden" style="margin-top:12px" onclick="leaveRoom()">RETURN TO LOUNGE ▶</button>
+        </aside>
+      </div>
+    </section>
+
+    <section id="resultScreen" class="screen hidden">
+      <div class="panel p24">
+        <div style="text-align:center;margin-bottom:20px">
+          <div class="eyebrow">GAME SET</div>
+          <h2 style="font-size:3rem;margin:5px 0">RESULT</h2>
+          <div id="yourRank" style="color:var(--gold);font-weight:1000"></div>
+        </div>
+        <div id="resultList" class="result-list"></div>
+        <button class="btn gold wide" style="margin-top:16px" onclick="leaveRoom()">RETURN TO LOUNGE ▶</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<div id="cutin" class="cutin hidden">
+  <div class="cutin-box">
+    <div id="cutinTitle" class="cutin-title"></div>
+    <div id="cutinMain" class="cutin-main"></div>
+    <div id="cutinPlayer" class="subtitle"></div>
+  </div>
+</div>
+
 <script>
-let roomId = localStorage.getItem('daifugo.roomId') || '';
+'use strict';
+
+let csrfToken = '';
+let roomId = localStorage.getItem('yaju.pc.roomId') || '';
+let playerName = localStorage.getItem('yaju.pc.playerName') || '';
 let selected = new Set();
+let currentState = null;
+let socket = null;
+let reconnectTimer = null;
 let pollTimer = null;
-let csrfToken = sessionStorage.getItem('daifugo.csrfToken') || '';
-let lastEventId = 0;
-let cutInBusy = false;
-const cutInQueue = [];
+let setupMode = 'solo';
+let lastEventId = Number(sessionStorage.getItem('yaju.pc.lastEventId') || 0);
+let cutinBusy = false;
+const cutinQueue = [];
+const playLog = [];
 
+const screens = ['profileScreen','menuScreen','multiScreen','setupScreen','roomScreen','gameScreen','resultScreen'];
 
-function processEvents(events){
-  (events||[]).filter(e=>e.id>lastEventId).sort((a,b)=>a.id-b.id).forEach(e=>{
-    if(e.type==='JACK_BACK')cutInQueue.push({kind:'jack',title:'J BACK',main:'バック気持ちいい',player:e.playerName});
-    if(e.type==='EARLY_SHOT')cutInQueue.push({kind:'early',title:'早漏',main:'早すぎるッ！',player:e.playerName});
-    lastEventId=Math.max(lastEventId,e.id);
-  });
-  showNextCutIn();
+function byId(id){ return document.getElementById(id); }
+function showOnly(id){
+  screens.forEach(function(screenId){ byId(screenId).classList.toggle('hidden',screenId !== id); });
 }
-function showNextCutIn(){
-  if(cutInBusy||!cutInQueue.length)return;
-  cutInBusy=true;const item=cutInQueue.shift();const el=document.getElementById('ruleCutIn');
-  el.classList.toggle('early',item.kind==='early');document.getElementById('cutInTitle').textContent=item.title;document.getElementById('cutInMain').textContent=item.main;document.getElementById('cutInPlayer').textContent=item.player||'';el.classList.remove('hidden');
-  setTimeout(()=>{el.classList.add('hidden');cutInBusy=false;showNextCutIn()},1900);
+function toast(text,error){
+  const el=byId('toast');
+  el.textContent=text;el.className='toast'+(error?' error':'');
+  clearTimeout(el._timer);
+  el._timer=setTimeout(function(){el.classList.add('hidden');},3200);
+}
+function esc(text){
+  return String(text == null ? '' : text)
+    .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+    .replaceAll('"','&quot;').replaceAll("'",'&#039;');
 }
 
-async function api(url, options={}) {
+async function api(url,options){
+  options=options||{};
   const method=(options.method||'GET').toUpperCase();
-  const csrfHeader=(csrfToken&&method!=='GET'&&method!=='HEAD')?{'X-CSRF-Token':csrfToken}:{};
-  const res = await fetch(url, {credentials:'same-origin', headers:{'Content-Type':'application/json', ...csrfHeader, ...(options.headers||{})}, ...options});
-  let data = null; try { data = await res.json(); } catch (_) {}
-  if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+  const headers=Object.assign({'Content-Type':'application/json'},options.headers||{});
+  if(csrfToken && method!=='GET' && method!=='HEAD') headers['X-CSRF-Token']=csrfToken;
+  const res=await fetch(url,Object.assign({},options,{credentials:'same-origin',headers:headers}));
+  let data=null;
+  try{data=await res.json();}catch(_){}
+  if(!res.ok) throw new Error(data && data.message ? data.message : 'HTTP '+res.status);
   return data;
 }
-function msg(text, error=false){const el=document.getElementById('message'); el.textContent=text; el.className='status'+(error?' error':'');}
-function clearMsg(){document.getElementById('message').className='status hidden';}
-function show(id, yes=true){document.getElementById(id).classList.toggle('hidden',!yes)}
-function hideMenus(){['mainMenuPanel','multiplayerPanel','cpuSetupPanel'].forEach(id=>show(id,false))}
-function showMainMenu(){hideMenus();show('mainMenuPanel',true);show('roomPanel',false);show('gamePanel',false)}
-function openMultiplayer(){hideMenus();show('multiplayerPanel',true)}
-function openCpuSetup(){hideMenus();show('cpuSetupPanel',true);document.getElementById('cpuPlayerName').value=document.getElementById('playerName').value||document.getElementById('cpuPlayerName').value;syncYajuRule()}
-function backToMenu(){hideMenus();show('mainMenuPanel',true);clearMsg()}
-function syncYajuRule(){const y=document.getElementById('ruleYaju');const e=document.getElementById('ruleEightCut');if(y.checked){e.checked=true;e.disabled=true}else e.disabled=false}
 
-async function login(){
-  try { clearMsg(); const auth=await api('/api/auth/login',{method:'POST',body:JSON.stringify({password:password.value})}); csrfToken=auth.csrfToken||''; sessionStorage.setItem('daifugo.csrfToken',csrfToken); show('loginPanel',false); showMainMenu(); if(roomId){show('mainMenuPanel',false);show('roomPanel',true);startPolling();} }
-  catch(e){msg(e.message,true)}
-}
-async function logout(){try{await api('/api/auth/logout',{method:'POST'});if(pollTimer)clearInterval(pollTimer);roomId='';selected.clear();localStorage.removeItem('daifugo.roomId');sessionStorage.removeItem('daifugo.csrfToken');csrfToken='';hideMenus();show('roomPanel',false);show('gamePanel',false);show('loginPanel',true);msg('ログアウトしました')}catch(e){msg(e.message,true)}}
-async function createRoom(){try{ const playerName=document.getElementById('playerName').value; const r=await api('/api/rooms',{method:'POST',body:JSON.stringify({playerName})}); enterRoom(r); }catch(e){msg(e.message,true)}}
-async function joinRoom(){try{ const playerName=document.getElementById('playerName').value; const id=document.getElementById('roomIdInput').value.trim(); const r=await api(`/api/rooms/${id}/join`,{method:'POST',body:JSON.stringify({playerName})}); enterRoom(r); }catch(e){msg(e.message,true)}}
-async function startCpuGame(){
+async function bootstrap(){
   try{
-    clearMsg(); syncYajuRule();
-    const body={
-      playerName:document.getElementById('cpuPlayerName').value,
-      cpuCount:Number(document.getElementById('cpuCount').value),
-      difficulty:document.getElementById('cpuDifficulty').value,
-      jokerCount:Number(document.getElementById('jokerCount').value),
-      revolution:document.getElementById('ruleRevolution').checked,
-      eightCut:document.getElementById('ruleEightCut').checked,
-      markLock:document.getElementById('ruleMarkLock').checked,
-      sevenTransfer:document.getElementById('ruleSevenTransfer').checked,
-      yajuRule:document.getElementById('ruleYaju').checked,
-      jackBack:document.getElementById('ruleJackBack').checked,
-      forbiddenFinish:document.getElementById('ruleForbidden').checked
+    const session=await api('/api/auth/session');
+    csrfToken=session.csrfToken||'';
+    sessionStorage.setItem('yaju.pc.csrfToken',csrfToken);
+    byId('bootScreen').classList.add('hidden');
+    byId('titleScreen').classList.remove('hidden');
+    const invited=new URLSearchParams(location.search).get('room');
+    if(invited) localStorage.setItem('yaju.pc.inviteRoom',invited.toLowerCase());
+  }catch(e){
+    byId('bootScreen').innerHTML='<div>SERVER CONNECTION FAILED<br><small>'+esc(e.message)+'</small></div>';
+  }
+}
+
+function startFromTitle(){
+  byId('titleScreen').classList.add('hidden');
+  byId('appShell').classList.remove('hidden');
+  if(!playerName){
+    showOnly('profileScreen');
+    return;
+  }
+  restoreOrMenu();
+}
+
+function saveProfile(){
+  const value=byId('profileName').value.trim();
+  if(!value){toast('プレイヤー名を入力してください',true);return;}
+  if(value.length>20){toast('プレイヤー名は20文字以内です',true);return;}
+  playerName=value;
+  localStorage.setItem('yaju.pc.playerName',playerName);
+  byId('menuPlayerName').textContent=playerName;
+  restoreOrMenu();
+}
+
+async function restoreOrMenu(){
+  byId('menuPlayerName').textContent=playerName;
+  if(roomId){
+    try{
+      const state=await api('/api/rooms/'+encodeURIComponent(roomId)+'/state');
+      currentState=state;
+      render(state);
+      connectSocket();
+      return;
+    }catch(_){
+      roomId='';
+      localStorage.removeItem('yaju.pc.roomId');
+    }
+  }
+  showMenu();
+}
+
+function showMenu(){
+  closeRealtime();
+  currentState=null;selected.clear();
+  history.replaceState({},'',location.pathname);
+  byId('menuPlayerName').textContent=playerName;
+  showOnly('menuScreen');
+}
+
+function openMultiplayer(){
+  showOnly('multiScreen');
+  const invited=localStorage.getItem('yaju.pc.inviteRoom')||'';
+  if(invited){
+    byId('roomIdInput').value=invited;
+    byId('inviteNotice').classList.remove('hidden');
+    byId('inviteText').innerHTML='招待されたルーム <strong class="room-code">'+esc(invited)+'</strong> に参加できます。';
+  }else{
+    byId('inviteNotice').classList.add('hidden');
+  }
+}
+
+function openSetup(mode){
+  setupMode=mode;
+  const challenge=mode==='challenge';
+  byId('setupEyebrow').textContent=challenge?'YAJU CHALLENGE':'SOLO PLAY';
+  byId('setupTitle').textContent=challenge?'BEAST JACKPOT':'PRIVATE TABLE';
+  byId('setupDesc').textContent=challenge?'初期手札に8 + 10を保証。野獣上がりを狙う。':'CPU人数・難易度・特殊ルールを設定';
+  byId('setupStartButton').textContent=challenge?'CHALLENGE START ▶':'GAME START ▶';
+  byId('setupStartButton').className='btn '+(challenge?'red':'gold')+' wide';
+  byId('ruleYaju').checked=true;
+  if(challenge){
+    byId('ruleEightCut').checked=true;
+    byId('ruleEightCut').disabled=true;
+    byId('ruleYaju').disabled=true;
+  }else{
+    byId('ruleEightCut').disabled=false;
+    byId('ruleYaju').disabled=false;
+  }
+  showOnly('setupScreen');
+}
+
+function setupBody(){
+  return {
+    playerName:playerName,
+    cpuCount:Number(byId('cpuCount').value),
+    difficulty:byId('cpuDifficulty').value,
+    jokerCount:Number(byId('jokerCount').value),
+    revolution:byId('ruleRevolution').checked,
+    eightCut:setupMode==='challenge'?true:byId('ruleEightCut').checked,
+    markLock:byId('ruleMarkLock').checked,
+    sevenTransfer:byId('ruleSevenTransfer').checked,
+    yajuRule:setupMode==='challenge'?true:byId('ruleYaju').checked,
+    jackBack:byId('ruleJackBack').checked,
+    forbiddenFinish:byId('ruleForbidden').checked
+  };
+}
+
+async function startConfiguredGame(){
+  try{
+    const endpoint=setupMode==='challenge'?'/api/rooms/challenge':'/api/rooms/cpu';
+    const state=await api(endpoint,{method:'POST',body:JSON.stringify(setupBody())});
+    bindRoom(state.roomId);
+    currentState=state;
+    render(state);
+    connectSocket();
+  }catch(e){toast(e.message,true);}
+}
+
+async function createRoom(){
+  try{
+    const response=await api('/api/rooms',{method:'POST',body:JSON.stringify({playerName:playerName})});
+    bindRoom(response.roomId);
+    await refreshState();
+    connectSocket();
+  }catch(e){toast(e.message,true);}
+}
+
+async function joinRoom(){
+  try{
+    const id=byId('roomIdInput').value.trim().toLowerCase();
+    if(!id){toast('ルームIDを入力してください',true);return;}
+    const response=await api('/api/rooms/'+encodeURIComponent(id)+'/join',{
+      method:'POST',body:JSON.stringify({playerName:playerName})
+    });
+    localStorage.removeItem('yaju.pc.inviteRoom');
+    bindRoom(response.roomId);
+    await refreshState();
+    connectSocket();
+  }catch(e){toast(e.message,true);}
+}
+
+function bindRoom(id){
+  roomId=id;
+  localStorage.setItem('yaju.pc.roomId',roomId);
+  history.replaceState({},'',location.pathname+'?room='+encodeURIComponent(roomId));
+}
+
+async function refreshState(){
+  if(!roomId)return;
+  try{
+    const state=await api('/api/rooms/'+encodeURIComponent(roomId)+'/state');
+    currentState=state;
+    render(state);
+  }catch(e){
+    if(e.message.indexOf('指定された部屋')>=0 || e.message.indexOf('参加していません')>=0){
+      roomId='';localStorage.removeItem('yaju.pc.roomId');showMenu();
+    }else{
+      toast(e.message,true);
+    }
+  }
+}
+
+function connectSocket(){
+  closeRealtime();
+  if(!roomId)return;
+  const protocol=location.protocol==='https:'?'wss:':'ws:';
+  const url=protocol+'//'+location.host+'/ws/game?roomId='+encodeURIComponent(roomId);
+  try{
+    socket=new WebSocket(url);
+    socket.onopen=function(){
+      byId('networkPill').textContent='● LIVE';
+      pollTimer=setInterval(refreshState,5000);
     };
-    const s=await api('/api/rooms/cpu',{method:'POST',body:JSON.stringify(body)});
-    roomId=s.roomId;localStorage.setItem('daifugo.roomId',roomId);hideMenus();render(s);startPolling();
-  }catch(e){msg(e.message,true)}
+    socket.onmessage=function(ev){
+      try{
+        const message=JSON.parse(ev.data);
+        if(message.type==='STATE_CHANGED' || message.type==='CONNECTED') refreshState();
+      }catch(_){}
+    };
+    socket.onclose=function(){
+      byId('networkPill').textContent='○ RECONNECT';
+      if(roomId) reconnectTimer=setTimeout(connectSocket,2500);
+    };
+    socket.onerror=function(){ if(socket)socket.close(); };
+  }catch(_){
+    pollTimer=setInterval(refreshState,1500);
+  }
 }
-function enterRoom(r){roomId=r.roomId;localStorage.setItem('daifugo.roomId',roomId);hideMenus();show('roomPanel',true);document.getElementById('roomCode').textContent=roomId;startPolling();}
-function startPolling(){if(pollTimer)clearInterval(pollTimer);refreshState();pollTimer=setInterval(refreshState,1000)}
-async function refreshState(){if(!roomId)return;try{const s=await api(`/api/rooms/${roomId}/state`);render(s)}catch(e){if(e.message.includes('このブラウザは指定された部屋に参加していません')||e.message.includes('指定された部屋が存在しません')){localStorage.removeItem('daifugo.roomId');roomId='';if(pollTimer)clearInterval(pollTimer);showMainMenu();}if(e.message!=='認証が必要です')msg(e.message,true)}}
-async function startGame(){try{const s=await api(`/api/rooms/${roomId}/start`,{method:'POST'});render(s)}catch(e){msg(e.message,true)}}
-async function playCards(){try{const state=window.lastState;const self=state.players.find(p=>p.self);const cards=[...selected].map(i=>self.hand[i]);if(!cards.length)throw new Error('カードを選択してください');const seven=state.sevenTransfer||{};const transferring=seven.pending&&seven.sourcePlayerId===self.playerId;if(transferring&&cards.length!==seven.cardCount)throw new Error(`7渡しでは${seven.cardCount}枚選択してください`);const endpoint=transferring?'seven-transfer':'play';const s=await api(`/api/rooms/${roomId}/${endpoint}`,{method:'POST',body:JSON.stringify({cards})});selected.clear();render(s);clearMsg();}catch(e){msg(e.message,true)}}
-async function passTurn(){try{const s=await api(`/api/rooms/${roomId}/pass`,{method:'POST'});selected.clear();render(s);clearMsg()}catch(e){msg(e.message,true)}}
-async function leaveRoom(){try{await api(`/api/rooms/${roomId}/leave`,{method:'POST'});if(pollTimer)clearInterval(pollTimer);roomId='';selected.clear();localStorage.removeItem('daifugo.roomId');show('roomPanel',false);show('gamePanel',false);showMainMenu();msg('メインメニューへ戻りました')}catch(e){msg(e.message,true)}}
-function render(s){
-  window.lastState=s;processEvents(s.events);hideMenus();document.getElementById('roomCode').textContent=s.gameMode==='CPU'?'':s.roomId;document.getElementById('roomTitle').textContent=s.gameMode==='CPU'?'【ひとりでイク】':'ROOM';show('roomPanel',true);show('gamePanel',s.started);document.getElementById('startButton').disabled=s.started||s.players.length<2||!s.host;document.getElementById('startButton').classList.toggle('hidden',s.gameMode==='CPU'||!s.host);document.getElementById('leaveButton').disabled=s.started&&!s.finished;document.getElementById('resultActions').classList.toggle('hidden',!s.finished);
-  const anyYaju=s.players.some(p=>p.yajuStatus&&p.yajuStatus!=='NONE');const difficulty=s.players.find(p=>p.cpu)?.cpuDifficulty;document.getElementById('gameFlags').textContent=`${s.gameMode==='CPU'?'CPU戦'+(difficulty?' / '+difficulty:''):'マルチプレイ'} / ${s.players.length}/8人 / ${s.started?'対戦中':'待機中'}${s.revolution?' / 革命中':''}${s.jackBack?' / Jバック中':''}${s.lockedMark?' / '+symbol(s.lockedMark)+'縛り':''}${anyYaju?' / 野獣ルール':''}${s.finished?' / 終了':''}`;
-  const ps=document.getElementById('players');ps.innerHTML='';s.players.forEach(p=>{const d=document.createElement('div');d.className='player'+(s.currentPlayerId===p.playerId?' turn':'');const yaju=p.yajuStatus&&p.yajuStatus!=='NONE'?`<div>野獣: ${esc(p.yajuStatus)}</div>`:'';const cpu=p.cpu?`<span class="badge cpu">CPU ${esc(p.cpuDifficulty||'')}</span>`:'';d.innerHTML=`<strong>${esc(p.playerName)}</strong>${p.self?'<span class="badge">YOU</span>':''}${cpu}<div>手札 ${p.handCount}枚 ${p.passed?'・PASS':''}</div>${yaju}${p.rank?`<div><strong>${p.rank}位</strong></div>`:''}`;ps.appendChild(d)});
-  if(!s.started)return;
-  const field=document.getElementById('field');field.innerHTML='';if(!s.field.cards.length)field.innerHTML='<span class="small">場は空です</span>';else s.field.cards.forEach(c=>field.appendChild(cardElement(c,false,-1)));
-  const self=s.players.find(p=>p.self);const hand=document.getElementById('hand');hand.innerHTML='';self?.hand.forEach((c,i)=>hand.appendChild(cardElement(c,true,i)));const myTurn=!!self&&s.currentPlayerId===self.playerId&&!s.finished;const seven=s.sevenTransfer||{};const transferring=!!self&&seven.pending&&seven.sourcePlayerId===self.playerId;const playButton=document.getElementById('playButton');playButton.textContent=transferring?`選択カードを渡す (${seven.cardCount}枚)`:'選択カードを出す';playButton.disabled=!myTurn||(transferring&&selected.size!==seven.cardCount);document.getElementById('passButton').disabled=!myTurn||transferring||!s.field.cards.length;
-  if(transferring){const target=s.players.find(p=>p.playerId===seven.targetPlayerId);msg(`7渡し: ${target?.playerName||'隣のプレイヤー'}へ${seven.cardCount}枚渡してください`)}
+
+function closeRealtime(){
+  if(reconnectTimer)clearTimeout(reconnectTimer);
+  reconnectTimer=null;
+  if(pollTimer)clearInterval(pollTimer);
+  pollTimer=null;
+  if(socket){
+    socket.onclose=null;
+    try{socket.close();}catch(_){}
+  }
+  socket=null;
+  byId('networkPill').textContent='● BROWSER';
 }
-function cardElement(c, selectable, index){const d=document.createElement('button');d.type='button';d.className='card '+((c.suit==='HEART'||c.suit==='DIAMOND')?'red ':'')+(c.joker?'joker ':'')+(selected.has(index)?'selected':'');d.innerHTML=c.joker?'<b>JOKER</b>':`<b>${symbol(c.suit)} ${rankText(c.rank)}</b><span>${rankText(c.rank)} ${symbol(c.suit)}</span>`;if(selectable)d.onclick=()=>{selected.has(index)?selected.delete(index):selected.add(index);render(window.lastState)};else d.disabled=true;return d}
-function symbol(s){return {SPADE:'♠',HEART:'♥',DIAMOND:'♦',CLUB:'♣',JOKER:'★'}[s]||s}function rankText(r){return {THREE:'3',FOUR:'4',FIVE:'5',SIX:'6',SEVEN:'7',EIGHT:'8',NINE:'9',TEN:'10',JACK:'J',QUEEN:'Q',KING:'K',ACE:'A',TWO:'2',JOKER:'JOKER'}[r]||r}function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}
+
+async function startRoomGame(){
+  try{
+    const state=await api('/api/rooms/'+encodeURIComponent(roomId)+'/start',{method:'POST'});
+    currentState=state;render(state);
+  }catch(e){toast(e.message,true);}
+}
+
+async function playCards(){
+  try{
+    if(!currentState)return;
+    const self=currentState.players.find(function(p){return p.self;});
+    if(!self)return;
+    const cards=Array.from(selected).sort(function(a,b){return a-b;}).map(function(index){return self.hand[index];});
+    if(!cards.length){toast('カードを選択してください',true);return;}
+    const seven=currentState.sevenTransfer||{};
+    const transfer=seven.pending && seven.sourcePlayerId===self.playerId;
+    if(transfer && cards.length!==seven.cardCount){
+      toast('7渡しでは'+seven.cardCount+'枚選択してください',true);return;
+    }
+    const endpoint=transfer?'seven-transfer':'play';
+    const state=await api('/api/rooms/'+encodeURIComponent(roomId)+'/'+endpoint,{
+      method:'POST',body:JSON.stringify({cards:cards})
+    });
+    selected.clear();currentState=state;render(state);
+  }catch(e){toast(e.message,true);}
+}
+
+async function passTurn(){
+  try{
+    const state=await api('/api/rooms/'+encodeURIComponent(roomId)+'/pass',{method:'POST'});
+    selected.clear();currentState=state;render(state);
+  }catch(e){toast(e.message,true);}
+}
+
+async function leaveRoom(){
+  if(!roomId){showMenu();return;}
+  try{
+    await api('/api/rooms/'+encodeURIComponent(roomId)+'/leave',{method:'POST'});
+  }catch(e){
+    if(currentState && currentState.started && !currentState.finished){toast(e.message,true);return;}
+  }
+  closeRealtime();
+  roomId='';currentState=null;selected.clear();
+  localStorage.removeItem('yaju.pc.roomId');
+  showMenu();
+}
+
+async function copyInvite(){
+  if(!roomId)return;
+  const url=location.origin+location.pathname+'?room='+encodeURIComponent(roomId);
+  try{
+    await navigator.clipboard.writeText(url);
+    toast('招待リンクをコピーしました');
+  }catch(_){
+    window.prompt('このURLを共有してください',url);
+  }
+}
+
+function render(state){
+  processEvents(state.events||[]);
+  if(state.finished){renderResult(state);return;}
+  if(!state.started){renderRoom(state);return;}
+  renderGame(state);
+}
+
+function renderRoom(state){
+  showOnly('roomScreen');
+  byId('roomCode').textContent=state.roomId;
+  byId('roomMeta').textContent=(state.gameMode==='MULTIPLAYER'?'ONLINE':'CPU')+' / '+state.players.length+' PLAYERS';
+  byId('shareRoomButton').classList.toggle('hidden',state.gameMode!=='MULTIPLAYER');
+  byId('startRoomButton').classList.toggle('hidden',!state.host || state.gameMode!=='MULTIPLAYER');
+  byId('startRoomButton').disabled=state.players.length<2;
+  const container=byId('roomPlayers');container.innerHTML='';
+  state.players.forEach(function(p){
+    const el=document.createElement('div');
+    el.className='player';
+    el.innerHTML='<strong>'+esc(p.playerName)+(p.self?' <span style="color:var(--gold)">YOU</span>':'')+'</strong>'+
+      '<div class="mini">'+(p.cpu?'CPU '+esc(p.cpuDifficulty||''):'PLAYER')+' / HAND '+p.handCount+'</div>';
+    container.appendChild(el);
+  });
+}
+
+function renderGame(state){
+  showOnly('gameScreen');
+  const self=state.players.find(function(p){return p.self;});
+  const opponents=state.players.filter(function(p){return !p.self;});
+  const myTurn=!!self && state.currentPlayerId===self.playerId;
+  byId('selfName').textContent=self?self.playerName:'';
+  byId('handCount').textContent=(self?self.handCount:0)+' CARDS';
+
+  const opp=byId('opponents');opp.innerHTML='';
+  opponents.forEach(function(p){
+    const el=document.createElement('div');
+    el.className='opponent'+(state.currentPlayerId===p.playerId?' active':'');
+    const status=p.rank?'#'+p.rank:(p.passed?'PASS':(state.currentPlayerId===p.playerId?'● ACTIVE TURN':(p.cpu?(p.cpuDifficulty||'CPU'):'PLAYER')));
+    el.innerHTML='<strong>'+esc(p.playerName)+'</strong><div class="mini">'+esc(status)+'</div>'+
+      '<div style="display:flex;gap:-4px;margin-top:7px">'+backCards(p.handCount)+'</div>'+
+      (p.yajuStatus && p.yajuStatus!=='NONE'?'<span class="badge gold">YAJU '+esc(p.yajuStatus)+'</span>':'');
+    opp.appendChild(el);
+  });
+
+  const field=byId('field');field.innerHTML='';
+  if(!state.field.cards.length){
+    field.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.35);font-weight:900;letter-spacing:.15em">WAITING FOR PLAY<br><span style="font-size:1.7rem">♠ ♥ ♦ ♣</span></div>';
+  }else{
+    state.field.cards.forEach(function(card){field.appendChild(cardElement(card,false,-1));});
+  }
+
+  const hand=byId('hand');hand.innerHTML='';
+  if(self){
+    self.hand.forEach(function(card,index){hand.appendChild(cardElement(card,true,index));});
+  }
+
+  const seven=state.sevenTransfer||{};
+  const transfer=!!self && seven.pending && seven.sourcePlayerId===self.playerId;
+  byId('passButton').disabled=!myTurn || transfer || !state.field.cards.length;
+  byId('playButton').disabled=!myTurn || selected.size===0 || (transfer && selected.size!==seven.cardCount);
+  byId('playButton').textContent=transfer?'TRANSFER '+selected.size+'/'+seven.cardCount+' ▶':'PLAY '+selected.size+' ▶';
+
+  const banner=byId('turnBanner');
+  const current=state.players.find(function(p){return p.playerId===state.currentPlayerId;});
+  banner.textContent=myTurn?'YOUR TURN':(current?current.playerName+' TURN':'WAITING...');
+  banner.classList.toggle('mine',myTurn);
+
+  const notice=byId('transferNotice');
+  if(transfer){
+    const target=state.players.find(function(p){return p.playerId===seven.targetPlayerId;});
+    notice.classList.remove('hidden');
+    notice.innerHTML='<div class="hud-title">7 TRANSFER</div><strong>'+esc(target?target.playerName:'隣のプレイヤー')+
+      'へ '+seven.cardCount+'枚選択</strong>';
+  }else notice.classList.add('hidden');
+
+  renderRules(state);
+  pushStateLog(state);
+  renderLog();
+  byId('leaveAfterGameButton').classList.add('hidden');
+}
+
+function renderRules(state){
+  const list=[];
+  if(state.revolution)list.push('♛ REVOLUTION');
+  if(state.jackBack)list.push('J BACK');
+  if(state.lockedMark)list.push(symbol(state.lockedMark)+' LOCK');
+  if(state.players.some(function(p){return p.yajuStatus && p.yajuStatus!=='NONE';}))list.push('YAJU 8→10');
+  if(state.gameMode==='YAJU_CHALLENGE')list.push('CHALLENGE');
+  list.push(state.gameMode);
+  const el=byId('rulePills');el.innerHTML='';
+  list.forEach(function(text){
+    const pill=document.createElement('span');pill.className='pill';pill.textContent=text;el.appendChild(pill);
+  });
+}
+
+function pushStateLog(state){
+  const current=state.players.find(function(p){return p.playerId===state.currentPlayerId;});
+  const key=(current?current.playerId:'finished')+'|'+state.field.cards.map(function(c){return c.suit+'-'+c.rank;}).join(',');
+  if(pushStateLog.lastKey===key)return;
+  pushStateLog.lastKey=key;
+  if(state.field.cards.length){
+    playLog.unshift((current?current.playerName:'TABLE')+' / FIELD '+state.field.cards.map(cardLabel).join(' '));
+  }
+  playLog.splice(8);
+}
+
+function renderLog(){
+  const el=byId('playLog');el.innerHTML='';
+  if(!playLog.length){el.innerHTML='<div class="log">No play log yet.</div>';return;}
+  playLog.forEach(function(line){const row=document.createElement('div');row.className='log';row.textContent=line;el.appendChild(row);});
+}
+
+function renderResult(state){
+  showOnly('resultScreen');
+  const ranking=state.players.slice().sort(function(a,b){return (a.rank||999)-(b.rank||999);});
+  const self=ranking.find(function(p){return p.self;});
+  byId('yourRank').textContent=self&&self.rank?'YOUR RANK  #'+self.rank:'MATCH COMPLETE';
+  const list=byId('resultList');list.innerHTML='';
+  ranking.forEach(function(p){
+    const row=document.createElement('div');row.className='result-row'+(p.rank===1?' first':'');
+    row.innerHTML='<div class="rank">#'+(p.rank||'-')+'</div><div style="flex:1"><strong>'+esc(p.playerName)+'</strong>'+
+      '<div class="mini">'+(p.self?'YOU':(p.cpu?'CPU':'PLAYER'))+'</div></div>'+(p.rank===1?'<div style="color:var(--gold);font-size:1.7rem">♛</div>':'');
+    list.appendChild(row);
+  });
+}
+
+function cardElement(card,selectable,index){
+  const el=document.createElement('button');
+  el.type='button';
+  const red=card.suit==='HEART'||card.suit==='DIAMOND';
+  el.className='card'+(red?' red-suit':'')+(card.joker?' joker':'')+(selectable?' selectable':'')+(selected.has(index)?' selected':'');
+  const rank=rankText(card.rank);
+  const suit=symbol(card.suit);
+  el.innerHTML='<div class="rank">'+(card.joker?'JOKER':rank+' '+suit)+'</div>'+
+    '<div class="center">'+(card.joker?'♛':suit)+'</div>'+
+    '<div class="rank" style="text-align:right">'+(card.joker?'J':rank)+'</div>';
+  if(selectable){
+    el.onclick=function(){
+      if(!currentState)return;
+      const self=currentState.players.find(function(p){return p.self;});
+      if(!self || currentState.currentPlayerId!==self.playerId)return;
+      if(selected.has(index))selected.delete(index);else selected.add(index);
+      renderGame(currentState);
+    };
+  }
+  return el;
+}
+
+function backCards(count){
+  const visible=Math.min(count,10);
+  let html='';
+  for(let i=0;i<visible;i++) html+='<span class="card back" style="margin-right:-20px"></span>';
+  if(count>10) html+='<span class="mini" style="margin-left:24px">+'+(count-10)+'</span>';
+  return html;
+}
+
+function processEvents(events){
+  events.filter(function(e){return e.id>lastEventId;}).sort(function(a,b){return a.id-b.id;}).forEach(function(e){
+    if(e.type==='YAJU_AVAILABLE')cutinQueue.push({title:'YAJU TARGET',main:'野獣上がりできます',player:e.playerName});
+    if(e.type==='YAJU_SUCCESS')cutinQueue.push({title:'YAJU SUCCESS',main:'やりますねぇ！',player:e.playerName});
+    if(e.type==='JACK_BACK')cutinQueue.push({title:'J BACK',main:'バック気持ちいい',player:e.playerName});
+    if(e.type==='EARLY_SHOT')cutinQueue.push({title:'EARLY SHOT',main:'早すぎるッ！',player:e.playerName});
+    lastEventId=Math.max(lastEventId,e.id);
+  });
+  sessionStorage.setItem('yaju.pc.lastEventId',String(lastEventId));
+  showNextCutin();
+}
+
+function showNextCutin(){
+  if(cutinBusy || !cutinQueue.length)return;
+  cutinBusy=true;
+  const item=cutinQueue.shift();
+  byId('cutinTitle').textContent=item.title;
+  byId('cutinMain').textContent=item.main;
+  byId('cutinPlayer').textContent=item.player||'';
+  byId('cutin').classList.remove('hidden');
+  setTimeout(function(){byId('cutin').classList.add('hidden');cutinBusy=false;showNextCutin();},1850);
+}
+
+function cardLabel(card){return card.joker?'JOKER':symbol(card.suit)+rankText(card.rank);}
+function symbol(suit){
+  return {SPADE:'♠',HEART:'♥',DIAMOND:'♦',CLUB:'♣',JOKER:'★'}[suit]||suit||'';
+}
+function rankText(rank){
+  return {THREE:'3',FOUR:'4',FIVE:'5',SIX:'6',SEVEN:'7',EIGHT:'8',NINE:'9',TEN:'10',
+    JACK:'J',QUEEN:'Q',KING:'K',ACE:'A',TWO:'2',JOKER:'JOKER'}[rank]||rank||'';
+}
+
+window.addEventListener('DOMContentLoaded',function(){
+  byId('profileName').value=playerName;
+  csrfToken=sessionStorage.getItem('yaju.pc.csrfToken')||'';
+  bootstrap();
+});
+window.addEventListener('beforeunload',closeRealtime);
 </script>
 </body>
 </html>
