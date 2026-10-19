@@ -88,7 +88,7 @@ data class CpuTurnAnimation(
 
 data class DaifugoUiState(
     val screen: DaifugoScreen = DaifugoScreen.TITLE,
-    val serverUrl: String = "http://10.0.2.2:8080",
+    val serverUrl: String = DaifugoViewModel.DEFAULT_PUBLIC_SERVER_URL,
     val password: String = "",
     val playerName: String = "",
     val roomIdInput: String = "",
@@ -134,8 +134,9 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     private val _uiState = MutableStateFlow(
         DaifugoUiState(
-            serverUrl = preferences.getString("serverUrl", "http://10.0.2.2:8080")
-                ?: "http://10.0.2.2:8080",
+            // 製品版MULTIPLAYERは公開サーバーへ固定接続する。
+            // 旧10.0.2.2 / LAN内URL入力方式は通常導線から外す。
+            serverUrl = DEFAULT_PUBLIC_SERVER_URL,
             playerName = if (initialProgress.profileConfigured) initialProgress.displayName else "",
             progress = initialProgress,
         )
@@ -152,6 +153,13 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     private var reconnectJob: Job? = null
     private var cpuTurnJob: Job? = null
     private var cpuAnimationSequence: Long = 0L
+
+    /**
+     * WebSocket再接続世代。
+     * closeRoomSocket()した古い接続のonClosedが遅れて返ってきても、
+     * 新しい接続を上書き・二重再接続しないために使用する。
+     */
+    private var realtimeGeneration: Long = 0L
 
     fun setServerUrl(value: String) = update { copy(serverUrl = value) }
     fun setPassword(value: String) = update { copy(password = value) }
@@ -280,7 +288,35 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun openMultiplayer() = update { copy(screen = DaifugoScreen.LOGIN, errorMessage = null, infoMessage = null) }
+    /**
+     * PCブラウザ版と同じ公開サーバーへ直接接続してMULTIPLAYERを開く。
+     * Google Play Gamesや共通パスワードはクロスプレイ条件にしない。
+     */
+    fun openMultiplayer() = launchAction {
+        stopRoomRealtime()
+
+        val serverUrl = DEFAULT_PUBLIC_SERVER_URL
+        api.configure(serverUrl)
+        val response = api.openPublicSession()
+        if (!response.authenticated) {
+            error("マルチプレイサーバーへ接続できませんでした")
+        }
+
+        preferences.edit().putString("serverUrl", serverUrl).apply()
+        update {
+            copy(
+                screen = DaifugoScreen.MULTIPLAYER,
+                serverUrl = serverUrl,
+                password = "",
+                roomId = null,
+                roomIdInput = "",
+                gameState = null,
+                socketConnected = false,
+                errorMessage = null,
+                infoMessage = "ONLINE TABLEへ接続しました",
+            )
+        }
+    }
 
     fun openCpuSetup() = update { copy(screen = DaifugoScreen.CPU_SETUP, errorMessage = null, infoMessage = null) }
 
@@ -459,8 +495,9 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     fun joinRoom() = launchAction {
         val state = _uiState.value
         val playerName = validatedPlayerName()
-        val roomId = state.roomIdInput.trim()
+        val roomId = state.roomIdInput.trim().lowercase()
         require(roomId.isNotBlank()) { "ルームIDを入力してください" }
+        require(roomId.length == 8) { "ルームIDは8文字です" }
 
         val response = api.joinRoom(roomId, playerName)
         enterRoom(response.roomId)
@@ -693,35 +730,68 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     private fun startRoomRealtime(roomId: String) {
         stopRoomRealtime()
-        connectSocket(roomId)
+        val generation = realtimeGeneration
+        connectSocket(roomId, generation)
 
         // WebSocketが一時的に切れてもゲーム状態が止まって見えないよう、保険として5秒ごとに同期する。
         pollingJob = viewModelScope.launch {
-            while (_uiState.value.roomId == roomId) {
+            while (
+                _uiState.value.roomId == roomId &&
+                realtimeGeneration == generation
+            ) {
                 delay(5_000)
                 runCatching { api.state(roomId) }
-                    .onSuccess(::applyGameState)
+                    .onSuccess { state ->
+                        if (
+                            _uiState.value.roomId == roomId &&
+                            realtimeGeneration == generation
+                        ) {
+                            applyGameState(state)
+                        }
+                    }
             }
         }
     }
 
-    private fun connectSocket(roomId: String) {
+    private fun connectSocket(roomId: String, generation: Long) {
+        if (realtimeGeneration != generation || _uiState.value.roomId != roomId) return
+
         api.connectRoomSocket(
             roomId = roomId,
             onStateChanged = {
                 viewModelScope.launch {
+                    if (realtimeGeneration != generation || _uiState.value.roomId != roomId) {
+                        return@launch
+                    }
                     runCatching { api.state(roomId) }
-                        .onSuccess(::applyGameState)
+                        .onSuccess { state ->
+                            if (
+                                realtimeGeneration == generation &&
+                                _uiState.value.roomId == roomId
+                            ) {
+                                applyGameState(state)
+                            }
+                        }
                 }
             },
             onConnectionChanged = { connected ->
                 viewModelScope.launch {
+                    if (realtimeGeneration != generation || _uiState.value.roomId != roomId) {
+                        return@launch
+                    }
+
                     update { copy(socketConnected = connected) }
-                    if (!connected && _uiState.value.roomId == roomId) {
+
+                    if (!connected) {
                         reconnectJob?.cancel()
                         reconnectJob = launch {
                             delay(3_000)
-                            if (_uiState.value.roomId == roomId) connectSocket(roomId)
+                            if (
+                                realtimeGeneration == generation &&
+                                _uiState.value.roomId == roomId
+                            ) {
+                                connectSocket(roomId, generation)
+                            }
                         }
                     }
                 }
@@ -730,11 +800,14 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun stopRoomRealtime() {
+        // 先に世代を進めることで、closeに伴う旧WebSocketのcallbackを無効化する。
+        realtimeGeneration += 1
         pollingJob?.cancel()
         pollingJob = null
         reconnectJob?.cancel()
         reconnectJob = null
         api.closeRoomSocket()
+        update { copy(socketConnected = false) }
     }
 
     private fun applyGameState(newState: GameStateDto) {
@@ -880,5 +953,13 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         cpuTurnJob = null
         stopRoomRealtime()
         super.onCleared()
+    }
+
+    companion object {
+        /**
+         * 現在の公開PC/Android共通ゲームサーバー。
+         * 独自ドメイン + HTTPS移行時はここをHTTPS URLへ差し替える。
+         */
+        const val DEFAULT_PUBLIC_SERVER_URL = "http://160.251.180.41"
     }
 }
