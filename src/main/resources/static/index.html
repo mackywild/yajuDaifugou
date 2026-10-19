@@ -137,21 +137,100 @@
       padding:12px 17px;border-radius:13px;background:#0c1510;border:1px solid rgba(216,184,90,.35);
       box-shadow:0 12px 36px #000a;color:#fff}
     .toast.error{border-color:#b33d46;background:#291014;color:#ffc4c8}
-    .cutin{position:fixed;inset:0;z-index:2000;background:#000c;display:grid;place-items:center}
-    .cutin-box{min-width:min(500px,88vw);padding:30px;text-align:center;border-radius:25px;background:#090d0b;
-      border:2px solid var(--gold);box-shadow:0 0 90px rgba(216,184,90,.25)}
-    .cutin-title{color:var(--gold);font-size:.85rem;font-weight:1000;letter-spacing:.25em}
-    .cutin-main{font-size:clamp(2rem,7vw,4.5rem);font-weight:1000;margin:10px 0}
+    .player-head{display:flex;align-items:center;gap:9px}
+    .player-avatar{width:42px;height:42px;flex:0 0 42px;border-radius:50%;overflow:hidden;
+      border:1.5px solid rgba(216,184,90,.42);background:linear-gradient(145deg,#173122,#090d0b);
+      display:grid;place-items:center;color:var(--gold);font-weight:1000;box-shadow:0 5px 14px #0007}
+    .player-avatar.active{border-color:var(--gold);box-shadow:0 0 0 2px rgba(216,184,90,.12),0 0 22px rgba(216,184,90,.25)}
+    .player-avatar img{width:100%;height:100%;object-fit:cover}
+    .avatar-fallback{width:100%;height:100%;display:grid;place-items:center}
+    .card.compact{flex-basis:54px;width:54px;height:78px;padding:5px}
+    .card.compact .center{font-size:1.4rem}
+    .cpu-overlay{position:fixed;inset:0;z-index:1500;pointer-events:none;overflow:hidden}
+    .cpu-thinking{position:fixed;left:50%;top:92px;transform:translateX(-50%);
+      padding:10px 18px;border-radius:999px;background:rgba(3,6,5,.96);border:1px solid rgba(216,184,90,.5);
+      box-shadow:0 10px 32px #000b;color:#fff;font-weight:1000;letter-spacing:.08em;animation:cpuThinkPulse .75s ease-in-out infinite alternate}
+    .cpu-thinking:before{content:"◆";color:var(--gold);margin-right:8px}
+    @keyframes cpuThinkPulse{to{transform:translateX(-50%) scale(1.035);filter:brightness(1.15)}}
+    .cpu-flight{position:fixed;z-index:1501;display:flex;flex-direction:column;align-items:center;gap:7px;
+      will-change:transform,opacity}
+    .cpu-action-label{padding:7px 13px;border-radius:999px;background:rgba(3,6,5,.96);
+      border:1px solid rgba(216,184,90,.55);color:var(--gold);font-size:.76rem;font-weight:1000;
+      letter-spacing:.08em;white-space:nowrap;box-shadow:0 7px 24px #0009}
+    .cpu-card-row{display:flex;gap:0}.cpu-card-row .card{margin-right:-10px}
+    .cpu-pass-burst{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);padding:15px 28px;
+      border-radius:18px;background:rgba(42,9,12,.96);border:1px solid rgba(227,76,82,.72);
+      color:#ffb9be;font-size:1.35rem;font-weight:1000;letter-spacing:.13em;box-shadow:0 12px 42px #000b}
+    .cpu-transfer-stack{display:flex;align-items:center;padding-right:18px}.cpu-transfer-stack .card.back{margin-right:-18px}
+    .cutin{position:fixed;inset:0;z-index:2000;background:#000c;display:grid;place-items:center;overflow:hidden}
+    .cutin:before{content:"";position:absolute;inset:-20%;background:repeating-linear-gradient(167deg,
+      transparent 0 44px,rgba(255,215,105,.07) 45px 49px,transparent 50px 88px);transform:skewY(-4deg)}
+    .cutin.jack:before{background:repeating-linear-gradient(167deg,transparent 0 44px,rgba(138,109,255,.13) 45px 50px,transparent 51px 88px)}
+    .cutin.early:before{background:repeating-linear-gradient(167deg,transparent 0 44px,rgba(255,91,91,.14) 45px 50px,transparent 51px 88px)}
+    .cutin-box{position:relative;min-width:min(560px,90vw);padding:32px;text-align:center;border-radius:25px;background:#090d0beF;
+      border:2px solid var(--gold);box-shadow:0 0 90px rgba(216,184,90,.25);animation:cutInPop .42s cubic-bezier(.2,.8,.2,1)}
+    .cutin.jack .cutin-box{border-color:#8a6dff;box-shadow:0 0 90px rgba(138,109,255,.25)}
+    .cutin.early .cutin-box{border-color:#ff5b5b;box-shadow:0 0 90px rgba(255,91,91,.24)}
+    @keyframes cutInPop{from{opacity:0;transform:scale(.78)}to{opacity:1;transform:scale(1)}}
+    .cutin-title{color:var(--gold);font-size:.9rem;font-weight:1000;letter-spacing:.27em}
+    .cutin.jack .cutin-title{color:#b7a8ff}.cutin.early .cutin-title{color:#ff6b6b}
+    .cutin-main{font-size:clamp(2rem,7vw,4.5rem);font-weight:1000;margin:8px 0}
+    .cutin-players{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:12px 0}
+    .cutin-player-chip{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#111812;border:1px solid var(--line)}
+    .cutin-player-chip .player-avatar{width:36px;height:36px;flex-basis:36px}
+    .cutin-route{display:inline-block;margin-top:10px;padding:8px 27px;border-radius:999px;background:var(--gold);
+      color:#241707;font-size:1.25rem;font-weight:1000;letter-spacing:.08em}
+    .floor-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:22px 2px 10px}
+    .floor-head h3{margin:0;color:var(--gold);font-size:.78rem;letter-spacing:.22em}
+    .floor-head span{color:var(--muted);font-size:.7rem;letter-spacing:.1em}
+    .floor-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+    .floor-tile{position:relative;min-height:104px;padding:13px;border-radius:17px;border:1px solid var(--line);
+      background:linear-gradient(145deg,#0c1510,#050806);color:#fff;text-align:left;transition:.16s ease}
+    .floor-tile:hover{transform:translateY(-3px);border-color:rgba(216,184,90,.5);box-shadow:0 12px 32px #0007}
+    .floor-symbol{display:block;color:var(--gold);font-size:1.35rem;font-weight:1000;margin-bottom:12px}
+    .floor-label{font-weight:1000;font-size:.8rem;letter-spacing:.06em}
+    .notify-badge{position:absolute;right:9px;top:9px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;
+      display:grid;place-items:center;background:#b7333d;color:#fff;font-size:.68rem;font-weight:1000;border:1px solid #ff7e86}
+    .hero-meta{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .level-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:11px;
+      background:#090e0bcc;border:1px solid rgba(216,184,90,.45);color:var(--gold);font-weight:1000}
+    .meta-shell{display:grid;gap:14px}
+    .meta-card{padding:18px;border-radius:18px;background:#0a120e;border:1px solid var(--line)}
+    .meta-card.gold{border-color:rgba(216,184,90,.42);background:linear-gradient(145deg,#10261c,#080d0a)}
+    .meta-title{color:var(--gold);font-size:.76rem;font-weight:1000;letter-spacing:.14em;margin-bottom:12px}
+    .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .stat{padding:12px 8px;text-align:center;border-radius:13px;background:#070b09;border:1px solid rgba(255,255,255,.06)}
+    .stat strong{display:block;font-size:1.15rem}.stat span{display:block;margin-top:4px;color:var(--muted);font-size:.68rem}
+    .progress-track{height:9px;border-radius:999px;overflow:hidden;background:#030605;border:1px solid rgba(255,255,255,.06)}
+    .progress-fill{height:100%;background:linear-gradient(90deg,#997628,#f0cf73);border-radius:999px}
+    .mission-row,.collection-row,.present-row{padding:15px;border-radius:16px;background:#09100c;border:1px solid var(--line);display:grid;gap:9px}
+    .mission-row.complete{border-color:rgba(216,184,90,.45);background:#10231a}
+    .mission-head,.collection-head,.present-head{display:flex;align-items:center;gap:10px}
+    .mission-head strong,.collection-head strong,.present-head strong{flex:1}
+    .reward-box{padding:9px 11px;border-radius:10px;background:rgba(255,255,255,.05);font-size:.8rem}
+    .collection-tabs{display:flex;gap:7px;flex-wrap:wrap}
+    .collection-tabs button{padding:8px 11px}
+    .collection-icon{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;background:rgba(216,184,90,.1);
+      color:var(--gold);font-size:1.25rem;font-weight:1000}
+    .collection-row.locked{opacity:.46}.collection-row.equipped{border-color:var(--gold)}
+    .equipment-list{display:grid;gap:8px}.equipment-row{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+    .equipment-row span:first-child{width:90px;color:var(--muted)}.equipment-row strong{flex:1}
+    .setting-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+    .switch{position:relative;width:52px;height:29px;border-radius:999px;border:none;background:#303733;padding:0}
+    .switch:after{content:"";position:absolute;width:23px;height:23px;top:3px;left:3px;border-radius:50%;background:#fff;transition:.18s}
+    .switch.on{background:#b18d39}.switch.on:after{left:26px}
     .loading{min-height:100vh;display:grid;place-items:center;color:var(--gold);font-weight:900;letter-spacing:.15em}
     .spinner{width:32px;height:32px;border:3px solid rgba(216,184,90,.15);border-top-color:var(--gold);border-radius:50%;
       animation:spin .7s linear infinite;margin:auto auto 14px}
     @keyframes spin{to{transform:rotate(360deg)}}
     @media(max-width:900px){
       .menu-grid{grid-template-columns:1fr}.game-layout{grid-template-columns:1fr}.side{order:-1}
+      .floor-grid{grid-template-columns:repeat(3,1fr)}
     }
     @media(max-width:620px){
       .shell{padding:12px}.form-grid{grid-template-columns:1fr}.rule-grid{grid-template-columns:1fr}
       .title-card{padding:42px 18px}.hero{min-height:190px}.card{flex-basis:60px;width:60px;height:90px}
+      .floor-grid{grid-template-columns:repeat(2,1fr)}.stat-grid{grid-template-columns:1fr 1fr 1fr}
     }
   </style>
 </head>
@@ -203,13 +282,17 @@
     <section id="menuScreen" class="screen hidden">
       <div class="hero">
         <div>
-          <div class="eyebrow">PC BROWSER EDITION</div>
-          <h2>CHOOSE YOUR TABLE</h2>
-          <p class="subtitle">ブラウザ版からSOLO / CHALLENGE / MULTIPLAYERへ。<br>マルチはAndroid版と同じSpring Bootゲームサーバを使用します。</p>
+          <div class="eyebrow">YAJU DAIFUGO</div>
+          <h2>ROYAL CASINO</h2>
+          <p class="subtitle">WELCOME TO THE NIGHT TABLE<br>アプリ版と同じゲーム体験をブラウザでも。</p>
         </div>
-        <div class="mini">PLAYER <strong id="menuPlayerName" style="color:#fff"></strong></div>
+        <div class="hero-meta">
+          <div class="mini">PLAYER <strong id="menuPlayerName" style="color:#fff"></strong><br><span id="menuExpText"></span></div>
+          <div class="level-badge">RANK&nbsp; Lv.<span id="menuLevel">1</span></div>
+        </div>
       </div>
 
+      <div class="floor-head"><div><h3>MAIN PLAY</h3><span>CHOOSE YOUR TABLE</span></div></div>
       <div class="menu-grid">
         <article class="mode-card">
           <div><div class="mode-icon">♠</div><h3>ひとりでいく</h3><p>CPU人数・難易度・ルールを選んで即対戦。</p></div>
@@ -223,6 +306,63 @@
           <div><div class="mode-icon">8 + 10</div><h3>チャレンジ</h3><p>初期手札に8と10を保証。野獣上がりを決めろ。</p></div>
           <button class="btn red" onclick="openSetup('challenge')">CHALLENGE ▶</button>
         </article>
+      </div>
+
+      <div class="floor-head"><div><h3>CASINO FLOOR</h3><span>REWARDS & COLLECTION</span></div></div>
+      <div class="floor-grid">
+        <button class="floor-tile" onclick="openMission()"><span class="floor-symbol">✓</span><span class="floor-label">MISSION</span><span id="missionBadge" class="notify-badge hidden"></span></button>
+        <button class="floor-tile" onclick="openProfile()"><span class="floor-symbol">♛</span><span class="floor-label">PROFILE</span></button>
+        <button class="floor-tile" onclick="openCollection()"><span class="floor-symbol">◇</span><span class="floor-label">COLLECTION</span></button>
+        <button class="floor-tile" onclick="openPresent()"><span class="floor-symbol">◆</span><span class="floor-label">PRESENT</span><span id="presentBadge" class="notify-badge hidden"></span></button>
+        <button class="floor-tile" onclick="openSettings()"><span class="floor-symbol">⚙</span><span class="floor-label">SETTINGS</span></button>
+      </div>
+    </section>
+
+    <section id="missionScreen" class="screen hidden">
+      <div class="panel p24 meta-shell">
+        <div class="section-head"><div class="copy"><div class="eyebrow">MISSION BOARD</div><h2>ミッション</h2><p>達成報酬はプレゼントボックスへ送られます</p></div><button class="btn dark" onclick="showMenu()">‹ BACK</button></div>
+        <div class="meta-title">DAILY</div>
+        <div id="missionList" class="meta-shell"></div>
+        <div class="mini">日付が変わるとデイリー進捗はリセットされます。</div>
+      </div>
+    </section>
+
+    <section id="profileMetaScreen" class="screen hidden">
+      <div class="panel p24 meta-shell">
+        <div class="section-head"><div class="copy"><div class="eyebrow">MEMBERS CARD</div><h2>プロフィール</h2></div><button class="btn dark" onclick="showMenu()">‹ BACK</button></div>
+        <div id="profileSummary" class="meta-card gold"></div>
+        <div class="meta-card"><div class="meta-title">PLAYER NAME</div><input id="profileEditName" maxlength="20"><button class="btn gold wide" style="margin-top:10px" onclick="saveProfileFromMeta()">名前を保存</button></div>
+        <div class="meta-card"><div class="meta-title">戦績</div><div id="profileStats" class="stat-grid"></div></div>
+        <div class="meta-card"><div class="meta-title">チャレンジ戦績</div><div id="challengeStats" class="stat-grid"></div></div>
+        <div class="meta-card"><div class="meta-title">装備中</div><div id="equipmentList" class="equipment-list"></div></div>
+      </div>
+    </section>
+
+    <section id="collectionScreen" class="screen hidden">
+      <div class="panel p24 meta-shell">
+        <div class="section-head"><div class="copy"><div class="eyebrow">SHOW CASE</div><h2>コレクション</h2><p>獲得したアイテムを装備できます</p></div><button class="btn dark" onclick="showMenu()">‹ BACK</button></div>
+        <div id="collectionTabs" class="collection-tabs"></div>
+        <div id="collectionList" class="meta-shell"></div>
+        <div id="collectionCount" class="eyebrow" style="text-align:center"></div>
+      </div>
+    </section>
+
+    <section id="presentScreen" class="screen hidden">
+      <div class="panel p24 meta-shell">
+        <div class="section-head"><div class="copy"><div class="eyebrow">VAULT DELIVERY</div><h2>プレゼントボックス</h2><p>ミッション報酬・管理者配布を保管</p></div><button class="btn dark" onclick="showMenu()">‹ BACK</button></div>
+        <button id="receiveAllButton" class="btn gold wide hidden" onclick="receiveAllPresents()">すべて受け取る</button>
+        <div id="presentList" class="meta-shell"></div>
+      </div>
+    </section>
+
+    <section id="settingsScreen" class="screen hidden">
+      <div class="panel p24 meta-shell">
+        <div class="section-head"><div class="copy"><div class="eyebrow">SYSTEM</div><h2>設定</h2><p>BGM・演出などブラウザ版の設定</p></div><button class="btn dark" onclick="showMenu()">‹ BACK</button></div>
+        <div class="meta-card">
+          <div class="setting-row"><div><strong>野獣BGM</strong><div class="mini">野獣対象者がいる対戦中に専用BGMを再生</div></div><button id="bgmSwitch" class="switch" onclick="toggleBgm()" aria-label="BGM切替"></button></div>
+          <div class="setting-row"><div><strong>CPU演出</strong><div class="mini">思考・PLAY・PASS・7渡しをアプリ版と同じテンポで表示</div></div><span class="badge gold">ON</span></div>
+          <div class="mini" style="padding-top:12px">プロフィール・進捗・装備はこのブラウザに保存されます。</div>
+        </div>
       </div>
     </section>
 
@@ -353,6 +493,7 @@
           <div class="eyebrow">GAME SET</div>
           <h2 style="font-size:3rem;margin:5px 0">RESULT</h2>
           <div id="yourRank" style="color:var(--gold);font-weight:1000"></div>
+          <div id="resultExp" class="mini" style="margin-top:6px"></div>
         </div>
         <div id="resultList" class="result-list"></div>
         <button class="btn gold wide" style="margin-top:16px" onclick="leaveRoom()">RETURN TO LOUNGE ▶</button>
@@ -362,20 +503,38 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
+
+<div id="cpuActionOverlay" class="cpu-overlay hidden" aria-live="polite">
+  <div id="cpuThinking" class="cpu-thinking hidden"></div>
+  <div id="cpuActionStage"></div>
+</div>
+
 <div id="cutin" class="cutin hidden">
   <div class="cutin-box">
     <div id="cutinTitle" class="cutin-title"></div>
     <div id="cutinMain" class="cutin-main"></div>
+    <div id="cutinPlayers" class="cutin-players"></div>
     <div id="cutinPlayer" class="subtitle"></div>
+    <div id="cutinRoute" class="cutin-route hidden">8 → 10</div>
   </div>
 </div>
+
+<audio id="yajuBgm" src="/assets/audio/yaju_bgm.mp3" preload="auto" loop></audio>
 
 <script>
 'use strict';
 
+const PROGRESS_KEY='yaju.pc.progress.v1';
+const COSMETICS=[
+  {id:'avatar_business',name:'ビジネススーツの野獣',category:'AVATAR',symbol:'♛',description:'恒常アバターカード。落ち着いたスーツスタイル。'},
+  {id:'frame_silver_line',name:'シルバーライン',category:'FRAME',symbol:'◇',description:'シンプルな銀色プロフィールフレーム。'},
+  {id:'card_classic_red',name:'クラシックレッド',category:'CARD_SKIN',symbol:'♠',description:'赤を基調にしたクラシックなトランプスキン。'},
+  {id:'effect_soft_glow',name:'ソフトグロー',category:'EFFECT',symbol:'✦',description:'カード提出時に淡く光るシンプルなプレイエフェクト。'}
+];
+let progress=loadProgress();
 let csrfToken = '';
 let roomId = localStorage.getItem('yaju.pc.roomId') || '';
-let playerName = localStorage.getItem('yaju.pc.playerName') || '';
+let playerName = localStorage.getItem('yaju.pc.playerName') || progress.displayName || '';
 let selected = new Set();
 let currentState = null;
 let socket = null;
@@ -384,10 +543,133 @@ let pollTimer = null;
 let setupMode = 'solo';
 let lastEventId = Number(sessionStorage.getItem('yaju.pc.lastEventId') || 0);
 let cutinBusy = false;
+let cpuSequenceRunning = false;
+let cpuSequenceToken = 0;
+let collectionCategory='AVATAR';
 const cutinQueue = [];
 const playLog = [];
 
-const screens = ['profileScreen','menuScreen','multiScreen','setupScreen','roomScreen','gameScreen','resultScreen'];
+const screens = ['profileScreen','menuScreen','missionScreen','profileMetaScreen','collectionScreen','presentScreen','settingsScreen','multiScreen','setupScreen','roomScreen','gameScreen','resultScreen'];
+
+function localDateKey(){
+  const now=new Date();
+  const y=now.getFullYear();
+  const m=String(now.getMonth()+1).padStart(2,'0');
+  const d=String(now.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+d;
+}
+
+function defaultProgress(){
+  const existingName=localStorage.getItem('yaju.pc.playerName')||'PLAYER';
+  return {
+    displayName:existingName,
+    profileConfigured:existingName!=='PLAYER',
+    totalExp:0,
+    inventory:{},
+    presents:[],
+    equippedAvatarId:null,
+    equippedFrameId:null,
+    equippedCardSkinId:null,
+    equippedEffectId:null,
+    stats:{totalMatches:0,wins:0,totalRank:0,yajuTargets:0,yajuSuccesses:0,challengeMatches:0,challengeWins:0},
+    daily:{date:localDateKey(),matchesPlayed:0,wins:0,challengePlayed:0,claimedMissionIds:[]},
+    seenMatches:[],
+    settings:{bgm:true}
+  };
+}
+
+function loadProgress(){
+  let value=defaultProgress();
+  try{
+    const raw=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'null');
+    if(raw && typeof raw==='object'){
+      value=Object.assign(value,raw);
+      value.stats=Object.assign(defaultProgress().stats,raw.stats||{});
+      value.daily=Object.assign(defaultProgress().daily,raw.daily||{});
+      value.inventory=Object.assign({},raw.inventory||{});
+      value.presents=Array.isArray(raw.presents)?raw.presents:[];
+      value.seenMatches=Array.isArray(raw.seenMatches)?raw.seenMatches:[];
+      value.settings=Object.assign({bgm:true},raw.settings||{});
+    }
+  }catch(_){}
+  if(value.daily.date!==localDateKey()){
+    value.daily={date:localDateKey(),matchesPlayed:0,wins:0,challengePlayed:0,claimedMissionIds:[]};
+  }
+  return value;
+}
+
+function saveProgress(){
+  localStorage.setItem(PROGRESS_KEY,JSON.stringify(progress));
+}
+
+function expRequiredForLevel(level){return 100+Math.max(0,level-1)*50;}
+function levelFor(totalExp){
+  let remaining=Math.max(0,totalExp||0),level=1;
+  while(remaining>=expRequiredForLevel(level)){remaining-=expRequiredForLevel(level);level++;}
+  return level;
+}
+function expIntoLevel(totalExp){
+  let remaining=Math.max(0,totalExp||0),level=1;
+  while(remaining>=expRequiredForLevel(level)){remaining-=expRequiredForLevel(level);level++;}
+  return remaining;
+}
+function percent(num,den){return den?((num*100/den).toFixed(1)+'%'):'0.0%';}
+function averageRank(){return progress.stats.totalMatches?(progress.stats.totalRank/progress.stats.totalMatches).toFixed(2):'—';}
+
+function missionViews(){
+  const d=progress.daily;
+  const claimed=new Set(d.claimedMissionIds||[]);
+  return [
+    {id:'play_3',title:'対戦を3回完了する',progress:d.matchesPlayed,target:3,itemId:'frame_silver_line',itemName:'シルバーライン',claimed:claimed.has('play_3')},
+    {id:'win_1',title:'1回大富豪になる',progress:d.wins,target:1,itemId:'card_classic_red',itemName:'クラシックレッド',claimed:claimed.has('win_1')},
+    {id:'challenge_1',title:'やりますねぇ！チャレンジを1回プレイ',progress:d.challengePlayed,target:1,itemId:'avatar_business',itemName:'ビジネススーツの野獣',claimed:claimed.has('challenge_1')}
+  ].map(function(m){m.completed=m.progress>=m.target;m.claimable=m.completed&&!m.claimed;return m;});
+}
+
+function renderMenuMeta(){
+  if(!byId('menuLevel'))return;
+  const level=levelFor(progress.totalExp);
+  byId('menuLevel').textContent=level;
+  byId('menuExpText').textContent=expIntoLevel(progress.totalExp)+' / '+expRequiredForLevel(level)+' EXP';
+  const missionCount=missionViews().filter(function(m){return m.claimable;}).length;
+  const missionBadge=byId('missionBadge');
+  missionBadge.textContent=missionCount;
+  missionBadge.classList.toggle('hidden',missionCount===0);
+  const presentBadge=byId('presentBadge');
+  presentBadge.textContent=progress.presents.length;
+  presentBadge.classList.toggle('hidden',progress.presents.length===0);
+}
+
+function earnedExp(rank,yajuTarget,yajuSuccess){
+  const placement=rank===1?50:(rank===2?30:(rank===3?15:0));
+  return 20+placement+(yajuTarget?10:0)+(yajuSuccess?81:0);
+}
+
+function recordMatchProgress(state){
+  if(!state || !state.finished || progress.seenMatches.includes(state.roomId))return null;
+  const self=state.players.find(function(p){return p.self;});
+  if(!self || !self.rank)return null;
+  const yajuTarget=self.yajuStatus && self.yajuStatus!=='NONE';
+  const yajuSuccess=self.yajuStatus==='COMPLETED';
+  const challenge=state.gameMode==='YAJU_CHALLENGE';
+  const earned=earnedExp(self.rank,!!yajuTarget,yajuSuccess);
+
+  progress.totalExp+=earned;
+  progress.stats.totalMatches++;
+  progress.stats.wins+=self.rank===1?1:0;
+  progress.stats.totalRank+=self.rank;
+  progress.stats.yajuTargets+=yajuTarget?1:0;
+  progress.stats.yajuSuccesses+=yajuSuccess?1:0;
+  progress.stats.challengeMatches+=challenge?1:0;
+  progress.stats.challengeWins+=challenge&&self.rank===1?1:0;
+  progress.daily.matchesPlayed++;
+  progress.daily.wins+=self.rank===1?1:0;
+  progress.daily.challengePlayed+=challenge?1:0;
+  progress.seenMatches.push(state.roomId);
+  progress.seenMatches=progress.seenMatches.slice(-200);
+  saveProgress();
+  return earned;
+}
 
 function byId(id){ return document.getElementById(id); }
 function showOnly(id){
@@ -446,6 +728,9 @@ function saveProfile(){
   if(!value){toast('プレイヤー名を入力してください',true);return;}
   if(value.length>20){toast('プレイヤー名は20文字以内です',true);return;}
   playerName=value;
+  progress.displayName=value;
+  progress.profileConfigured=true;
+  saveProgress();
   localStorage.setItem('yaju.pc.playerName',playerName);
   byId('menuPlayerName').textContent=playerName;
   restoreOrMenu();
@@ -469,11 +754,193 @@ async function restoreOrMenu(){
 }
 
 function showMenu(){
+  cancelCpuSequence();
   closeRealtime();
+  stopYajuBgm();
   currentState=null;selected.clear();
   history.replaceState({},'',location.pathname);
+  if(progress.daily.date!==localDateKey()){
+    progress.daily={date:localDateKey(),matchesPlayed:0,wins:0,challengePlayed:0,claimedMissionIds:[]};
+    saveProgress();
+  }
   byId('menuPlayerName').textContent=playerName;
+  renderMenuMeta();
   showOnly('menuScreen');
+}
+
+function openMission(){
+  renderMission();
+  showOnly('missionScreen');
+}
+
+function renderMission(){
+  const list=byId('missionList');list.innerHTML='';
+  missionViews().forEach(function(m){
+    const row=document.createElement('div');
+    row.className='mission-row'+(m.completed?' complete':'');
+    const ratio=Math.min(100,Math.round(m.progress*100/m.target));
+    row.innerHTML='<div class="mission-head"><strong>'+esc(m.title)+'</strong><span style="color:var(--gold);font-weight:1000">'+Math.min(m.progress,m.target)+' / '+m.target+'</span></div>'+
+      '<div class="progress-track"><div class="progress-fill" style="width:'+ratio+'%"></div></div>'+
+      '<div class="reward-box">報酬 ◆ '+esc(m.itemName)+' ×1</div>';
+    if(m.claimed){
+      const status=document.createElement('div');status.className='mini';status.style.color='#78d6a1';status.textContent='プレゼントBOXへ送付済み';row.appendChild(status);
+    }else if(m.claimable){
+      const button=document.createElement('button');button.className='btn gold';button.textContent='報酬を受け取る';button.onclick=function(){claimMission(m.id);};row.appendChild(button);
+    }else{
+      const status=document.createElement('div');status.className='mini';status.textContent='進行中';row.appendChild(status);
+    }
+    list.appendChild(row);
+  });
+}
+
+function claimMission(id){
+  const mission=missionViews().find(function(m){return m.id===id;});
+  if(!mission || !mission.claimable)return;
+  const presentId='mission:'+progress.daily.date+':'+mission.id;
+  if(!progress.presents.some(function(p){return p.id===presentId;})){
+    progress.presents.push({id:presentId,title:'ミッション達成報酬',itemId:mission.itemId,itemName:mission.itemName,quantity:1,source:mission.title});
+  }
+  progress.daily.claimedMissionIds.push(id);
+  saveProgress();renderMission();renderMenuMeta();toast('プレゼントBOXへ送りました');
+}
+
+function openProfile(){
+  renderProfile();
+  showOnly('profileMetaScreen');
+}
+
+function cosmeticName(id){const item=COSMETICS.find(function(x){return x.id===id;});return item?item.name:'未設定';}
+
+function renderProfile(){
+  const level=levelFor(progress.totalExp);
+  const current=expIntoLevel(progress.totalExp),required=expRequiredForLevel(level);
+  byId('profileEditName').value=playerName;
+  byId('profileSummary').innerHTML='<div class="player-head"><span class="player-avatar active" style="width:66px;height:66px;flex-basis:66px"><span class="avatar-fallback">♛</span></span>'+
+    '<div style="flex:1"><div style="font-size:1.4rem;font-weight:1000">'+esc(playerName)+'</div><div class="mini">PC BROWSER PROFILE</div></div>'+
+    '<div class="level-badge">Lv.'+level+'</div></div>'+
+    '<div class="progress-track" style="margin-top:14px"><div class="progress-fill" style="width:'+Math.min(100,current*100/required)+'%"></div></div>'+
+    '<div class="mini" style="margin-top:6px">'+current+' / '+required+' EXP</div>';
+  byId('profileStats').innerHTML=statHtml('対戦',progress.stats.totalMatches)+statHtml('勝率',percent(progress.stats.wins,progress.stats.totalMatches))+statHtml('平均順位',averageRank())+
+    statHtml('野獣対象',progress.stats.yajuTargets)+statHtml('野獣成功',progress.stats.yajuSuccesses)+statHtml('成功率',percent(progress.stats.yajuSuccesses,progress.stats.yajuTargets));
+  byId('challengeStats').innerHTML=statHtml('挑戦',progress.stats.challengeMatches)+statHtml('1位',progress.stats.challengeWins)+statHtml('勝率',percent(progress.stats.challengeWins,progress.stats.challengeMatches));
+  byId('equipmentList').innerHTML=equipmentHtml('アバター',progress.equippedAvatarId)+equipmentHtml('フレーム',progress.equippedFrameId)+
+    equipmentHtml('トランプ',progress.equippedCardSkinId)+equipmentHtml('エフェクト',progress.equippedEffectId);
+}
+
+function statHtml(label,value){return '<div class="stat"><strong>'+esc(value)+'</strong><span>'+esc(label)+'</span></div>';}
+function equipmentHtml(label,id){return '<div class="equipment-row"><span>'+esc(label)+'</span><strong>'+esc(cosmeticName(id))+'</strong></div>';}
+
+function saveProfileFromMeta(){
+  const value=byId('profileEditName').value.trim();
+  if(!value){toast('プレイヤー名を入力してください',true);return;}
+  if(value.length>20){toast('プレイヤー名は20文字以内です',true);return;}
+  playerName=value;progress.displayName=value;progress.profileConfigured=true;
+  localStorage.setItem('yaju.pc.playerName',value);saveProgress();
+  renderProfile();renderMenuMeta();toast('プレイヤー名を保存しました');
+}
+
+function openCollection(category){
+  if(category)collectionCategory=category;
+  renderCollection();
+  showOnly('collectionScreen');
+}
+
+function renderCollection(){
+  const labels={AVATAR:'アバター',FRAME:'フレーム',CARD_SKIN:'トランプ',EFFECT:'エフェクト'};
+  const tabs=byId('collectionTabs');tabs.innerHTML='';
+  Object.keys(labels).forEach(function(category){
+    const button=document.createElement('button');
+    button.className='btn '+(collectionCategory===category?'gold':'dark');
+    button.textContent=labels[category];
+    button.onclick=function(){collectionCategory=category;renderCollection();};
+    tabs.appendChild(button);
+  });
+
+  const list=byId('collectionList');list.innerHTML='';
+  COSMETICS.filter(function(item){return item.category===collectionCategory;}).forEach(function(item){
+    const count=progress.inventory[item.id]||0;
+    const equipped=isEquipped(item);
+    const row=document.createElement('div');
+    row.className='collection-row'+(!count?' locked':'')+(equipped?' equipped':'');
+    row.innerHTML='<div class="collection-head"><div class="collection-icon">'+(count?item.symbol:'🔒')+'</div><div style="flex:1"><strong>'+esc(item.name)+'</strong><div class="mini">'+esc(item.description)+'</div></div></div>'+
+      (count>1?'<div class="mini" style="color:var(--gold)">所持 ×'+count+'</div>':'');
+    const status=document.createElement('div');
+    if(equipped){status.textContent='装備中';status.style.color='#78d6a1';status.style.fontWeight='1000';}
+    else if(count){const button=document.createElement('button');button.className='btn dark';button.textContent='装備';button.onclick=function(){equipCosmetic(item.id);};status.appendChild(button);}
+    else status.textContent='未所持';
+    row.appendChild(status);list.appendChild(row);
+  });
+  const total=COSMETICS.filter(function(item){return (progress.inventory[item.id]||0)>0;}).length;
+  byId('collectionCount').textContent='COLLECTED  '+total+' / '+COSMETICS.length;
+}
+
+function isEquipped(item){
+  return (item.category==='AVATAR'&&progress.equippedAvatarId===item.id) ||
+    (item.category==='FRAME'&&progress.equippedFrameId===item.id) ||
+    (item.category==='CARD_SKIN'&&progress.equippedCardSkinId===item.id) ||
+    (item.category==='EFFECT'&&progress.equippedEffectId===item.id);
+}
+
+function equipCosmetic(id){
+  const item=COSMETICS.find(function(x){return x.id===id;});
+  if(!item || !(progress.inventory[id]>0)){toast('未所持のアイテムは装備できません',true);return;}
+  if(item.category==='AVATAR')progress.equippedAvatarId=id;
+  if(item.category==='FRAME')progress.equippedFrameId=id;
+  if(item.category==='CARD_SKIN')progress.equippedCardSkinId=id;
+  if(item.category==='EFFECT')progress.equippedEffectId=id;
+  saveProgress();renderCollection();toast(item.name+'を装備しました');
+}
+
+function openPresent(){
+  renderPresent();
+  showOnly('presentScreen');
+}
+
+function renderPresent(){
+  const button=byId('receiveAllButton');
+  button.classList.toggle('hidden',progress.presents.length===0);
+  button.textContent='すべて受け取る（'+progress.presents.length+'件）';
+  const list=byId('presentList');list.innerHTML='';
+  if(!progress.presents.length){
+    list.innerHTML='<div class="meta-card gold" style="text-align:center;padding:30px"><div style="font-size:2rem;color:var(--gold)">◇</div><div class="eyebrow">EMPTY</div><p class="subtitle">現在受け取れるプレゼントはありません。</p></div>';
+    return;
+  }
+  progress.presents.forEach(function(present){
+    const row=document.createElement('div');row.className='present-row';
+    row.innerHTML='<div class="present-head"><div class="collection-icon">◆</div><div style="flex:1"><strong>'+esc(present.title)+'</strong><div class="mini">'+esc(present.source)+'</div></div></div>'+
+      '<div class="reward-box">'+esc(present.itemName)+' <strong style="float:right;color:var(--gold)">×'+present.quantity+'</strong></div>';
+    const receive=document.createElement('button');receive.className='btn gold';receive.textContent='受け取る';receive.onclick=function(){receivePresent(present.id);};row.appendChild(receive);
+    list.appendChild(row);
+  });
+}
+
+function receivePresent(id){
+  const index=progress.presents.findIndex(function(p){return p.id===id;});
+  if(index<0)return;
+  const present=progress.presents[index];
+  progress.inventory[present.itemId]=(progress.inventory[present.itemId]||0)+(present.quantity||1);
+  progress.presents.splice(index,1);
+  saveProgress();renderPresent();renderMenuMeta();toast(present.itemName+'を受け取りました');
+}
+
+function receiveAllPresents(){
+  progress.presents.slice().forEach(function(p){
+    progress.inventory[p.itemId]=(progress.inventory[p.itemId]||0)+(p.quantity||1);
+  });
+  const count=progress.presents.length;
+  progress.presents=[];
+  saveProgress();renderPresent();renderMenuMeta();toast(count+'件受け取りました');
+}
+
+function openSettings(){
+  renderSettings();
+  showOnly('settingsScreen');
+}
+function renderSettings(){byId('bgmSwitch').classList.toggle('on',progress.settings.bgm!==false);}
+function toggleBgm(){
+  progress.settings.bgm=progress.settings.bgm===false;
+  saveProgress();renderSettings();
+  if(currentState)syncGameAudio(currentState);else if(progress.settings.bgm===false)stopYajuBgm();
 }
 
 function openMultiplayer(){
@@ -566,6 +1033,7 @@ function bindRoom(id){
 
 async function refreshState(){
   if(!roomId)return;
+  if(cpuSequenceRunning && isCpuGame(currentState))return;
   try{
     const state=await api('/api/rooms/'+encodeURIComponent(roomId)+'/state');
     currentState=state;
@@ -582,6 +1050,10 @@ async function refreshState(){
 function connectSocket(){
   closeRealtime();
   if(!roomId)return;
+  if(isCpuGame(currentState)){
+    byId('networkPill').textContent='● SOLO';
+    return;
+  }
   const protocol=location.protocol==='https:'?'wss:':'ws:';
   const url=protocol+'//'+location.host+'/ws/game?roomId='+encodeURIComponent(roomId);
   try{
@@ -628,6 +1100,7 @@ async function startRoomGame(){
 
 async function playCards(){
   try{
+    if(cpuSequenceRunning)return;
     if(!currentState)return;
     const self=currentState.players.find(function(p){return p.self;});
     if(!self)return;
@@ -648,6 +1121,7 @@ async function playCards(){
 
 async function passTurn(){
   try{
+    if(cpuSequenceRunning)return;
     const state=await api('/api/rooms/'+encodeURIComponent(roomId)+'/pass',{method:'POST'});
     selected.clear();currentState=state;render(state);
   }catch(e){toast(e.message,true);}
@@ -655,12 +1129,14 @@ async function passTurn(){
 
 async function leaveRoom(){
   if(!roomId){showMenu();return;}
+  cancelCpuSequence();
   try{
     await api('/api/rooms/'+encodeURIComponent(roomId)+'/leave',{method:'POST'});
   }catch(e){
     if(currentState && currentState.started && !currentState.finished){toast(e.message,true);return;}
   }
   closeRealtime();
+  stopYajuBgm();
   roomId='';currentState=null;selected.clear();
   localStorage.removeItem('yaju.pc.roomId');
   showMenu();
@@ -679,9 +1155,11 @@ async function copyInvite(){
 
 function render(state){
   processEvents(state.events||[]);
+  syncGameAudio(state);
   if(state.finished){renderResult(state);return;}
   if(!state.started){renderRoom(state);return;}
   renderGame(state);
+  maybeStartCpuSequence();
 }
 
 function renderRoom(state){
@@ -695,8 +1173,10 @@ function renderRoom(state){
   state.players.forEach(function(p){
     const el=document.createElement('div');
     el.className='player';
-    el.innerHTML='<strong>'+esc(p.playerName)+(p.self?' <span style="color:var(--gold)">YOU</span>':'')+'</strong>'+
-      '<div class="mini">'+(p.cpu?'CPU '+esc(p.cpuDifficulty||''):'PLAYER')+' / HAND '+p.handCount+'</div>';
+    el.dataset.playerId=p.playerId;
+    el.innerHTML='<div class="player-head">'+avatarMarkup(p,state,false)+
+      '<div><strong>'+esc(p.playerName)+(p.self?' <span style="color:var(--gold)">YOU</span>':'')+'</strong>'+
+      '<div class="mini">'+(p.cpu?'CPU '+esc(p.cpuDifficulty||''):'PLAYER')+' / HAND '+p.handCount+'</div></div></div>';
     container.appendChild(el);
   });
 }
@@ -713,8 +1193,10 @@ function renderGame(state){
   opponents.forEach(function(p){
     const el=document.createElement('div');
     el.className='opponent'+(state.currentPlayerId===p.playerId?' active':'');
+    el.dataset.playerId=p.playerId;
     const status=p.rank?'#'+p.rank:(p.passed?'PASS':(state.currentPlayerId===p.playerId?'● ACTIVE TURN':(p.cpu?(p.cpuDifficulty||'CPU'):'PLAYER')));
-    el.innerHTML='<strong>'+esc(p.playerName)+'</strong><div class="mini">'+esc(status)+'</div>'+
+    el.innerHTML='<div class="player-head">'+avatarMarkup(p,state,state.currentPlayerId===p.playerId)+
+      '<div style="min-width:0;flex:1"><strong>'+esc(p.playerName)+'</strong><div class="mini">'+esc(status)+'</div></div></div>'+
       '<div style="display:flex;gap:-4px;margin-top:7px">'+backCards(p.handCount)+'</div>'+
       (p.yajuStatus && p.yajuStatus!=='NONE'?'<span class="badge gold">YAJU '+esc(p.yajuStatus)+'</span>':'');
     opp.appendChild(el);
@@ -728,19 +1210,23 @@ function renderGame(state){
   }
 
   const hand=byId('hand');hand.innerHTML='';
+  const handWrap=hand.closest('.hand-wrap');
+  if(handWrap && self)handWrap.dataset.playerId=self.playerId;
   if(self){
     self.hand.forEach(function(card,index){hand.appendChild(cardElement(card,true,index));});
   }
 
   const seven=state.sevenTransfer||{};
   const transfer=!!self && seven.pending && seven.sourcePlayerId===self.playerId;
-  byId('passButton').disabled=!myTurn || transfer || !state.field.cards.length;
-  byId('playButton').disabled=!myTurn || selected.size===0 || (transfer && selected.size!==seven.cardCount);
+  byId('passButton').disabled=cpuSequenceRunning || !myTurn || transfer || !state.field.cards.length;
+  byId('playButton').disabled=cpuSequenceRunning || !myTurn || selected.size===0 || (transfer && selected.size!==seven.cardCount);
   byId('playButton').textContent=transfer?'TRANSFER '+selected.size+'/'+seven.cardCount+' ▶':'PLAY '+selected.size+' ▶';
 
   const banner=byId('turnBanner');
   const current=state.players.find(function(p){return p.playerId===state.currentPlayerId;});
-  banner.textContent=myTurn?'YOUR TURN':(current?current.playerName+' TURN':'WAITING...');
+  banner.textContent=cpuSequenceRunning && current && current.cpu
+    ? current.playerName+' PLAYING'
+    : (myTurn?'YOUR TURN':(current?current.playerName+' TURN':'WAITING...'));
   banner.classList.toggle('mine',myTurn);
 
   const notice=byId('transferNotice');
@@ -772,6 +1258,7 @@ function renderRules(state){
 }
 
 function pushStateLog(state){
+  if(isCpuGame(state))return;
   const current=state.players.find(function(p){return p.playerId===state.currentPlayerId;});
   const key=(current?current.playerId:'finished')+'|'+state.field.cards.map(function(c){return c.suit+'-'+c.rank;}).join(',');
   if(pushStateLog.lastKey===key)return;
@@ -789,10 +1276,14 @@ function renderLog(){
 }
 
 function renderResult(state){
+  cpuSequenceRunning=false;
+  hideCpuOverlay();
+  const earned=recordMatchProgress(state);
   showOnly('resultScreen');
   const ranking=state.players.slice().sort(function(a,b){return (a.rank||999)-(b.rank||999);});
   const self=ranking.find(function(p){return p.self;});
   byId('yourRank').textContent=self&&self.rank?'YOUR RANK  #'+self.rank:'MATCH COMPLETE';
+  byId('resultExp').textContent=earned==null?'':('+'+earned+' EXP 獲得');
   const list=byId('resultList');list.innerHTML='';
   ranking.forEach(function(p){
     const row=document.createElement('div');row.className='result-row'+(p.rank===1?' first':'');
@@ -802,11 +1293,12 @@ function renderResult(state){
   });
 }
 
-function cardElement(card,selectable,index){
+function cardElement(card,selectable,index,compact){
   const el=document.createElement('button');
   el.type='button';
   const red=card.suit==='HEART'||card.suit==='DIAMOND';
-  el.className='card'+(red?' red-suit':'')+(card.joker?' joker':'')+(selectable?' selectable':'')+(selected.has(index)?' selected':'');
+  el.className='card'+(red?' red-suit':'')+(card.joker?' joker':'')+(selectable?' selectable':'')+
+    (selected.has(index)?' selected':'')+(compact?' compact':'');
   const rank=rankText(card.rank);
   const suit=symbol(card.suit);
   el.innerHTML='<div class="rank">'+(card.joker?'JOKER':rank+' '+suit)+'</div>'+
@@ -832,14 +1324,46 @@ function backCards(count){
   return html;
 }
 
+function isCpuGame(state){
+  return !!state && (state.gameMode==='CPU' || state.gameMode==='YAJU_CHALLENGE');
+}
+
+function delay(ms){
+  return new Promise(function(resolve){setTimeout(resolve,ms);});
+}
+
 function processEvents(events){
-  events.filter(function(e){return e.id>lastEventId;}).sort(function(a,b){return a.id-b.id;}).forEach(function(e){
-    if(e.type==='YAJU_AVAILABLE')cutinQueue.push({title:'YAJU TARGET',main:'野獣上がりできます',player:e.playerName});
-    if(e.type==='YAJU_SUCCESS')cutinQueue.push({title:'YAJU SUCCESS',main:'やりますねぇ！',player:e.playerName});
-    if(e.type==='JACK_BACK')cutinQueue.push({title:'J BACK',main:'バック気持ちいい',player:e.playerName});
-    if(e.type==='EARLY_SHOT')cutinQueue.push({title:'EARLY SHOT',main:'早すぎるッ！',player:e.playerName});
-    lastEventId=Math.max(lastEventId,e.id);
+  const unseen=events
+    .filter(function(e){return e.id>lastEventId;})
+    .sort(function(a,b){return a.id-b.id;});
+  if(!unseen.length)return;
+
+  const yajuAvailable=unseen.filter(function(e){return e.type==='YAJU_AVAILABLE';});
+  if(yajuAvailable.length){
+    cutinQueue.push({
+      kind:'yaju',
+      title:'YAJU CHANCE',
+      main:'野獣上がり確定',
+      playerIds:yajuAvailable.map(function(e){return e.playerId;}),
+      players:yajuAvailable.map(function(e){return e.playerName;}),
+      duration:2600
+    });
+  }
+
+  unseen.forEach(function(e){
+    if(e.type==='YAJU_SUCCESS'){
+      playLog.unshift(e.playerName+'：野獣上がり成功「やりますねぇ！」');
+      playLog.splice(8);
+    }
+    if(e.type==='JACK_BACK'){
+      cutinQueue.push({kind:'jack',title:'J BACK',main:'バック気持ちいい',playerIds:[e.playerId],players:[e.playerName],duration:2450});
+    }
+    if(e.type==='EARLY_SHOT'){
+      cutinQueue.push({kind:'early',title:'早漏',main:'早すぎるッ！',playerIds:[e.playerId],players:[e.playerName],duration:2200});
+    }
   });
+
+  lastEventId=Math.max(lastEventId,unseen[unseen.length-1].id);
   sessionStorage.setItem('yaju.pc.lastEventId',String(lastEventId));
   showNextCutin();
 }
@@ -848,11 +1372,248 @@ function showNextCutin(){
   if(cutinBusy || !cutinQueue.length)return;
   cutinBusy=true;
   const item=cutinQueue.shift();
+  const overlay=byId('cutin');
+  overlay.className='cutin '+(item.kind||'yaju');
   byId('cutinTitle').textContent=item.title;
   byId('cutinMain').textContent=item.main;
-  byId('cutinPlayer').textContent=item.player||'';
-  byId('cutin').classList.remove('hidden');
-  setTimeout(function(){byId('cutin').classList.add('hidden');cutinBusy=false;showNextCutin();},1850);
+  byId('cutinPlayer').textContent=item.kind==='yaju'?'':(item.players&&item.players[0]||'');
+  byId('cutinRoute').classList.toggle('hidden',item.kind!=='yaju');
+
+  const players=byId('cutinPlayers');
+  players.innerHTML='';
+  if(item.kind==='yaju'){
+    (item.players||[]).forEach(function(name,index){
+      const player=currentState && currentState.players.find(function(p){return p.playerId===item.playerIds[index];});
+      const chip=document.createElement('div');
+      chip.className='cutin-player-chip';
+      chip.innerHTML=(player?avatarMarkup(player,currentState,true):'<span class="player-avatar active"><span class="avatar-fallback">♛</span></span>')+
+        '<strong>'+esc(name)+'</strong>';
+      players.appendChild(chip);
+    });
+  }
+
+  overlay.classList.remove('hidden');
+  setTimeout(function(){
+    overlay.classList.add('hidden');
+    overlay.className='cutin hidden';
+    cutinBusy=false;
+    showNextCutin();
+  },item.duration||2300);
+}
+
+function waitForCutins(){
+  return new Promise(function(resolve){
+    const check=function(){
+      if(!cutinBusy && !cutinQueue.length){resolve();return;}
+      setTimeout(check,80);
+    };
+    check();
+  });
+}
+
+function avatarMarkup(player,state,active){
+  const initial=esc((player.playerName||'?').trim().charAt(0).toUpperCase()||'?');
+  let image='';
+  if(player.cpu && state){
+    const cpus=state.players.filter(function(p){return p.cpu;});
+    const index=cpus.findIndex(function(p){return p.playerId===player.playerId;});
+    if(index>=0 && index<6){
+      const num=String(index+1).padStart(2,'0');
+      image='<img src="/assets/cpu_avatars/cpu_'+num+'.jpg" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">';
+    }
+  }
+  return '<span class="player-avatar'+(active?' active':'')+'">'+image+
+    '<span class="avatar-fallback" style="'+(image?'display:none':'display:grid')+'">'+initial+'</span></span>';
+}
+
+function currentCpuPlayer(){
+  if(!currentState || !isCpuGame(currentState) || currentState.finished)return null;
+  return currentState.players.find(function(p){return p.playerId===currentState.currentPlayerId && p.cpu;})||null;
+}
+
+function maybeStartCpuSequence(){
+  if(cpuSequenceRunning || !roomId || !currentCpuPlayer())return;
+  const token=++cpuSequenceToken;
+  cpuSequenceRunning=true;
+  runCpuSequence(token);
+}
+
+function cancelCpuSequence(){
+  cpuSequenceToken++;
+  cpuSequenceRunning=false;
+  hideCpuOverlay();
+}
+
+async function runCpuSequence(token){
+  try{
+    while(token===cpuSequenceToken && roomId){
+      const cpu=currentCpuPlayer();
+      if(!cpu)break;
+
+      await waitForCutins();
+      if(token!==cpuSequenceToken)break;
+
+      showCpuThinking(cpu);
+      if(currentState)renderGame(currentState);
+      await delay(450);
+      if(token!==cpuSequenceToken)break;
+
+      const result=await api('/api/rooms/'+encodeURIComponent(roomId)+'/cpu/next',{method:'POST'});
+      hideCpuThinking();
+      pushCpuActionLog(result);
+      await showCpuAction(result,token);
+      if(token!==cpuSequenceToken)break;
+
+      hideCpuOverlay();
+      selected.clear();
+      currentState=result.state;
+      render(result.state);
+      await delay(250);
+    }
+  }catch(e){
+    toast(e.message||'CPU処理でエラーが発生しました',true);
+  }finally{
+    if(token===cpuSequenceToken){
+      cpuSequenceRunning=false;
+      hideCpuOverlay();
+      if(currentState && currentState.started && !currentState.finished)renderGame(currentState);
+    }
+  }
+}
+
+function showCpuThinking(cpu){
+  const overlay=byId('cpuActionOverlay');
+  overlay.classList.remove('hidden');
+  const thinking=byId('cpuThinking');
+  thinking.textContent=cpu.playerName+'  THINKING...';
+  thinking.classList.remove('hidden');
+  byId('cpuActionStage').innerHTML='';
+}
+
+function hideCpuThinking(){
+  byId('cpuThinking').classList.add('hidden');
+}
+
+function hideCpuOverlay(){
+  const overlay=byId('cpuActionOverlay');
+  overlay.classList.add('hidden');
+  byId('cpuThinking').classList.add('hidden');
+  byId('cpuActionStage').innerHTML='';
+}
+
+function playerAnchor(playerId){
+  const nodes=Array.from(document.querySelectorAll('[data-player-id]'));
+  return nodes.find(function(node){return node.dataset.playerId===playerId;})||null;
+}
+
+function centerOf(element){
+  if(!element)return {x:window.innerWidth/2,y:window.innerHeight*.28};
+  const rect=element.getBoundingClientRect();
+  return {x:rect.left+rect.width/2,y:rect.top+rect.height/2};
+}
+
+async function showCpuAction(action,token){
+  const overlay=byId('cpuActionOverlay');
+  const host=byId('cpuActionStage');
+  overlay.classList.remove('hidden');
+  host.innerHTML='';
+
+  if(action.type==='PASS'){
+    const burst=document.createElement('div');
+    burst.className='cpu-pass-burst';
+    burst.textContent=action.playerName+'   PASS';
+    host.appendChild(burst);
+    const animation=burst.animate([
+      {transform:'translate(-50%,-50%) scale(.86)',opacity:0},
+      {transform:'translate(-50%,-50%) scale(1.06)',opacity:1,offset:.28},
+      {transform:'translate(-50%,-43%) scale(1)',opacity:.72}
+    ],{duration:1500,easing:'cubic-bezier(.2,.8,.2,1)',fill:'forwards'});
+    try{await animation.finished;}catch(_){}
+    return;
+  }
+
+  const flight=document.createElement('div');
+  flight.className='cpu-flight';
+  const label=document.createElement('div');
+  label.className='cpu-action-label';
+  label.textContent=action.type==='SEVEN_TRANSFER'
+    ? action.playerName+' → '+(action.targetPlayerName||'隣')+'   7 TRANSFER'
+    : action.playerName+'   PLAY!';
+  flight.appendChild(label);
+
+  if(action.type==='PLAY'){
+    const row=document.createElement('div');
+    row.className='cpu-card-row';
+    (action.cards||[]).forEach(function(card){row.appendChild(cardElement(card,false,-1,true));});
+    flight.appendChild(row);
+  }else{
+    const row=document.createElement('div');
+    row.className='cpu-transfer-stack';
+    for(let i=0;i<Math.max(1,action.cardCount||0);i++){
+      const back=document.createElement('span');
+      back.className='card back';
+      row.appendChild(back);
+    }
+    flight.appendChild(row);
+  }
+
+  host.appendChild(flight);
+  const from=centerOf(playerAnchor(action.playerId));
+  const target=action.type==='SEVEN_TRANSFER'
+    ? centerOf(playerAnchorByName(action.targetPlayerName))
+    : centerOf(byId('field'));
+
+  flight.style.left=(from.x-70)+'px';
+  flight.style.top=(from.y-40)+'px';
+
+  const dx=target.x-from.x;
+  const dy=target.y-from.y;
+  const duration=action.type==='PLAY'?3000:2000;
+  const animation=flight.animate([
+    {transform:'translate(0,0) scale(.80) rotate(-5deg)',opacity:.74},
+    {transform:'translate('+(dx*.35)+'px,'+(dy*.28)+'px) scale(.9) rotate(3deg)',opacity:1,offset:.42},
+    {transform:'translate('+dx+'px,'+dy+'px) scale(1) rotate(0deg)',opacity:1}
+  ],{duration:duration,easing:'cubic-bezier(.2,.72,.18,1)',fill:'forwards'});
+  try{await animation.finished;}catch(_){}
+}
+
+function playerAnchorByName(name){
+  if(!currentState || !name)return null;
+  const player=currentState.players.find(function(p){return p.playerName===name;});
+  return player?playerAnchor(player.playerId):null;
+}
+
+function pushCpuActionLog(action){
+  let text='';
+  if(action.type==='PASS'){
+    text=action.playerName+'：PASS';
+  }else if(action.type==='SEVEN_TRANSFER'){
+    text=action.playerName+'：'+action.cardCount+'枚を '+(action.targetPlayerName||'隣')+' へ7渡し';
+  }else{
+    text=action.playerName+'：'+(action.cards||[]).map(cardLabel).join(' ')+' を出した';
+  }
+  playLog.unshift(text);
+  playLog.splice(6);
+  renderLog();
+}
+
+function syncGameAudio(state){
+  const active=!!state && state.started && !state.finished &&
+    state.players.some(function(p){return p.yajuStatus==='ACTIVE' || p.yajuStatus==='EIGHT_PLAYED';});
+  const audio=byId('yajuBgm');
+  if(active && progress.settings.bgm!==false){
+    audio.volume=.55;
+    if(audio.paused)audio.play().catch(function(){});
+  }else{
+    stopYajuBgm();
+  }
+}
+
+function stopYajuBgm(){
+  const audio=byId('yajuBgm');
+  if(!audio)return;
+  if(!audio.paused)audio.pause();
+  try{audio.currentTime=0;}catch(_){}
 }
 
 function cardLabel(card){return card.joker?'JOKER':symbol(card.suit)+rankText(card.rank);}
@@ -865,6 +1626,11 @@ function rankText(rank){
 }
 
 window.addEventListener('DOMContentLoaded',function(){
+  saveProgress();
+  if(progress.profileConfigured && !localStorage.getItem('yaju.pc.playerName')){
+    playerName=progress.displayName;
+    localStorage.setItem('yaju.pc.playerName',playerName);
+  }
   byId('profileName').value=playerName;
   csrfToken=sessionStorage.getItem('yaju.pc.csrfToken')||'';
   bootstrap();

@@ -34,6 +34,33 @@ public class CpuGameService {
     /** CPU戦作成結果。 */
     public record CpuGameCreation(GameRoom room, Player humanPlayer) {}
 
+    /** ブラウザ演出用にCPUが実行した1アクション。 */
+    public enum CpuActionType {
+        PLAY,
+        PASS,
+        SEVEN_TRANSFER
+    }
+
+    /**
+     * CPUの1手分の結果。
+     *
+     * PLAY時のみcardsへ公開された場札を入れる。
+     * 7渡しは相手の非公開手札情報を漏らさないためcardCountだけ返す。
+     */
+    public record CpuTurnResult(
+            String playerId,
+            String playerName,
+            CpuActionType type,
+            List<Card> cards,
+            int cardCount,
+            String targetPlayerName,
+            GameRoom room
+    ) {
+        public CpuTurnResult {
+            cards = List.copyOf(cards);
+        }
+    }
+
     /**
      * 人間1人 + CPU 1～7人でゲームを即時開始する。
      */
@@ -43,7 +70,20 @@ public class CpuGameService {
             CpuDifficulty difficulty,
             GameRuleSettings settings
     ) {
-        return createGameInternal(humanName, cpuCount, difficulty, settings, false);
+        return createGameInternal(humanName, cpuCount, difficulty, settings, false, true);
+    }
+
+    /**
+     * ブラウザ版向けCPU戦。
+     * CPUの自動連続処理は行わず、/cpu/next から1手ずつ進める。
+     */
+    public CpuGameCreation createGameForAnimatedClient(
+            String humanName,
+            int cpuCount,
+            CpuDifficulty difficulty,
+            GameRuleSettings settings
+    ) {
+        return createGameInternal(humanName, cpuCount, difficulty, settings, false, false);
     }
 
     /** 野獣チャレンジ戦を作成する。 */
@@ -53,10 +93,33 @@ public class CpuGameService {
             CpuDifficulty difficulty,
             GameRuleSettings settings
     ) {
+        return createYajuChallengeInternal(humanName, cpuCount, difficulty, settings, true);
+    }
+
+    /**
+     * ブラウザ版向け野獣チャレンジ。
+     * Android版同様、CPUを1手ずつ演出できる状態で開始する。
+     */
+    public CpuGameCreation createYajuChallengeForAnimatedClient(
+            String humanName,
+            int cpuCount,
+            CpuDifficulty difficulty,
+            GameRuleSettings settings
+    ) {
+        return createYajuChallengeInternal(humanName, cpuCount, difficulty, settings, false);
+    }
+
+    private CpuGameCreation createYajuChallengeInternal(
+            String humanName,
+            int cpuCount,
+            CpuDifficulty difficulty,
+            GameRuleSettings settings,
+            boolean autoAdvance
+    ) {
         if (!settings.yajuRule() || !settings.eightCut()) {
             throw new IllegalArgumentException("チャレンジモードでは野獣ルールと8切りが必要です");
         }
-        return createGameInternal(humanName, cpuCount, difficulty, settings, true);
+        return createGameInternal(humanName, cpuCount, difficulty, settings, true, autoAdvance);
     }
 
     private CpuGameCreation createGameInternal(
@@ -64,7 +127,8 @@ public class CpuGameService {
             int cpuCount,
             CpuDifficulty difficulty,
             GameRuleSettings settings,
-            boolean challenge
+            boolean challenge,
+            boolean autoAdvance
     ) {
         Objects.requireNonNull(difficulty, "difficulty must not be null");
         Objects.requireNonNull(settings, "settings must not be null");
@@ -93,76 +157,153 @@ public class CpuGameService {
         } else {
             roomService.startGame(room.getRoomId());
         }
-        processCpuTurns(room.getRoomId());
+        if (autoAdvance) {
+            processCpuTurns(room.getRoomId());
+        }
         return new CpuGameCreation(room, human);
     }
 
     /**
+     * 現在のCPU手番を1手だけ実行する。
+     * ブラウザ版はこのAPI結果を受けてからアニメーションを表示し、
+     * 表示完了後にstateAfterを画面へ反映する。
+     */
+    public CpuTurnResult executeNextCpuTurn(String roomId) {
+        GameRoom room = roomService.getRoom(roomId);
+        synchronized (room) {
+            validateCpuRoom(room);
+            if (room.isFinished()) {
+                throw new IllegalStateException("ゲームは終了しています");
+            }
+
+            GameState state = room.getGameState();
+            Player current = state.getCurrentPlayer();
+            if (!current.isCpu()) {
+                throw new IllegalStateException("現在の手番はCPUではありません");
+            }
+
+            CpuStrategy strategy = strategyFactory.create(current.getCpuDifficulty());
+
+            if (state.hasPendingSevenTransfer()) {
+                PendingSevenTransfer pending = state.getPendingSevenTransfer();
+                if (!pending.sourcePlayerId().equals(current.getId())) {
+                    throw new IllegalStateException("7渡し元と現在CPUが一致しません");
+                }
+
+                List<List<Card>> transfers = moveGenerator.generateSevenTransfers(
+                        current,
+                        pending.cardCount(),
+                        room.getRuleSettings()
+                );
+                if (transfers.isEmpty()) {
+                    throw new IllegalStateException("CPUが7渡し可能なカードを選べません");
+                }
+
+                List<Card> selected = strategy.chooseSevenTransfer(
+                        state,
+                        current,
+                        transfers,
+                        room.getRuleSettings()
+                );
+                String targetPlayerName = state.getPlayers().stream()
+                        .filter(player -> player.getId().equals(pending.targetPlayerId()))
+                        .map(Player::getName)
+                        .findFirst()
+                        .orElse(null);
+
+                room.getGameEngine().transferSeven(state, current.getId(), selected);
+                room.touch();
+
+                return new CpuTurnResult(
+                        current.getId(),
+                        current.getName(),
+                        CpuActionType.SEVEN_TRANSFER,
+                        List.of(),
+                        selected.size(),
+                        targetPlayerName,
+                        room
+                );
+            }
+
+            List<CpuMove> legalMoves = moveGenerator.generate(
+                    state,
+                    current,
+                    room.getRuleSettings()
+            );
+            if (legalMoves.isEmpty()) {
+                throw new IllegalStateException("CPUに合法手がありません");
+            }
+
+            CpuMove move = strategy.chooseMove(
+                    state,
+                    current,
+                    legalMoves,
+                    room.getRuleSettings()
+            );
+
+            if (move.pass()) {
+                room.getGameEngine().pass(state, current.getId());
+                room.touch();
+                return new CpuTurnResult(
+                        current.getId(),
+                        current.getName(),
+                        CpuActionType.PASS,
+                        List.of(),
+                        0,
+                        null,
+                        room
+                );
+            }
+
+            List<Card> selected = List.copyOf(move.cards());
+            room.getGameEngine().play(state, current.getId(), selected);
+            room.touch();
+            return new CpuTurnResult(
+                    current.getId(),
+                    current.getName(),
+                    CpuActionType.PLAY,
+                    selected,
+                    selected.size(),
+                    null,
+                    room
+            );
+        }
+    }
+
+    /**
      * 人間の手番になるかゲーム終了まで、CPUの手を連続実行する。
+     * 既存テスト・非演出クライアント向け互換処理。
      */
     public GameRoom processCpuTurns(String roomId) {
         GameRoom room = roomService.getRoom(roomId);
-        if ((room.getGameMode() != GameMode.CPU
-                && room.getGameMode() != GameMode.YAJU_CHALLENGE)
-                || !room.isStarted()) {
+        if (!isCpuRoom(room) || !room.isStarted()) {
             return room;
         }
 
-        synchronized (room) {
-            int steps = 0;
-            while (!room.isFinished()) {
-                if (++steps > MAX_AUTO_STEPS) {
-                    throw new IllegalStateException("CPU自動進行が上限回数を超えました");
-                }
+        int steps = 0;
+        while (!room.isFinished()) {
+            if (++steps > MAX_AUTO_STEPS) {
+                throw new IllegalStateException("CPU自動進行が上限回数を超えました");
+            }
 
-                GameState state = room.getGameState();
-                Player current = state.getCurrentPlayer();
-                if (!current.isCpu()) {
+            synchronized (room) {
+                if (room.isFinished() || !room.getGameState().getCurrentPlayer().isCpu()) {
                     return room;
                 }
-
-                CpuStrategy strategy = strategyFactory.create(current.getCpuDifficulty());
-
-                if (state.hasPendingSevenTransfer()) {
-                    PendingSevenTransfer pending = state.getPendingSevenTransfer();
-                    if (!pending.sourcePlayerId().equals(current.getId())) {
-                        throw new IllegalStateException("7渡し元と現在CPUが一致しません");
-                    }
-                    List<List<Card>> transfers = moveGenerator.generateSevenTransfers(
-                            current,
-                            pending.cardCount(),
-                            room.getRuleSettings()
-                    );
-                    List<Card> selected = strategy.chooseSevenTransfer(
-                            state,
-                            current,
-                            transfers,
-                            room.getRuleSettings()
-                    );
-                    room.getGameEngine().transferSeven(state, current.getId(), selected);
-                    room.touch();
-                    continue;
-                }
-
-                List<CpuMove> legalMoves = moveGenerator.generate(
-                        state,
-                        current,
-                        room.getRuleSettings()
-                );
-                CpuMove move = strategy.chooseMove(
-                        state,
-                        current,
-                        legalMoves,
-                        room.getRuleSettings()
-                );
-                if (move.pass()) {
-                    room.getGameEngine().pass(state, current.getId());
-                } else {
-                    room.getGameEngine().play(state, current.getId(), move.cards());
-                }
-                room.touch();
             }
-            return room;
+            executeNextCpuTurn(roomId);
         }
+        return room;
+    }
+
+    private void validateCpuRoom(GameRoom room) {
+        if (!isCpuRoom(room) || !room.isStarted()) {
+            throw new IllegalStateException("CPU戦ではありません");
+        }
+    }
+
+    private boolean isCpuRoom(GameRoom room) {
+        return room.getGameMode() == GameMode.CPU
+                || room.getGameMode() == GameMode.YAJU_CHALLENGE;
     }
 }
