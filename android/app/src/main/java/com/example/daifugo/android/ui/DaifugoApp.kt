@@ -2482,59 +2482,138 @@ private fun difficultyLabel(value: String): String = when(value) {
 
 @Composable
 private fun LobbyScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF020504),
+                        Color(0xFF071B13),
+                        Color(0xFF020303),
+                    )
+                )
+            ),
     ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("ロビー", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-                    Text(state.serverUrl, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        PremiumCasinoBackdrop(accent = CasinoGreen)
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "MULTIPLAYER",
+                            color = CasinoGold,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 3.sp,
+                        )
+                        Text(
+                            "ONLINE TABLE",
+                            color = Color.White,
+                            fontSize = 29.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.2.sp,
+                        )
+                        Text(
+                            "Android / PC 共通サーバー",
+                            color = Color.White.copy(alpha = 0.50f),
+                            fontSize = 11.sp,
+                            letterSpacing = 1.1.sp,
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(100.dp),
+                        color = Color(0xFF123323),
+                        border = BorderStroke(1.dp, Color(0xFF77D69D).copy(alpha = 0.55f)),
+                    ) {
+                        Text(
+                            "● ONLINE",
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+                            color = Color(0xFF77D69D),
+                            fontWeight = FontWeight.Black,
+                            fontSize = 9.sp,
+                            letterSpacing = 1.2.sp,
+                        )
+                    }
                 }
-                TextButton(onClick = viewModel::backToMenu) { Text("‹ BACK", color = Color.White.copy(alpha = 0.72f)) }
             }
-        }
-        item {
-            CasinoPanel(title = "プレイヤー") {
+
+            item {
+                TextButton(onClick = viewModel::backToMenu) {
+                    Text("‹ CASINO FLOOR", color = Color.White.copy(alpha = 0.72f))
+                }
+            }
+
+            item {
+                PremiumCasinoInfoPanel("PLAYER") {
+                    Text(
+                        state.progress.displayName,
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        "Google Play Games不要。PCブラウザ版とも同じROOMへ参加できます。",
+                        color = Color.White.copy(alpha = 0.52f),
+                        fontSize = 11.sp,
+                    )
+                }
+            }
+
+            item {
+                PremiumCasinoInfoPanel("CREATE ROOM") {
+                    Text(
+                        "あなたがホストになります。2〜" + GameLimits.MAX_PLAYER_COUNT + "人でゲーム開始できます。",
+                        color = Color.White.copy(alpha = 0.68f),
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    PremiumStartButton(
+                        label = "新しい部屋を作る  ▶",
+                        onClick = viewModel::createRoom,
+                    )
+                }
+            }
+
+            item {
+                PremiumCasinoInfoPanel("JOIN ROOM") {
+                    OutlinedTextField(
+                        value = state.roomIdInput,
+                        onValueChange = viewModel::setRoomIdInput,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("ROOM ID") },
+                        placeholder = { Text("8文字のルームID") },
+                        singleLine = true,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = viewModel::joinRoom,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                    ) {
+                        Text("ROOMへ参加  ▶", fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+
+            item {
                 Text(
-                    state.progress.displayName,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Black,
-                    color = CasinoGreenDark,
-                )
-                Text(
-                    "プレイヤー名はプロフィールから変更できます。",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        item {
-            CasinoPanel(title = "新しいテーブル") {
-                Text("あなたがホストになります。2〜8人でゲーム開始できます。")
-                Spacer(Modifier.height(14.dp))
-                Button(
-                    onClick = viewModel::createRoom,
+                    "PUBLIC SERVER  •  " + state.serverUrl,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("＋ 部屋を作る", fontWeight = FontWeight.Bold) }
-            }
-        }
-        item {
-            CasinoPanel(title = "部屋へ参加") {
-                OutlinedTextField(
-                    value = state.roomIdInput,
-                    onValueChange = viewModel::setRoomIdInput,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("ルームID") },
-                    singleLine = true,
+                    color = Color.White.copy(alpha = 0.30f),
+                    fontSize = 9.sp,
+                    letterSpacing = 0.7.sp,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(14.dp))
-                OutlinedButton(
-                    onClick = viewModel::joinRoom,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("参加する") }
             }
         }
     }
@@ -2544,6 +2623,7 @@ private fun LobbyScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
 private fun RoomScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
     val game = state.gameState ?: return
     val clipboard = LocalClipboardManager.current
+    val pcInviteUrl = state.serverUrl.trimEnd('/') + "/?room=" + game.roomId
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -2551,7 +2631,41 @@ private fun RoomScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            Text("対戦ルーム", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "ONLINE TABLE",
+                        color = CasinoGold,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.5.sp,
+                    )
+                    Text(
+                        "対戦ルーム",
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black,
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(100.dp),
+                    color = if (state.socketConnected) Color(0xFF123323) else Color(0xFF2A210B),
+                    border = BorderStroke(
+                        1.dp,
+                        if (state.socketConnected) Color(0xFF77D69D).copy(alpha = 0.55f)
+                        else CasinoGold.copy(alpha = 0.42f),
+                    ),
+                ) {
+                    Text(
+                        if (state.socketConnected) "● LIVE" else "○ SYNC",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        color = if (state.socketConnected) Color(0xFF77D69D) else CasinoGold,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 9.sp,
+                        letterSpacing = 1.2.sp,
+                    )
+                }
+            }
         }
         item {
             CasinoPanel(title = if (game.host) "♛ あなたがホスト" else "参加中") {
@@ -2565,10 +2679,22 @@ private fun RoomScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                         color = CasinoGreenDark,
                     )
                     OutlinedButton(onClick = { clipboard.setText(AnnotatedString(game.roomId)) }) {
-                        Text("コピー")
+                        Text("IDコピー")
                     }
                 }
-                Text("このIDを友だちに共有してください。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = { clipboard.setText(AnnotatedString(pcInviteUrl)) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("PC招待URLをコピー")
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "PCでは招待URLを開くだけ。Android同士はROOM IDでも参加できます。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
+                )
             }
         }
         item {

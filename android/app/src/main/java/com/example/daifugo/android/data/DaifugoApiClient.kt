@@ -48,6 +48,27 @@ class DaifugoApiClient {
         baseUrl = normalized
     }
 
+    /**
+     * 公開マルチプレイ用セッションを開始する。
+     *
+     * PCブラウザ版と同じ /api/auth/session を利用し、エンドユーザーへ
+     * サーバー共通パスワードを要求しない。返却されたCSRFトークンと
+     * JSESSIONIDは以後のREST / WebSocketで共有する。
+     */
+    suspend fun openPublicSession(): LoginResponse {
+        val json = execute(
+            request("/api/auth/session")
+                .get()
+                .build(),
+            needsCsrf = false,
+        )
+        return ServerJson.login(json).also { csrfToken = it.csrfToken }
+    }
+
+    /**
+     * 開発・旧クライアント互換用の共通パスワードログイン。
+     * 通常のスマホMULTIPLAYERではopenPublicSession()を使用する。
+     */
     suspend fun login(password: String): LoginResponse {
         val body = JSONObject().put("password", password).toString()
         val json = execute(
