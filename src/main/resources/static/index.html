@@ -137,11 +137,49 @@
       padding:12px 17px;border-radius:13px;background:#0c1510;border:1px solid rgba(216,184,90,.35);
       box-shadow:0 12px 36px #000a;color:#fff}
     .toast.error{border-color:#b33d46;background:#291014;color:#ffc4c8}
-    .cutin{position:fixed;inset:0;z-index:2000;background:#000c;display:grid;place-items:center}
-    .cutin-box{min-width:min(500px,88vw);padding:30px;text-align:center;border-radius:25px;background:#090d0b;
-      border:2px solid var(--gold);box-shadow:0 0 90px rgba(216,184,90,.25)}
-    .cutin-title{color:var(--gold);font-size:.85rem;font-weight:1000;letter-spacing:.25em}
-    .cutin-main{font-size:clamp(2rem,7vw,4.5rem);font-weight:1000;margin:10px 0}
+    .player-head{display:flex;align-items:center;gap:9px}
+    .player-avatar{width:42px;height:42px;flex:0 0 42px;border-radius:50%;overflow:hidden;
+      border:1.5px solid rgba(216,184,90,.42);background:linear-gradient(145deg,#173122,#090d0b);
+      display:grid;place-items:center;color:var(--gold);font-weight:1000;box-shadow:0 5px 14px #0007}
+    .player-avatar.active{border-color:var(--gold);box-shadow:0 0 0 2px rgba(216,184,90,.12),0 0 22px rgba(216,184,90,.25)}
+    .player-avatar img{width:100%;height:100%;object-fit:cover}
+    .avatar-fallback{width:100%;height:100%;display:grid;place-items:center}
+    .card.compact{flex-basis:54px;width:54px;height:78px;padding:5px}
+    .card.compact .center{font-size:1.4rem}
+    .cpu-overlay{position:fixed;inset:0;z-index:1500;pointer-events:none;overflow:hidden}
+    .cpu-thinking{position:fixed;left:50%;top:92px;transform:translateX(-50%);
+      padding:10px 18px;border-radius:999px;background:rgba(3,6,5,.96);border:1px solid rgba(216,184,90,.5);
+      box-shadow:0 10px 32px #000b;color:#fff;font-weight:1000;letter-spacing:.08em;animation:cpuThinkPulse .75s ease-in-out infinite alternate}
+    .cpu-thinking:before{content:"◆";color:var(--gold);margin-right:8px}
+    @keyframes cpuThinkPulse{to{transform:translateX(-50%) scale(1.035);filter:brightness(1.15)}}
+    .cpu-flight{position:fixed;z-index:1501;display:flex;flex-direction:column;align-items:center;gap:7px;
+      will-change:transform,opacity}
+    .cpu-action-label{padding:7px 13px;border-radius:999px;background:rgba(3,6,5,.96);
+      border:1px solid rgba(216,184,90,.55);color:var(--gold);font-size:.76rem;font-weight:1000;
+      letter-spacing:.08em;white-space:nowrap;box-shadow:0 7px 24px #0009}
+    .cpu-card-row{display:flex;gap:0}.cpu-card-row .card{margin-right:-10px}
+    .cpu-pass-burst{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);padding:15px 28px;
+      border-radius:18px;background:rgba(42,9,12,.96);border:1px solid rgba(227,76,82,.72);
+      color:#ffb9be;font-size:1.35rem;font-weight:1000;letter-spacing:.13em;box-shadow:0 12px 42px #000b}
+    .cpu-transfer-stack{display:flex;align-items:center;padding-right:18px}.cpu-transfer-stack .card.back{margin-right:-18px}
+    .cutin{position:fixed;inset:0;z-index:2000;background:#000c;display:grid;place-items:center;overflow:hidden}
+    .cutin:before{content:"";position:absolute;inset:-20%;background:repeating-linear-gradient(167deg,
+      transparent 0 44px,rgba(255,215,105,.07) 45px 49px,transparent 50px 88px);transform:skewY(-4deg)}
+    .cutin.jack:before{background:repeating-linear-gradient(167deg,transparent 0 44px,rgba(138,109,255,.13) 45px 50px,transparent 51px 88px)}
+    .cutin.early:before{background:repeating-linear-gradient(167deg,transparent 0 44px,rgba(255,91,91,.14) 45px 50px,transparent 51px 88px)}
+    .cutin-box{position:relative;min-width:min(560px,90vw);padding:32px;text-align:center;border-radius:25px;background:#090d0beF;
+      border:2px solid var(--gold);box-shadow:0 0 90px rgba(216,184,90,.25);animation:cutInPop .42s cubic-bezier(.2,.8,.2,1)}
+    .cutin.jack .cutin-box{border-color:#8a6dff;box-shadow:0 0 90px rgba(138,109,255,.25)}
+    .cutin.early .cutin-box{border-color:#ff5b5b;box-shadow:0 0 90px rgba(255,91,91,.24)}
+    @keyframes cutInPop{from{opacity:0;transform:scale(.78)}to{opacity:1;transform:scale(1)}}
+    .cutin-title{color:var(--gold);font-size:.9rem;font-weight:1000;letter-spacing:.27em}
+    .cutin.jack .cutin-title{color:#b7a8ff}.cutin.early .cutin-title{color:#ff6b6b}
+    .cutin-main{font-size:clamp(2rem,7vw,4.5rem);font-weight:1000;margin:8px 0}
+    .cutin-players{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:12px 0}
+    .cutin-player-chip{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#111812;border:1px solid var(--line)}
+    .cutin-player-chip .player-avatar{width:36px;height:36px;flex-basis:36px}
+    .cutin-route{display:inline-block;margin-top:10px;padding:8px 27px;border-radius:999px;background:var(--gold);
+      color:#241707;font-size:1.25rem;font-weight:1000;letter-spacing:.08em}
     .loading{min-height:100vh;display:grid;place-items:center;color:var(--gold);font-weight:900;letter-spacing:.15em}
     .spinner{width:32px;height:32px;border:3px solid rgba(216,184,90,.15);border-top-color:var(--gold);border-radius:50%;
       animation:spin .7s linear infinite;margin:auto auto 14px}
@@ -362,13 +400,23 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
+
+<div id="cpuActionOverlay" class="cpu-overlay hidden" aria-live="polite">
+  <div id="cpuThinking" class="cpu-thinking hidden"></div>
+  <div id="cpuActionStage"></div>
+</div>
+
 <div id="cutin" class="cutin hidden">
   <div class="cutin-box">
     <div id="cutinTitle" class="cutin-title"></div>
     <div id="cutinMain" class="cutin-main"></div>
+    <div id="cutinPlayers" class="cutin-players"></div>
     <div id="cutinPlayer" class="subtitle"></div>
+    <div id="cutinRoute" class="cutin-route hidden">8 → 10</div>
   </div>
 </div>
+
+<audio id="yajuBgm" src="/assets/audio/yaju_bgm.mp3" preload="auto" loop></audio>
 
 <script>
 'use strict';
@@ -384,6 +432,8 @@ let pollTimer = null;
 let setupMode = 'solo';
 let lastEventId = Number(sessionStorage.getItem('yaju.pc.lastEventId') || 0);
 let cutinBusy = false;
+let cpuSequenceRunning = false;
+let cpuSequenceToken = 0;
 const cutinQueue = [];
 const playLog = [];
 
@@ -469,7 +519,9 @@ async function restoreOrMenu(){
 }
 
 function showMenu(){
+  cancelCpuSequence();
   closeRealtime();
+  stopYajuBgm();
   currentState=null;selected.clear();
   history.replaceState({},'',location.pathname);
   byId('menuPlayerName').textContent=playerName;
@@ -566,6 +618,7 @@ function bindRoom(id){
 
 async function refreshState(){
   if(!roomId)return;
+  if(cpuSequenceRunning && isCpuGame(currentState))return;
   try{
     const state=await api('/api/rooms/'+encodeURIComponent(roomId)+'/state');
     currentState=state;
@@ -582,6 +635,10 @@ async function refreshState(){
 function connectSocket(){
   closeRealtime();
   if(!roomId)return;
+  if(isCpuGame(currentState)){
+    byId('networkPill').textContent='● SOLO';
+    return;
+  }
   const protocol=location.protocol==='https:'?'wss:':'ws:';
   const url=protocol+'//'+location.host+'/ws/game?roomId='+encodeURIComponent(roomId);
   try{
@@ -628,6 +685,7 @@ async function startRoomGame(){
 
 async function playCards(){
   try{
+    if(cpuSequenceRunning)return;
     if(!currentState)return;
     const self=currentState.players.find(function(p){return p.self;});
     if(!self)return;
@@ -648,6 +706,7 @@ async function playCards(){
 
 async function passTurn(){
   try{
+    if(cpuSequenceRunning)return;
     const state=await api('/api/rooms/'+encodeURIComponent(roomId)+'/pass',{method:'POST'});
     selected.clear();currentState=state;render(state);
   }catch(e){toast(e.message,true);}
@@ -655,12 +714,14 @@ async function passTurn(){
 
 async function leaveRoom(){
   if(!roomId){showMenu();return;}
+  cancelCpuSequence();
   try{
     await api('/api/rooms/'+encodeURIComponent(roomId)+'/leave',{method:'POST'});
   }catch(e){
     if(currentState && currentState.started && !currentState.finished){toast(e.message,true);return;}
   }
   closeRealtime();
+  stopYajuBgm();
   roomId='';currentState=null;selected.clear();
   localStorage.removeItem('yaju.pc.roomId');
   showMenu();
@@ -679,9 +740,11 @@ async function copyInvite(){
 
 function render(state){
   processEvents(state.events||[]);
+  syncGameAudio(state);
   if(state.finished){renderResult(state);return;}
   if(!state.started){renderRoom(state);return;}
   renderGame(state);
+  maybeStartCpuSequence();
 }
 
 function renderRoom(state){
@@ -695,8 +758,10 @@ function renderRoom(state){
   state.players.forEach(function(p){
     const el=document.createElement('div');
     el.className='player';
-    el.innerHTML='<strong>'+esc(p.playerName)+(p.self?' <span style="color:var(--gold)">YOU</span>':'')+'</strong>'+
-      '<div class="mini">'+(p.cpu?'CPU '+esc(p.cpuDifficulty||''):'PLAYER')+' / HAND '+p.handCount+'</div>';
+    el.dataset.playerId=p.playerId;
+    el.innerHTML='<div class="player-head">'+avatarMarkup(p,state,false)+
+      '<div><strong>'+esc(p.playerName)+(p.self?' <span style="color:var(--gold)">YOU</span>':'')+'</strong>'+
+      '<div class="mini">'+(p.cpu?'CPU '+esc(p.cpuDifficulty||''):'PLAYER')+' / HAND '+p.handCount+'</div></div></div>';
     container.appendChild(el);
   });
 }
@@ -713,8 +778,10 @@ function renderGame(state){
   opponents.forEach(function(p){
     const el=document.createElement('div');
     el.className='opponent'+(state.currentPlayerId===p.playerId?' active':'');
+    el.dataset.playerId=p.playerId;
     const status=p.rank?'#'+p.rank:(p.passed?'PASS':(state.currentPlayerId===p.playerId?'● ACTIVE TURN':(p.cpu?(p.cpuDifficulty||'CPU'):'PLAYER')));
-    el.innerHTML='<strong>'+esc(p.playerName)+'</strong><div class="mini">'+esc(status)+'</div>'+
+    el.innerHTML='<div class="player-head">'+avatarMarkup(p,state,state.currentPlayerId===p.playerId)+
+      '<div style="min-width:0;flex:1"><strong>'+esc(p.playerName)+'</strong><div class="mini">'+esc(status)+'</div></div></div>'+
       '<div style="display:flex;gap:-4px;margin-top:7px">'+backCards(p.handCount)+'</div>'+
       (p.yajuStatus && p.yajuStatus!=='NONE'?'<span class="badge gold">YAJU '+esc(p.yajuStatus)+'</span>':'');
     opp.appendChild(el);
@@ -728,19 +795,23 @@ function renderGame(state){
   }
 
   const hand=byId('hand');hand.innerHTML='';
+  const handWrap=hand.closest('.hand-wrap');
+  if(handWrap && self)handWrap.dataset.playerId=self.playerId;
   if(self){
     self.hand.forEach(function(card,index){hand.appendChild(cardElement(card,true,index));});
   }
 
   const seven=state.sevenTransfer||{};
   const transfer=!!self && seven.pending && seven.sourcePlayerId===self.playerId;
-  byId('passButton').disabled=!myTurn || transfer || !state.field.cards.length;
-  byId('playButton').disabled=!myTurn || selected.size===0 || (transfer && selected.size!==seven.cardCount);
+  byId('passButton').disabled=cpuSequenceRunning || !myTurn || transfer || !state.field.cards.length;
+  byId('playButton').disabled=cpuSequenceRunning || !myTurn || selected.size===0 || (transfer && selected.size!==seven.cardCount);
   byId('playButton').textContent=transfer?'TRANSFER '+selected.size+'/'+seven.cardCount+' ▶':'PLAY '+selected.size+' ▶';
 
   const banner=byId('turnBanner');
   const current=state.players.find(function(p){return p.playerId===state.currentPlayerId;});
-  banner.textContent=myTurn?'YOUR TURN':(current?current.playerName+' TURN':'WAITING...');
+  banner.textContent=cpuSequenceRunning && current && current.cpu
+    ? current.playerName+' PLAYING'
+    : (myTurn?'YOUR TURN':(current?current.playerName+' TURN':'WAITING...'));
   banner.classList.toggle('mine',myTurn);
 
   const notice=byId('transferNotice');
@@ -772,6 +843,7 @@ function renderRules(state){
 }
 
 function pushStateLog(state){
+  if(isCpuGame(state))return;
   const current=state.players.find(function(p){return p.playerId===state.currentPlayerId;});
   const key=(current?current.playerId:'finished')+'|'+state.field.cards.map(function(c){return c.suit+'-'+c.rank;}).join(',');
   if(pushStateLog.lastKey===key)return;
@@ -789,6 +861,8 @@ function renderLog(){
 }
 
 function renderResult(state){
+  cpuSequenceRunning=false;
+  hideCpuOverlay();
   showOnly('resultScreen');
   const ranking=state.players.slice().sort(function(a,b){return (a.rank||999)-(b.rank||999);});
   const self=ranking.find(function(p){return p.self;});
@@ -802,11 +876,12 @@ function renderResult(state){
   });
 }
 
-function cardElement(card,selectable,index){
+function cardElement(card,selectable,index,compact){
   const el=document.createElement('button');
   el.type='button';
   const red=card.suit==='HEART'||card.suit==='DIAMOND';
-  el.className='card'+(red?' red-suit':'')+(card.joker?' joker':'')+(selectable?' selectable':'')+(selected.has(index)?' selected':'');
+  el.className='card'+(red?' red-suit':'')+(card.joker?' joker':'')+(selectable?' selectable':'')+
+    (selected.has(index)?' selected':'')+(compact?' compact':'');
   const rank=rankText(card.rank);
   const suit=symbol(card.suit);
   el.innerHTML='<div class="rank">'+(card.joker?'JOKER':rank+' '+suit)+'</div>'+
@@ -832,14 +907,46 @@ function backCards(count){
   return html;
 }
 
+function isCpuGame(state){
+  return !!state && (state.gameMode==='CPU' || state.gameMode==='YAJU_CHALLENGE');
+}
+
+function delay(ms){
+  return new Promise(function(resolve){setTimeout(resolve,ms);});
+}
+
 function processEvents(events){
-  events.filter(function(e){return e.id>lastEventId;}).sort(function(a,b){return a.id-b.id;}).forEach(function(e){
-    if(e.type==='YAJU_AVAILABLE')cutinQueue.push({title:'YAJU TARGET',main:'野獣上がりできます',player:e.playerName});
-    if(e.type==='YAJU_SUCCESS')cutinQueue.push({title:'YAJU SUCCESS',main:'やりますねぇ！',player:e.playerName});
-    if(e.type==='JACK_BACK')cutinQueue.push({title:'J BACK',main:'バック気持ちいい',player:e.playerName});
-    if(e.type==='EARLY_SHOT')cutinQueue.push({title:'EARLY SHOT',main:'早すぎるッ！',player:e.playerName});
-    lastEventId=Math.max(lastEventId,e.id);
+  const unseen=events
+    .filter(function(e){return e.id>lastEventId;})
+    .sort(function(a,b){return a.id-b.id;});
+  if(!unseen.length)return;
+
+  const yajuAvailable=unseen.filter(function(e){return e.type==='YAJU_AVAILABLE';});
+  if(yajuAvailable.length){
+    cutinQueue.push({
+      kind:'yaju',
+      title:'YAJU CHANCE',
+      main:'野獣上がり確定',
+      playerIds:yajuAvailable.map(function(e){return e.playerId;}),
+      players:yajuAvailable.map(function(e){return e.playerName;}),
+      duration:2600
+    });
+  }
+
+  unseen.forEach(function(e){
+    if(e.type==='YAJU_SUCCESS'){
+      playLog.unshift(e.playerName+'：野獣上がり成功「やりますねぇ！」');
+      playLog.splice(8);
+    }
+    if(e.type==='JACK_BACK'){
+      cutinQueue.push({kind:'jack',title:'J BACK',main:'バック気持ちいい',playerIds:[e.playerId],players:[e.playerName],duration:2450});
+    }
+    if(e.type==='EARLY_SHOT'){
+      cutinQueue.push({kind:'early',title:'早漏',main:'早すぎるッ！',playerIds:[e.playerId],players:[e.playerName],duration:2200});
+    }
   });
+
+  lastEventId=Math.max(lastEventId,unseen[unseen.length-1].id);
   sessionStorage.setItem('yaju.pc.lastEventId',String(lastEventId));
   showNextCutin();
 }
@@ -848,11 +955,248 @@ function showNextCutin(){
   if(cutinBusy || !cutinQueue.length)return;
   cutinBusy=true;
   const item=cutinQueue.shift();
+  const overlay=byId('cutin');
+  overlay.className='cutin '+(item.kind||'yaju');
   byId('cutinTitle').textContent=item.title;
   byId('cutinMain').textContent=item.main;
-  byId('cutinPlayer').textContent=item.player||'';
-  byId('cutin').classList.remove('hidden');
-  setTimeout(function(){byId('cutin').classList.add('hidden');cutinBusy=false;showNextCutin();},1850);
+  byId('cutinPlayer').textContent=item.kind==='yaju'?'':(item.players&&item.players[0]||'');
+  byId('cutinRoute').classList.toggle('hidden',item.kind!=='yaju');
+
+  const players=byId('cutinPlayers');
+  players.innerHTML='';
+  if(item.kind==='yaju'){
+    (item.players||[]).forEach(function(name,index){
+      const player=currentState && currentState.players.find(function(p){return p.playerId===item.playerIds[index];});
+      const chip=document.createElement('div');
+      chip.className='cutin-player-chip';
+      chip.innerHTML=(player?avatarMarkup(player,currentState,true):'<span class="player-avatar active"><span class="avatar-fallback">♛</span></span>')+
+        '<strong>'+esc(name)+'</strong>';
+      players.appendChild(chip);
+    });
+  }
+
+  overlay.classList.remove('hidden');
+  setTimeout(function(){
+    overlay.classList.add('hidden');
+    overlay.className='cutin hidden';
+    cutinBusy=false;
+    showNextCutin();
+  },item.duration||2300);
+}
+
+function waitForCutins(){
+  return new Promise(function(resolve){
+    const check=function(){
+      if(!cutinBusy && !cutinQueue.length){resolve();return;}
+      setTimeout(check,80);
+    };
+    check();
+  });
+}
+
+function avatarMarkup(player,state,active){
+  const initial=esc((player.playerName||'?').trim().charAt(0).toUpperCase()||'?');
+  let image='';
+  if(player.cpu && state){
+    const cpus=state.players.filter(function(p){return p.cpu;});
+    const index=cpus.findIndex(function(p){return p.playerId===player.playerId;});
+    if(index>=0 && index<6){
+      const num=String(index+1).padStart(2,'0');
+      image='<img src="/assets/cpu_avatars/cpu_'+num+'.jpg" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">';
+    }
+  }
+  return '<span class="player-avatar'+(active?' active':'')+'">'+image+
+    '<span class="avatar-fallback" style="'+(image?'display:none':'display:grid')+'">'+initial+'</span></span>';
+}
+
+function currentCpuPlayer(){
+  if(!currentState || !isCpuGame(currentState) || currentState.finished)return null;
+  return currentState.players.find(function(p){return p.playerId===currentState.currentPlayerId && p.cpu;})||null;
+}
+
+function maybeStartCpuSequence(){
+  if(cpuSequenceRunning || !roomId || !currentCpuPlayer())return;
+  const token=++cpuSequenceToken;
+  cpuSequenceRunning=true;
+  runCpuSequence(token);
+}
+
+function cancelCpuSequence(){
+  cpuSequenceToken++;
+  cpuSequenceRunning=false;
+  hideCpuOverlay();
+}
+
+async function runCpuSequence(token){
+  try{
+    while(token===cpuSequenceToken && roomId){
+      const cpu=currentCpuPlayer();
+      if(!cpu)break;
+
+      await waitForCutins();
+      if(token!==cpuSequenceToken)break;
+
+      showCpuThinking(cpu);
+      if(currentState)renderGame(currentState);
+      await delay(450);
+      if(token!==cpuSequenceToken)break;
+
+      const result=await api('/api/rooms/'+encodeURIComponent(roomId)+'/cpu/next',{method:'POST'});
+      hideCpuThinking();
+      pushCpuActionLog(result);
+      await showCpuAction(result,token);
+      if(token!==cpuSequenceToken)break;
+
+      hideCpuOverlay();
+      selected.clear();
+      currentState=result.state;
+      render(result.state);
+      await delay(250);
+    }
+  }catch(e){
+    toast(e.message||'CPU処理でエラーが発生しました',true);
+  }finally{
+    if(token===cpuSequenceToken){
+      cpuSequenceRunning=false;
+      hideCpuOverlay();
+      if(currentState && currentState.started && !currentState.finished)renderGame(currentState);
+    }
+  }
+}
+
+function showCpuThinking(cpu){
+  const overlay=byId('cpuActionOverlay');
+  overlay.classList.remove('hidden');
+  const thinking=byId('cpuThinking');
+  thinking.textContent=cpu.playerName+'  THINKING...';
+  thinking.classList.remove('hidden');
+  byId('cpuActionStage').innerHTML='';
+}
+
+function hideCpuThinking(){
+  byId('cpuThinking').classList.add('hidden');
+}
+
+function hideCpuOverlay(){
+  const overlay=byId('cpuActionOverlay');
+  overlay.classList.add('hidden');
+  byId('cpuThinking').classList.add('hidden');
+  byId('cpuActionStage').innerHTML='';
+}
+
+function playerAnchor(playerId){
+  const nodes=Array.from(document.querySelectorAll('[data-player-id]'));
+  return nodes.find(function(node){return node.dataset.playerId===playerId;})||null;
+}
+
+function centerOf(element){
+  if(!element)return {x:window.innerWidth/2,y:window.innerHeight*.28};
+  const rect=element.getBoundingClientRect();
+  return {x:rect.left+rect.width/2,y:rect.top+rect.height/2};
+}
+
+async function showCpuAction(action,token){
+  const overlay=byId('cpuActionOverlay');
+  const host=byId('cpuActionStage');
+  overlay.classList.remove('hidden');
+  host.innerHTML='';
+
+  if(action.type==='PASS'){
+    const burst=document.createElement('div');
+    burst.className='cpu-pass-burst';
+    burst.textContent=action.playerName+'   PASS';
+    host.appendChild(burst);
+    const animation=burst.animate([
+      {transform:'translate(-50%,-50%) scale(.86)',opacity:0},
+      {transform:'translate(-50%,-50%) scale(1.06)',opacity:1,offset:.28},
+      {transform:'translate(-50%,-43%) scale(1)',opacity:.72}
+    ],{duration:1500,easing:'cubic-bezier(.2,.8,.2,1)',fill:'forwards'});
+    try{await animation.finished;}catch(_){}
+    return;
+  }
+
+  const flight=document.createElement('div');
+  flight.className='cpu-flight';
+  const label=document.createElement('div');
+  label.className='cpu-action-label';
+  label.textContent=action.type==='SEVEN_TRANSFER'
+    ? action.playerName+' → '+(action.targetPlayerName||'隣')+'   7 TRANSFER'
+    : action.playerName+'   PLAY!';
+  flight.appendChild(label);
+
+  if(action.type==='PLAY'){
+    const row=document.createElement('div');
+    row.className='cpu-card-row';
+    (action.cards||[]).forEach(function(card){row.appendChild(cardElement(card,false,-1,true));});
+    flight.appendChild(row);
+  }else{
+    const row=document.createElement('div');
+    row.className='cpu-transfer-stack';
+    for(let i=0;i<Math.max(1,action.cardCount||0);i++){
+      const back=document.createElement('span');
+      back.className='card back';
+      row.appendChild(back);
+    }
+    flight.appendChild(row);
+  }
+
+  host.appendChild(flight);
+  const from=centerOf(playerAnchor(action.playerId));
+  const target=action.type==='SEVEN_TRANSFER'
+    ? centerOf(playerAnchorByName(action.targetPlayerName))
+    : centerOf(byId('field'));
+
+  flight.style.left=(from.x-70)+'px';
+  flight.style.top=(from.y-40)+'px';
+
+  const dx=target.x-from.x;
+  const dy=target.y-from.y;
+  const duration=action.type==='PLAY'?3000:2000;
+  const animation=flight.animate([
+    {transform:'translate(0,0) scale(.80) rotate(-5deg)',opacity:.74},
+    {transform:'translate('+(dx*.35)+'px,'+(dy*.28)+'px) scale(.9) rotate(3deg)',opacity:1,offset:.42},
+    {transform:'translate('+dx+'px,'+dy+'px) scale(1) rotate(0deg)',opacity:1}
+  ],{duration:duration,easing:'cubic-bezier(.2,.72,.18,1)',fill:'forwards'});
+  try{await animation.finished;}catch(_){}
+}
+
+function playerAnchorByName(name){
+  if(!currentState || !name)return null;
+  const player=currentState.players.find(function(p){return p.playerName===name;});
+  return player?playerAnchor(player.playerId):null;
+}
+
+function pushCpuActionLog(action){
+  let text='';
+  if(action.type==='PASS'){
+    text=action.playerName+'：PASS';
+  }else if(action.type==='SEVEN_TRANSFER'){
+    text=action.playerName+'：'+action.cardCount+'枚を '+(action.targetPlayerName||'隣')+' へ7渡し';
+  }else{
+    text=action.playerName+'：'+(action.cards||[]).map(cardLabel).join(' ')+' を出した';
+  }
+  playLog.unshift(text);
+  playLog.splice(6);
+  renderLog();
+}
+
+function syncGameAudio(state){
+  const active=!!state && state.started && !state.finished &&
+    state.players.some(function(p){return p.yajuStatus==='ACTIVE' || p.yajuStatus==='EIGHT_PLAYED';});
+  const audio=byId('yajuBgm');
+  if(active){
+    audio.volume=.55;
+    if(audio.paused)audio.play().catch(function(){});
+  }else{
+    stopYajuBgm();
+  }
+}
+
+function stopYajuBgm(){
+  const audio=byId('yajuBgm');
+  if(!audio)return;
+  if(!audio.paused)audio.pause();
+  try{audio.currentTime=0;}catch(_){}
 }
 
 function cardLabel(card){return card.joker?'JOKER':symbol(card.suit)+rankText(card.rank);}
