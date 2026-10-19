@@ -120,6 +120,50 @@ public class GameApiController {
     }
 
     /**
+     * 野獣チャレンジ戦を作成し、その場で開始する。
+     */
+    @PostMapping("/challenge")
+    public GameStateResponse createYajuChallenge(
+            @RequestBody CpuGameRequest request,
+            HttpSession session) {
+
+        ensureNotBoundToRoom(session);
+        validatePlayerName(request.playerName());
+
+        CpuDifficulty difficulty;
+        try {
+            difficulty = CpuDifficulty.valueOf(request.difficulty());
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("CPU難易度が不正です");
+        }
+
+        GameRuleSettings settings = new GameRuleSettings(
+                request.jokerCount(),
+                request.revolution(),
+                true,
+                request.markLock(),
+                request.sevenTransfer(),
+                true,
+                request.jackBack(),
+                request.forbiddenFinish()
+        );
+
+        CpuGameService.CpuGameCreation creation = cpuGameService.createYajuChallenge(
+                request.playerName().trim(),
+                request.cpuCount(),
+                difficulty,
+                settings
+        );
+        GameRoom room = creation.room();
+        Player human = creation.humanPlayer();
+        bindSession(session, room.getRoomId(), human.getId());
+
+        synchronized (room) {
+            return responseMapper.map(room, human.getId());
+        }
+    }
+
+    /**
      * 既存部屋へ参加し、セッションとプレイヤーを紐付ける。
      */
     @PostMapping("/{roomId}/join")
@@ -289,7 +333,9 @@ public class GameApiController {
 
     /** CPU戦の場合、人間の操作後に次の人間手番までCPUを自動進行する。 */
     private void processCpuIfNeeded(GameRoom room) {
-        if (room.getGameMode() == GameMode.CPU && !room.isFinished()) {
+        if ((room.getGameMode() == GameMode.CPU
+                || room.getGameMode() == GameMode.YAJU_CHALLENGE)
+                && !room.isFinished()) {
             cpuGameService.processCpuTurns(room.getRoomId());
         }
     }

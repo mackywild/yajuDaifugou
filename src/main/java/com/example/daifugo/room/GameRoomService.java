@@ -17,7 +17,9 @@ import com.example.daifugo.game.config.GameRuleSettings;
 import com.example.daifugo.game.domain.Card;
 import com.example.daifugo.game.mode.GameMode;
 import com.example.daifugo.game.domain.GameState;
+import com.example.daifugo.game.domain.Mark;
 import com.example.daifugo.game.domain.Player;
+import com.example.daifugo.game.domain.Rank;
 import com.example.daifugo.game.service.GameEngine;
 import com.example.daifugo.game.service.GameEngineFactory;
 import com.example.daifugo.game.service.GameInitializer;
@@ -149,6 +151,21 @@ public class GameRoomService {
      * @return 開始後の対戦部屋
      */
     public GameRoom startGame(String roomId) {
+        return startGameInternal(roomId, null);
+    }
+
+    /**
+     * 野獣チャレンジを開始する。
+     * 指定プレイヤーの初期手札へ8と10を最低1枚ずつ保証する。
+     */
+    public GameRoom startYajuChallenge(String roomId, String challengePlayerId) {
+        if (challengePlayerId == null || challengePlayerId.isBlank()) {
+            throw new IllegalArgumentException("チャレンジ対象プレイヤーが不正です");
+        }
+        return startGameInternal(roomId, challengePlayerId);
+    }
+
+    private GameRoom startGameInternal(String roomId, String challengePlayerId) {
         GameRoom room = getRoom(roomId);
 
         synchronized (room) {
@@ -167,6 +184,13 @@ public class GameRoomService {
             GameRuleSettings settings = room.getRuleSettings();
             new GameInitializer(settings.jokerCount()).initialize(gameState);
 
+            if (challengePlayerId != null) {
+                if (!settings.yajuRule()) {
+                    throw new IllegalStateException("チャレンジモードでは野獣ルールが必要です");
+                }
+                guaranteeYajuOpeningHand(gameState, challengePlayerId);
+            }
+
             /*
              * 野獣ルールが有効な場合のみ、配牌時点で8と10を持っている
              * プレイヤーを対象化する。
@@ -179,6 +203,48 @@ public class GameRoomService {
             room.start(gameState, gameEngine);
             return room;
         }
+    }
+
+    private void guaranteeYajuOpeningHand(GameState gameState, String playerId) {
+        Player human = gameState.getPlayers().stream()
+                .filter(player -> player.getId().equals(playerId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("チャレンジ対象プレイヤーが存在しません"));
+
+        guaranteeRank(gameState, human, Rank.EIGHT);
+        guaranteeRank(gameState, human, Rank.TEN);
+        gameState.getPlayers().forEach(Player::sortHand);
+    }
+
+    private void guaranteeRank(GameState gameState, Player human, Rank rank) {
+        if (human.countRank(rank) > 0) {
+            return;
+        }
+
+        Player donor = gameState.getPlayers().stream()
+                .filter(player -> !player.getId().equals(human.getId()))
+                .filter(player -> player.countRank(rank) > 0)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("チャレンジ用の" + rank.name() + "を確保できません"));
+
+        Card incoming = donor.getHand().stream()
+                .filter(card -> card.getRank() == rank)
+                .findFirst()
+                .orElseThrow();
+
+        long eightCount = human.countRank(Rank.EIGHT);
+        long tenCount = human.countRank(Rank.TEN);
+        Card outgoing = human.getHand().stream()
+                .filter(card -> !(card.getSuit() == Mark.DIAMOND && card.getRank() == Rank.THREE))
+                .filter(card -> !(card.getRank() == Rank.EIGHT && eightCount <= 1))
+                .filter(card -> !(card.getRank() == Rank.TEN && tenCount <= 1))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("チャレンジ用の交換カードを確保できません"));
+
+        human.removeCards(List.of(outgoing));
+        donor.removeCards(List.of(incoming));
+        human.addCard(incoming);
+        donor.addCard(outgoing);
     }
 
     /**
