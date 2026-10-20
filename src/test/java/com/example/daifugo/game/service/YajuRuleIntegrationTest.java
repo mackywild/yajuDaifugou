@@ -84,6 +84,55 @@ class YajuRuleIntegrationTest {
                 .anyMatch(event -> event.type() == GameEventType.YAJU_SUCCESS));
     }
 
+
+    /** 8も複数枚残っている場合、残り8全枚→残り10全枚で野獣上がりできること。 */
+    @Test
+    void yajuFinish_multipleEightsThenMultipleTens_completesSuccessfully() {
+        Card eight1 = card(Mark.SPADE, Rank.EIGHT);
+        Card eight2 = card(Mark.HEART, Rank.EIGHT);
+        Card ten1 = card(Mark.CLUB, Rank.TEN);
+        Card ten2 = card(Mark.DIAMOND, Rank.TEN);
+        Player player = player("A", "A", eight1, eight2, ten1, ten2);
+        Player opponent = player("B", "B", card(Mark.CLUB, Rank.THREE));
+        GameState state = playingState(player, opponent);
+        new YajuRuleService().initializeTargets(state);
+        GameEngine engine = new GameEngineFactory().create();
+
+        engine.play(state, player.getId(), List.of(eight1, eight2));
+
+        assertEquals(YajuStatus.EIGHT_PLAYED, player.getYajuStatus());
+        assertEquals(2, player.getCardCount());
+        assertEquals(player.getId(), state.getCurrentPlayer().getId());
+
+        engine.play(state, player.getId(), List.of(ten1, ten2));
+
+        assertEquals(YajuStatus.COMPLETED, player.getYajuStatus());
+        assertEquals(1, player.getRank());
+        assertTrue(state.getEvents().stream()
+                .anyMatch(event -> event.type() == GameEventType.YAJU_SUCCESS));
+    }
+
+    /** 複数8を残している場合、第1段階では8を全枚まとめて出す必要があること。 */
+    @Test
+    void yajuFinish_multipleEights_rejectsPartialEightStep() {
+        Card eight1 = card(Mark.SPADE, Rank.EIGHT);
+        Card eight2 = card(Mark.HEART, Rank.EIGHT);
+        Card ten = card(Mark.CLUB, Rank.TEN);
+        Player player = player("A", "A", eight1, eight2, ten);
+        Player opponent = player("B", "B", card(Mark.CLUB, Rank.THREE));
+        GameState state = playingState(player, opponent);
+        new YajuRuleService().initializeTargets(state);
+        GameEngine engine = new GameEngineFactory().create();
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> engine.play(state, player.getId(), List.of(eight1))
+        );
+
+        assertEquals(YajuStatus.ACTIVE, player.getYajuStatus());
+        assertEquals(3, player.getCardCount());
+    }
+
     /** 8→10以外で上がった場合に反則最下位となること。 */
     @Test
     void yajuFinish_wrongOrderOrCombination_becomesPenaltyFinish() {
