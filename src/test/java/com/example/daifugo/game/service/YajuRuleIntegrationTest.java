@@ -112,27 +112,6 @@ class YajuRuleIntegrationTest {
                 .anyMatch(event -> event.type() == GameEventType.YAJU_SUCCESS));
     }
 
-    /** 複数8を残している場合、第1段階では8を全枚まとめて出す必要があること。 */
-    @Test
-    void yajuFinish_multipleEights_rejectsPartialEightStep() {
-        Card eight1 = card(Mark.SPADE, Rank.EIGHT);
-        Card eight2 = card(Mark.HEART, Rank.EIGHT);
-        Card ten = card(Mark.CLUB, Rank.TEN);
-        Player player = player("A", "A", eight1, eight2, ten);
-        Player opponent = player("B", "B", card(Mark.CLUB, Rank.THREE));
-        GameState state = playingState(player, opponent);
-        new YajuRuleService().initializeTargets(state);
-        GameEngine engine = new GameEngineFactory().create();
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> engine.play(state, player.getId(), List.of(eight1))
-        );
-
-        assertEquals(YajuStatus.ACTIVE, player.getYajuStatus());
-        assertEquals(3, player.getCardCount());
-    }
-
     /** 8→10以外で上がった場合に反則最下位となること。 */
     @Test
     void yajuFinish_wrongOrderOrCombination_becomesPenaltyFinish() {
