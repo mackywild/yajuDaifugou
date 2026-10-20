@@ -20,7 +20,7 @@ import com.example.daifugo.game.domain.YajuStatus;
  * ・一度対象になったプレイヤーはゲーム中に解除されない。
  * ・対象者は8と10を最低1枚ずつ最後まで保持する。
  * ・余分な8/10は通常プレイおよび7渡しに使用できる。
- * ・最終局面が「8×1 + 10×N」の場合、8を単体で出した後に残りの10を全てまとめて出すと野獣上がり成功。
+ * ・最終局面が「8×N + 10×M」の場合、残りの8を全てまとめて出した後に残りの10を全てまとめて出すと野獣上がり成功。
  * ・上記以外の方法で上がった場合は反則上がりとなる。
  */
 public class YajuRuleService {
@@ -66,8 +66,8 @@ public class YajuRuleService {
      * カード提出前に野獣ルール制約を検証する。
      *
      * 通常進行中は最後の1枚の8/10を消費できない。
-     * ただし手札が「8×1 + 10×N（N>=1）」だけになった場合は、
-     * 8を単体提出して野獣上がりの第1段階へ進める。
+     * ただし手札が「8×N + 10×M（N>=1, M>=1）」だけになった場合は、
+     * 残っている8を全てまとめて提出して野獣上がりの第1段階へ進める。
      * その後、残った10を全てまとめて提出して上がれば成功となる。
      *
      * 上がりそのものが野獣手順違反の場合はプレイを拒否せず、
@@ -120,11 +120,14 @@ public class YajuRuleService {
             return new YajuPlayDecision(false, false, true);
         }
 
-        boolean startsEightStep = countRank(player.getHand(), Rank.EIGHT) == 1
-                && countRank(player.getHand(), Rank.TEN) >= 1
-                && handCount == countRank(player.getHand(), Rank.EIGHT)
-                        + countRank(player.getHand(), Rank.TEN)
-                && isSingleRank(selectedCards, Rank.EIGHT);
+        long eightCount = countRank(player.getHand(), Rank.EIGHT);
+        long tenCount = countRank(player.getHand(), Rank.TEN);
+
+        boolean startsEightStep = eightCount >= 1
+                && tenCount >= 1
+                && handCount == eightCount + tenCount
+                && selectedCards.size() == eightCount
+                && areAllRank(selectedCards, Rank.EIGHT);
 
         if (startsEightStep) {
             return new YajuPlayDecision(true, false, false);
@@ -207,10 +210,6 @@ public class YajuRuleService {
     /** 野獣上がり違反を確定する。 */
     public void applyPenalty(Player player) {
         player.markYajuPenalty();
-    }
-
-    private boolean isSingleRank(List<Card> cards, Rank rank) {
-        return cards.size() == 1 && cards.get(0).getRank() == rank;
     }
 
     private boolean areAllRank(List<Card> cards, Rank rank) {
