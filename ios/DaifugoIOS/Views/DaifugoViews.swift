@@ -92,7 +92,7 @@ private struct LoginView: View {
             VStack(alignment: .leading, spacing: 18) {
                 TitleBlock("テーブルへようこそ", "マルチプレイとCPU戦【ひとりでイク】を選べます。")
                 Panel("接続先") {
-                    TextField("http://192.168.1.10:8080", text: $viewModel.serverURL)
+                    TextField("https://yajudaifugou.com", text: $viewModel.serverURL)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                         .keyboardType(.URL).textFieldStyle(.roundedBorder)
                     SecureField("共通パスワード", text: $viewModel.password)
