@@ -960,6 +960,6 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
          * 現在の公開PC/Android共通ゲームサーバー。
          * 公開環境は取得済みドメインへのHTTPS接続を標準とする。
          */
-        const val DEFAULT_PUBLIC_SERVER_URL = "https://yajudaifugou.com"
+        const val DEFAULT_PUBLIC_SERVER_URL = "https://yaju-daifugou.com"
     }
 }

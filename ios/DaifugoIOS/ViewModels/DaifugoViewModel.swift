@@ -64,7 +64,7 @@ final class DaifugoViewModel: ObservableObject {
         if let savedURL, savedURL != "http://192.168.1.10:8080" {
             serverURL = savedURL
         } else {
-            serverURL = "https://yajudaifugou.com"
+            serverURL = "https://yaju-daifugou.com"
         }
         playerName = defaults.string(forKey: "playerName") ?? ""
     }

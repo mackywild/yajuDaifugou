@@ -112,7 +112,7 @@ Android版は次の差し替え式アセットを使用します。ファイル�
 
 ## 公開版 HTTPS 化（2026-10 セキュリティ対応）
 
-公開Web版の接続先は `https://yajudaifugou.com` です。取得済みのConoHa VPSドメインを使い、CaddyでTLS終端して127.0.0.1:8080のSpring Bootへ中継する構成を用意しました。
+公開Web版の接続先は `https://yaju-daifugou.com` です。取得済みのConoHa VPSドメインを使い、CaddyでTLS終端して127.0.0.1:8080のSpring Bootへ中継する構成を用意しました。
 
 - Spring Boot 3.5.16 + 埋め込みTomcat 10.1.61へ更新
 - ブラウザのWebSocketはHTTPS時に自動的にWSSを使用
