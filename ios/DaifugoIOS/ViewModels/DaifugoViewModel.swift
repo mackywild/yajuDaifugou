@@ -60,7 +60,10 @@ final class DaifugoViewModel: ObservableObject {
     private var reconnectTask: Task<Void, Never>?
 
     init() {
-        serverURL = defaults.string(forKey: "serverURL") ?? "http://192.168.1.10:8080"
+        let savedURL = defaults.string(forKey: "serverURL")
+        serverURL = savedURL == nil || savedURL == "http://192.168.1.10:8080"
+            ? "https://yajudaifugou.com"
+            : savedURL!
         playerName = defaults.string(forKey: "playerName") ?? ""
     }
 
