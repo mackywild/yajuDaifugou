@@ -1,9 +1,9 @@
-# 野獣大富豪 — HTTPS / Tomcatセキュリティ対応（Ubuntu系VPSを想定）
+# 野獣大富豪 — HTTPS / Tomcatセキュリティ対応（ConoHa VPS / Ubuntu系OSを想定）
 
 ## 適用範囲と前提
 - Java 21 + Spring Boot 3.5.16、組み込みTomcat 10.1.61へのパッチ適用。
 - CaddyでTLS終端、HTTPからHTTPSへ自動リダイレクト。WebSocketも `wss://` に切り替え。
-- サーバー管理者権限、購入済みドメイン、VPSの公開IPv4アドレスが必要。
+- サーバー管理者権限、購入済みドメイン `yajudaifugou.com`、ConoHa VPS（公開IP `160.251.180.41`）を利用する想定。実際の稼働IPは管理画面でも確認する。
 - **このリポジトリへの変更だけでは本番HTTPS化は完了しない。** DNS・FW・サービスへの反映はサーバで実施する。
 - デプロイ前にサーバのOS、稼働中サービス、既存ドメイン、既存リバースプロキシの有無を調べる。同一サーバで複数アプリを使う場合は既存サイト設定にマージする。
 
@@ -14,7 +14,7 @@ sudo ss -lntp | grep -E ':(80|443|8080)\b' || true
 systemctl list-units --type=service --state=running | grep -E 'caddy|nginx|apache|daifugo' || true
 ```
 - 既存の80/443ポート利用サービスがあれば **Caddyを上書き起動しない**。
-- DNSのAレコードをVPSの公開IPv4へ向ける。AAAAレコードを使うならIPv6も到達可能にする。
+- ConoHaのDNSで `yajudaifugou.com` のAレコードを `160.251.180.41` へ向ける（現在のVPS IPを確認したうえで反映）。AAAAレコードを使うならIPv6も到達可能にする。
 - TCP 80/443をインバウンド許可（VPS事業者側FW・OS側FW）。8080はインターネットから遮断する。
 - 以前のHTTP接続元アプリ（Android/iOS）も本番ドメインのHTTPSへ変更する必要がある。
 
@@ -29,7 +29,7 @@ systemctl list-units --type=service --state=running | grep -E 'caddy|nginx|apach
 
 ## 3. サーバ側設定例
 Ubuntu系なら、Caddy公式パッケージの手順に従いインストールする。
-- `deploy/Caddyfile` の **game.example.com** を取得済みドメインに書き換えて `/etc/caddy/Caddyfile` に配置する。
+- `deploy/Caddyfile` の **yajudaifugou.com** が設定されていることを確認して `/etc/caddy/Caddyfile` に配置する。
 - 既存のCaddyfileを使っている場合はサイトブロックだけ追加し、既存設定を残す。
 - `deploy/daifugo.service` を `/etc/systemd/system/daifugo.service` に配置。実際のユーザー・パスは環境に合わせる。
 - `deploy/daifugo.env.example` を `/etc/daifugo/daifugo.env` にコピーし、**強いパスワード**を設定。環境ファイルは秘密情報を含むので Git 管理しない。
@@ -53,8 +53,8 @@ sudo journalctl -u daifugo -n 100 --no-pager
 # サーバ内部からSpring Bootへ疎通確認
 curl -I http://127.0.0.1:8080/
 # 外部から証明書・HTTPSリダイレクトを確認
-curl -I http://game.example.com/
-curl -I https://game.example.com/
+curl -I http://yajudaifugou.com/
+curl -I https://yajudaifugou.com/
 ```
 - 実ドメインに置き換えて実行。HTTPはHTTPSへリダイレクト、HTTPSは有効な証明書。
 - ブラウザでログイン、部屋作成、他端末で参加、カードを出す、野獣ルールまで確認。
@@ -62,7 +62,7 @@ curl -I https://game.example.com/
 - ログインレスで `/api/rooms/**` を操作できないこと、別部屋・別ユーザーの情報が漏れないことを確認。
 - HTTPS応答のセッションCookieがSecure・HttpOnly・SameSite=Laxであることを確認。
 - クロスオリジンからのブラウザWebSocket接続は拒否する設計。別ドメインにWeb UIを分離する場合は独立して認証・Originポリシーを見直す。
-- Android/iOS側は運用環境のAPI基点URLを `https://` に設定し、端末間クロスプレイを確認。
+- Android/iOS側は運用環境のAPI基点URLを `https://yajudaifugou.com` に設定し、端末間クロスプレイを確認。
 - OSや公開ポート以外も定期更新し、GitHub Dependabot等の依存更新を継続する。
 
 ## 5. 切戻し
