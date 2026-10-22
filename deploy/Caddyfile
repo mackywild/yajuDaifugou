@@ -1,0 +1,16 @@
+# Replace game.example.com with the real domain BEFORE installing as /etc/caddy/Caddyfile.
+# DNS A/AAAA must resolve to this VPS and inbound TCP 80/443 must be allowed.
+game.example.com {
+    encode zstd gzip
+
+    # Caddy automatically manages the public TLS certificate and HTTPS redirect.
+    # The reverse proxy also handles WebSocket Upgrade requests.
+    reverse_proxy 127.0.0.1:8080
+
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-Frame-Options "DENY"
+        -Server
+    }
+}
