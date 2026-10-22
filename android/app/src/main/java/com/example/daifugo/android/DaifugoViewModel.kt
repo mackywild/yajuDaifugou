@@ -939,7 +939,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         var result = raw.trim().trimEnd('/')
         require(result.isNotBlank()) { "サーバーURLを入力してください" }
         if (!result.startsWith("http://") && !result.startsWith("https://")) {
-            result = "http://$result"
+            result = "https://$result"
         }
         return result
     }
@@ -958,8 +958,8 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     companion object {
         /**
          * 現在の公開PC/Android共通ゲームサーバー。
-         * 独自ドメイン + HTTPS移行時はここをHTTPS URLへ差し替える。
+         * 公開環境は取得済みドメインへのHTTPS接続を標準とする。
          */
-        const val DEFAULT_PUBLIC_SERVER_URL = "http://160.251.180.41"
+        const val DEFAULT_PUBLIC_SERVER_URL = "https://yajudaifugou.com"
     }
 }
