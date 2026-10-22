@@ -60,7 +60,12 @@ final class DaifugoViewModel: ObservableObject {
     private var reconnectTask: Task<Void, Never>?
 
     init() {
-        serverURL = defaults.string(forKey: "serverURL") ?? "http://192.168.1.10:8080"
+        let savedURL = defaults.string(forKey: "serverURL")
+        if let savedURL, savedURL != "http://192.168.1.10:8080" {
+            serverURL = savedURL
+        } else {
+            serverURL = "https://yajudaifugou.com"
+        }
         playerName = defaults.string(forKey: "playerName") ?? ""
     }
 
@@ -299,10 +304,10 @@ final class DaifugoViewModel: ObservableObject {
         api.connectRoomSocket(
             roomId: roomId,
             onStateChanged: { [weak self] in
-                Task {
+                Task { @MainActor in
                     guard let self, self.roomId == roomId else { return }
                     if let state = try? await self.api.state(roomId: roomId) {
-                        await MainActor.run { self.applyGameState(state) }
+                        self.applyGameState(state)
                     }
                 }
             },

@@ -110,6 +110,18 @@ Android版は次の差し替え式アセットを使用します。ファイル�
 - RESTをゲーム操作の正本に使用
 - WebSocketは `STATE_CHANGED` 通知専用
 
+## 公開版 HTTPS 化（2026-10 セキュリティ対応）
+
+公開Web版の接続先は `https://yajudaifugou.com` です。取得済みのConoHa VPSドメインを使い、CaddyでTLS終端して127.0.0.1:8080のSpring Bootへ中継する構成を用意しました。
+
+- Spring Boot 3.5.16 + 埋め込みTomcat 10.1.61へ更新
+- ブラウザのWebSocketはHTTPS時に自動的にWSSを使用
+- Android/iOSの既定接続先もHTTPSドメインへ変更
+- Androidリリース版の平文HTTP通信を禁止（デバッグ版はLAN試験に対応）
+- VPS/DNS/証明書の**本番適用は別途サーバー上で実施**
+
+設定手順と動作確認項目: [deploy/HTTPS_DEPLOYMENT.md](deploy/HTTPS_DEPLOYMENT.md)
+
 ## サーバー起動
 
 Java 21を使用してください。

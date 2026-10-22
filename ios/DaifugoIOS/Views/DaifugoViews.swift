@@ -92,7 +92,7 @@ private struct LoginView: View {
             VStack(alignment: .leading, spacing: 18) {
                 TitleBlock("テーブルへようこそ", "マルチプレイとCPU戦【ひとりでイク】を選べます。")
                 Panel("接続先") {
-                    TextField("http://192.168.1.10:8080", text: $viewModel.serverURL)
+                    TextField("https://yajudaifugou.com", text: $viewModel.serverURL)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                         .keyboardType(.URL).textFieldStyle(.roundedBorder)
                     SecureField("共通パスワード", text: $viewModel.password)
@@ -355,7 +355,7 @@ private struct TableView: View {
                 if game.revolution { Badge("革命") }
                 if let mark = game.lockedMark { Badge("\(markSymbol(mark))縛り") }
                 Spacer()
-                Text(game.currentPlayer?.playerName.map { "手番：\($0)" } ?? "").font(.caption.bold()).foregroundStyle(.white)
+                Text(game.currentPlayer.map { "手番：\($0.playerName)" } ?? "").font(.caption.bold()).foregroundStyle(.white)
             }
             if game.field.cards.isEmpty {
                 Text("場は空です").foregroundStyle(.white.opacity(0.8)).frame(height: 90)
