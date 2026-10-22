@@ -34,3 +34,8 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon clean test
+
+      - name: Verify patched Tomcat is resolved
+        run: |
+          ./gradlew --no-daemon dependencyInsight --dependency tomcat-embed-core --configuration runtimeClasspath | tee tomcat-dependency.txt
+          grep -F 'org.apache.tomcat.embed:tomcat-embed-core:10.1.61' tomcat-dependency.txt
