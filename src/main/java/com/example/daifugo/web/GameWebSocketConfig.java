@@ -22,7 +22,8 @@ public class GameWebSocketConfig implements WebSocketConfigurer {
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(gameWebSocketHandler, "/ws/game")
-                .addInterceptors(new HttpSessionHandshakeInterceptor())
-                .setAllowedOriginPatterns("*");
+                .addInterceptors(new HttpSessionHandshakeInterceptor());
+        // Spring's default same-origin policy protects browser sessions against
+        // cross-site WebSocket hijacking. Native clients without Origin still work.
     }
 }
