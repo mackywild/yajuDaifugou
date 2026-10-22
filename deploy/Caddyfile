@@ -1,6 +1,6 @@
-# Replace game.example.com with the real domain BEFORE installing as /etc/caddy/Caddyfile.
+# Production domain: yajudaifugou.com (ConoHa VPS).
 # DNS A/AAAA must resolve to this VPS and inbound TCP 80/443 must be allowed.
-game.example.com {
+yajudaifugou.com {
     encode zstd gzip
 
     # Caddy automatically manages the public TLS certificate and HTTPS redirect.
