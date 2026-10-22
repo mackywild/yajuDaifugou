@@ -1,0 +1,24 @@
+# Template: adjust paths, user and Java installation for your Linux VPS.
+# Install as /etc/systemd/system/daifugo.service
+[Unit]
+Description=Yaju Daifugo Spring Boot game server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=daifugo
+Group=daifugo
+WorkingDirectory=/opt/yaju-daifugo
+EnvironmentFile=/etc/daifugo/daifugo.env
+ExecStart=/usr/bin/java -jar /opt/yaju-daifugo/daifugo.jar
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/yaju-daifugo
+
+[Install]
+WantedBy=multi-user.target
