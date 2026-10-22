@@ -61,9 +61,11 @@ final class DaifugoViewModel: ObservableObject {
 
     init() {
         let savedURL = defaults.string(forKey: "serverURL")
-        serverURL = savedURL == nil || savedURL == "http://192.168.1.10:8080"
-            ? "https://yajudaifugou.com"
-            : savedURL!
+        if let savedURL, savedURL != "http://192.168.1.10:8080" {
+            serverURL = savedURL
+        } else {
+            serverURL = "https://yajudaifugou.com"
+        }
         playerName = defaults.string(forKey: "playerName") ?? ""
     }
 
