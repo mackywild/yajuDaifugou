@@ -9,6 +9,7 @@
 - Tomcatの外部公開を避けるため既定バインド先を `127.0.0.1:8080` に変更。
 - 信頼済みローカルCaddy（127.0.0.1）からのみ X-Forwarded-For / X-Forwarded-Proto を使用し、クライアントIPとスキームを復元する。
 - 本番WebSocket許可Originは `https://yajudaifugou.com`。localhostは開発用のみ。ワイルドカード `*` を禁止。
+- Androidのreleaseビルドは平文HTTPを禁止。debugビルドだけLAN用HTTPを許可する（別マニフェスト）。
 - Webフロントは既に `https:` → `wss:` の自動切替実装済み。Android/iOSの既定接続先をHTTPSドメインへ更新。
 - Secure Cookieは本番では環境変数 `SESSION_COOKIE_SECURE=true` で有効化する。
 
