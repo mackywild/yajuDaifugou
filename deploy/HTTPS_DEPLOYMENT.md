@@ -61,8 +61,9 @@ curl -I https://yajudaifugou.com/
 - ブラウザのNetworkタブでWebSocketが `wss://<domain>/ws/game` に接続し、ゲーム状態が更新されることを確認。
 - ログインレスで `/api/rooms/**` を操作できないこと、別部屋・別ユーザーの情報が漏れないことを確認。
 - HTTPS応答のセッションCookieがSecure・HttpOnly・SameSite=Laxであることを確認。
+- Androidのリリースビルドはcleartext通信を禁止。ローカル開発用debugビルドはLAN上のHTTPに対応。
 - クロスオリジンからのブラウザWebSocket接続は拒否する設計。別ドメインにWeb UIを分離する場合は独立して認証・Originポリシーを見直す。
-- Android/iOS側は運用環境のAPI基点URLを `https://yajudaifugou.com` に設定し、端末間クロスプレイを確認。
+- Android/iOSは既定の公開API接続先が更新済み。既存ユーザーが手動設定した旧HTTP URLは必要に応じて変更する。運用環境のAPI基点URLを `https://yajudaifugou.com` に設定し、端末間クロスプレイを確認。
 - OSや公開ポート以外も定期更新し、GitHub Dependabot等の依存更新を継続する。
 
 ## 5. 切戻し
