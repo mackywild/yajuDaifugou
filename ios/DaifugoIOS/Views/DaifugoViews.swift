@@ -355,7 +355,7 @@ private struct TableView: View {
                 if game.revolution { Badge("革命") }
                 if let mark = game.lockedMark { Badge("\(markSymbol(mark))縛り") }
                 Spacer()
-                Text(game.currentPlayer?.playerName.map { "手番：\($0)" } ?? "").font(.caption.bold()).foregroundStyle(.white)
+                Text(game.currentPlayer.map { "手番：\($0.playerName)" } ?? "").font(.caption.bold()).foregroundStyle(.white)
             }
             if game.field.cards.isEmpty {
                 Text("場は空です").foregroundStyle(.white.opacity(0.8)).frame(height: 90)

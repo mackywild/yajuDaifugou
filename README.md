@@ -110,6 +110,12 @@ Android版は次の差し替え式アセットを使用します。ファイル�
 - RESTをゲーム操作の正本に使用
 - WebSocketは `STATE_CHANGED` 通知専用
 
+## 本番公開（HTTPS・セキュリティ更新）
+
+ConoHa VPS + Caddy + `yajudaifugou.com` を使う本番手順は [HTTPS運用手順](deploy/HTTPS_DEPLOYMENT.md) を参照してください。Tomcat 10.1.61 と Spring Boot 3.5.16 を暫定的に使用します（3.5系はOSSサポート終了のため、Spring Boot 4.x への移行を別途計画）。
+
+本番では `SESSION_COOKIE_SECURE=true` と `DAIFUGO_BIND_ADDRESS=127.0.0.1` を必ず設定します。LANから直接開く開発時だけ `DAIFUGO_BIND_ADDRESS=0.0.0.0` に変更し、ブラウザからアクセスするLANのOriginを `DAIFUGO_ALLOWED_ORIGINS` に追加してください。
+
 ## サーバー起動
 
 Java 21を使用してください。

@@ -1,0 +1,15 @@
+# Production site block for /etc/caddy/Caddyfile.
+# MERGE this block into the existing Caddyfile if the VPS hosts other applications.
+# Caddy automatically provisions/renews a certificate and redirects HTTP to HTTPS.
+yajudaifugou.com {
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Caddy proxies WebSocket upgrades automatically, including wss://.
+    reverse_proxy 127.0.0.1:8080
+}
