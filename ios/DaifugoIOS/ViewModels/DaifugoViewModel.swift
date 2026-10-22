@@ -304,10 +304,10 @@ final class DaifugoViewModel: ObservableObject {
         api.connectRoomSocket(
             roomId: roomId,
             onStateChanged: { [weak self] in
-                Task {
+                Task { @MainActor in
                     guard let self, self.roomId == roomId else { return }
                     if let state = try? await self.api.state(roomId: roomId) {
-                        await MainActor.run { self.applyGameState(state) }
+                        self.applyGameState(state)
                     }
                 }
             },
