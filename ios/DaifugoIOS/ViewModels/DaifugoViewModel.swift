@@ -60,7 +60,14 @@ final class DaifugoViewModel: ObservableObject {
     private var reconnectTask: Task<Void, Never>?
 
     init() {
-        serverURL = defaults.string(forKey: "serverURL") ?? "http://192.168.1.10:8080"
+        // Migrate only the original LAN placeholder, preserving user-defined servers.
+        let savedURL = defaults.string(forKey: "serverURL")
+        if savedURL == nil || savedURL == "http://192.168.1.10:8080" {
+            serverURL = "https://yajudaifugou.com"
+            defaults.set(serverURL, forKey: "serverURL")
+        } else {
+            serverURL = savedURL!
+        }
         playerName = defaults.string(forKey: "playerName") ?? ""
     }
 
