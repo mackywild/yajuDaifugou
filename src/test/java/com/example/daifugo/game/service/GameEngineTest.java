@@ -380,6 +380,32 @@ public class GameEngineTest {
         assertDoesNotThrow(() -> gameEngine.play(state, "p2", List.of(four)));
     }
 
+    @Test
+    void ゲーム進行中にジョーカーを含む階段を提出できる() {
+        Player first = new Player("p1", "p1");
+        Card three = new Card(Mark.SPADE, Rank.THREE);
+        Card four = new Card(Mark.SPADE, Rank.FOUR);
+        Card five = new Card(Mark.SPADE, Rank.FIVE);
+        first.addCards(List.of(three, four, five, new Card(Mark.HEART, Rank.KING)));
+
+        Player second = new Player("p2", "p2");
+        Card six = new Card(Mark.SPADE, Rank.SIX);
+        Card seven = new Card(Mark.SPADE, Rank.SEVEN);
+        Card joker = new Card(Mark.JOKER, Rank.JOKER);
+        second.addCards(List.of(six, seven, joker, new Card(Mark.HEART, Rank.QUEEN)));
+
+        GameState state = startedState(first, second);
+        gameEngine.play(state, "p1", List.of(three, four, five));
+        assertEquals("p2", state.getCurrentPlayer().getId());
+
+        assertDoesNotThrow(() -> gameEngine.play(state, "p2", List.of(six, seven, joker)));
+        assertEquals(
+            com.example.daifugo.game.domain.CombinationType.STRAIGHT,
+            state.getFieldCombination().getType()
+        );
+        assertEquals(8, state.getFieldCombination().getBaseStrength());
+    }
+
     private GameState startedState(Player... players) {
         GameState state =
             new GameState(List.of(players));
