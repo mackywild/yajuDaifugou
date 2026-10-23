@@ -245,4 +245,65 @@ public class PlayValidatorTest {
         );
     }
 
+
+    @Test
+    void ジョーカー階段も場と重複しない範囲なら返せる() {
+        CardCombination field = straight(Rank.FIVE, Rank.SIX, Rank.SEVEN);
+        CardCombination selected = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.EIGHT),
+            new Card(Mark.SPADE, Rank.NINE),
+            new Card(Mark.JOKER, Rank.JOKER)
+        ));
+
+        assertTrue(validator.canPlay(selected, field, false, null));
+        assertFalse(validator.canPlay(CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.SEVEN),
+            new Card(Mark.SPADE, Rank.EIGHT),
+            new Card(Mark.JOKER, Rank.JOKER)
+        )), field, false, null));
+    }
+
+    @Test
+    void ジョーカーを含む場の階段も補完後の強度で比較する() {
+        CardCombination field = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.FIVE),
+            new Card(Mark.SPADE, Rank.SIX),
+            new Card(Mark.JOKER, Rank.JOKER)
+        ));
+        assertTrue(validator.canPlay(
+            straight(Rank.EIGHT, Rank.NINE, Rank.TEN), field, false, null));
+        assertFalse(validator.canPlay(
+            straight(Rank.SEVEN, Rank.EIGHT, Rank.NINE), field, false, null));
+    }
+
+    @Test
+    void 革命時はジョーカーの補完も強弱反転し範囲比較する() {
+        CardCombination field = straight(Rank.EIGHT, Rank.NINE, Rank.TEN);
+        CardCombination selected = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.FIVE),
+            new Card(Mark.SPADE, Rank.SIX),
+            new Card(Mark.JOKER, Rank.JOKER)
+        ));
+
+        assertTrue(validator.canPlay(selected, field, true, null));
+        assertFalse(validator.canPlay(CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.SEVEN),
+            new Card(Mark.SPADE, Rank.EIGHT),
+            new Card(Mark.JOKER, Rank.JOKER)
+        )), field, true, null));
+    }
+
+    @Test
+    void ジョーカー階段もマーク縛りは自然札で判定する() {
+        CardCombination field = straight(Rank.FIVE, Rank.SIX, Rank.SEVEN);
+        CardCombination selected = CardCombination.of(List.of(
+            new Card(Mark.SPADE, Rank.EIGHT),
+            new Card(Mark.SPADE, Rank.NINE),
+            new Card(Mark.JOKER, Rank.JOKER)
+        ));
+
+        assertTrue(validator.canPlay(selected, field, false, Mark.SPADE));
+        assertFalse(validator.canPlay(selected, field, false, Mark.HEART));
+    }
+
 }
