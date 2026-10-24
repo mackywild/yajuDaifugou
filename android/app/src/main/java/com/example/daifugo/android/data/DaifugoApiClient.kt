@@ -100,6 +100,15 @@ class DaifugoApiClient {
         return ServerJson.join(json)
     }
 
+    suspend fun createAllYajuRoom(playerName: String): JoinResponse {
+        val json = execute(
+            request("/api/rooms/multi-yaju")
+                .post(playerNameBody(playerName))
+                .build(),
+        )
+        return ServerJson.join(json)
+    }
+
     suspend fun createCpuGame(
         playerName: String,
         cpuCount: Int,
