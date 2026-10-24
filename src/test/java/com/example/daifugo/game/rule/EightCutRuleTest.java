@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import com.example.daifugo.game.domain.Card;
 import com.example.daifugo.game.domain.CardCombination;
+import com.example.daifugo.game.domain.GameEventType;
 import com.example.daifugo.game.domain.GameState;
 import com.example.daifugo.game.domain.Mark;
 import com.example.daifugo.game.domain.Player;
@@ -78,6 +79,9 @@ public class EightCutRuleTest {
             );
 
             assertTrue(result.shouldClearField());
+            assertEquals(1, state.getEvents().size());
+            assertEquals(GameEventType.EIGHT_CUT, state.getEvents().get(0).type());
+            assertEquals(player.getId(), state.getEvents().get(0).playerId());
         }
 
         private GameState createState() {
