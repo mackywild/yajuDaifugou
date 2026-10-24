@@ -123,4 +123,45 @@ class LegalMoveGeneratorTest {
                 !move.pass() && move.cards().equals(List.of(three, joker))));
     }
 
+
+    @Test
+    void cpuCanGenerateJokerStraightBeatingField() {
+        Card eight = new Card(Mark.SPADE, Rank.EIGHT);
+        Card nine = new Card(Mark.SPADE, Rank.NINE);
+        Card joker = new Card(Mark.JOKER, Rank.JOKER);
+        Player player = new Player("p1", "p1");
+        player.addCards(List.of(eight, nine, joker));
+
+        GameState state = playingState(player, player("p2", Rank.THREE));
+        state.updateField(
+            com.example.daifugo.game.domain.CardCombination.of(List.of(
+                new Card(Mark.SPADE, Rank.FIVE),
+                new Card(Mark.SPADE, Rank.SIX),
+                new Card(Mark.SPADE, Rank.SEVEN)
+            )), 1
+        );
+
+        List<CpuMove> moves = generator.generate(state, player, noYajuSettings());
+        assertTrue(moves.stream().anyMatch(move ->
+            !move.pass() && move.cards().containsAll(List.of(eight, nine, joker))
+                && move.cards().size() == 3));
+    }
+
+    @Test
+    void cpuCanGenerateGapAndDoubleJokerStraights() {
+        Card five = new Card(Mark.HEART, Rank.FIVE);
+        Card eight = new Card(Mark.HEART, Rank.EIGHT);
+        Card joker1 = new Card(Mark.JOKER, Rank.JOKER);
+        Card joker2 = new Card(Mark.JOKER, Rank.JOKER);
+        Player player = new Player("p1", "p1");
+        player.addCards(List.of(five, eight, joker1, joker2));
+        GameState state = playingState(player, player("p2", Rank.THREE));
+
+        List<CpuMove> moves = generator.generate(state, player, noYajuSettings());
+        assertTrue(moves.stream().anyMatch(move ->
+            !move.pass() && move.cards().size() == 4
+                && move.cards().contains(five) && move.cards().contains(eight)
+                && move.cards().stream().filter(Card::isJoker).count() == 2));
+    }
+
 }

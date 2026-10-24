@@ -97,40 +97,83 @@ public class CardCombination {
     }
 
     private static boolean isStraight(List<Card> cards) {
-        if (cards.size() < 3) {
-            return false;
+        return !straightStarts(cards).isEmpty();
+    }
+
+    /**
+     * JOKERは欠けた数字を埋めるワイルドカードとして扱う。
+     * 3〜2(数値3〜15)の範囲内で、自然札が同一マークかつ重複しない
+     * 連続区間を列挙する。2から3への折り返しは認めない。
+     */
+    private static List<Integer> straightStarts(List<Card> cards) {
+        int length = cards.size();
+        if (length < 3 || length > 13) {
+            return List.of();
         }
 
-        if (cards.stream().anyMatch(Card::isJoker)) {
-            return false;
-        }
-
-        Mark firstSuit = cards.get(0).getSuit();
-
-        boolean sameSuit = cards.stream()
-            .allMatch(card ->
-                card.getSuit() == firstSuit
-            );
-
-        if (!sameSuit) {
-            return false;
-        }
-
-        List<Integer> strengths = cards.stream()
-            .map(card -> card.getStrength(false))
-            .sorted()
+        List<Card> naturalCards = cards.stream()
+            .filter(card -> !card.isJoker())
             .toList();
 
-        for (int i = 1; i < strengths.size(); i++) {
-            int previous = strengths.get(i - 1);
-            int current = strengths.get(i);
-
-            if (current != previous + 1) {
-                return false;
-            }
+        // 少なくとも2枚の自然札でマークと並びを確定させる。
+        if (naturalCards.size() < 2) {
+            return List.of();
         }
 
-        return true;
+        Mark suit = naturalCards.get(0).getSuit();
+        if (naturalCards.stream().anyMatch(card -> card.getSuit() != suit)) {
+            return List.of();
+        }
+
+        List<Integer> ranks = naturalCards.stream()
+            .map(card -> card.getRank().getStrength())
+            .distinct()
+            .toList();
+        if (ranks.size() != naturalCards.size()) {
+            return List.of();
+        }
+
+        int lowest = ranks.stream().mapToInt(Integer::intValue).min().orElseThrow();
+        int highest = ranks.stream().mapToInt(Integer::intValue).max().orElseThrow();
+        List<Integer> starts = new ArrayList<>();
+
+        for (int start = 3; start <= 16 - length; start++) {
+            int end = start + length - 1;
+            if (lowest >= start && highest <= end) {
+                starts.add(start);
+            }
+        }
+        return List.copyOf(starts);
+    }
+
+    /**
+     * ジョーカーの補完候補が複数ある場合は、実効強度が最大となる区間を採用。
+     * 通常時は数字が高い区間、革命/Jバック時は数字が低い区間を選ぶ。
+     */
+    private int straightStart(boolean strengthReversed) {
+        List<Integer> starts = straightStarts(cards);
+        if (starts.isEmpty()) {
+            throw new IllegalStateException("無効な階段です");
+        }
+        return strengthReversed ? starts.get(0) : starts.get(starts.size() - 1);
+    }
+
+    /** 階段を構成する札のうち、最も弱い札の実効強度。 */
+    public int getStraightWeakestStrength(boolean strengthReversed) {
+        if (type != CombinationType.STRAIGHT) {
+            throw new IllegalStateException("階段ではありません");
+        }
+        int start = straightStart(strengthReversed);
+        return strengthReversed ? 18 - (start + cards.size() - 1) : start;
+    }
+
+    /** 階段を構成する札のうち、最も強い札の実効強度。 */
+    public int getStraightStrongestStrength(boolean strengthReversed) {
+        if (type != CombinationType.STRAIGHT) {
+            throw new IllegalStateException("階段ではありません");
+        }
+        int start = straightStart(strengthReversed);
+        return strengthReversed ? 18 - start : start + cards.size() - 1;
     }
 
     public List<Card> getCards() {
@@ -157,12 +200,7 @@ public class CardCombination {
         }
 
         if (type == CombinationType.STRAIGHT) {
-            return cards.stream()
-                .mapToInt(card ->
-                    card.getStrength(revolution)
-                )
-                .max()
-                .orElseThrow();
+            return getStraightStrongestStrength(revolution);
         }
 
         return cards.stream()
@@ -202,6 +240,10 @@ public class CardCombination {
             throw new IllegalStateException(
                 "ジョーカー単体は比較対象外"
             );
+        }
+
+        if (type == CombinationType.STRAIGHT) {
+            return getStraightStrongestStrength(false);
         }
 
         return cards.stream()

@@ -130,17 +130,9 @@ public class PlayValidator {
             CardCombination field,
             boolean strengthReversed
     ) {
-        int weakestSelected = selected.getCards()
-            .stream()
-            .mapToInt(card -> card.getStrength(strengthReversed))
-            .min()
-            .orElseThrow();
-
-        int strongestField = field.getCards()
-            .stream()
-            .mapToInt(card -> card.getStrength(strengthReversed))
-            .max()
-            .orElseThrow();
+        // JOKERそのものの強度ではなく、補完後の階段区間で比較する。
+        int weakestSelected = selected.getStraightWeakestStrength(strengthReversed);
+        int strongestField = field.getStraightStrongestStrength(strengthReversed);
 
         return weakestSelected > strongestField;
     }

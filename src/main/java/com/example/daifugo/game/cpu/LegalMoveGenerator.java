@@ -96,6 +96,10 @@ public class LegalMoveGenerator {
                     }
                 }
             }
+
+            if (!jokers.isEmpty()) {
+                addWildcardStraights(candidates, suitCards, jokers);
+            }
         }
 
         List<CpuMove> result = new ArrayList<>();
@@ -126,6 +130,69 @@ public class LegalMoveGenerator {
             result.add(CpuMove.passMove());
         }
         return List.copyOf(result);
+    }
+
+    /**
+     * 同じマークの自然札とJOKERで階段を組み立てる。
+     * 3〜2の各連続区間について自然札/JOKERの選択を列挙するため、
+     * 間の穴埋めだけでなく先頭・末尾の補完にも対応できる。
+     */
+    private void addWildcardStraights(
+            Map<String, List<Card>> candidates,
+            List<Card> suitCards,
+            List<Card> jokers
+    ) {
+        Map<Integer, Card> cardsByStrength = new LinkedHashMap<>();
+        for (Card card : suitCards) {
+            cardsByStrength.put(card.getRank().getStrength(), card);
+        }
+
+        int maxLength = Math.min(13, suitCards.size() + jokers.size());
+        for (int length = 3; length <= maxLength; length++) {
+            for (int start = 3; start <= 16 - length; start++) {
+                buildWildcardStraight(
+                    candidates, cardsByStrength, jokers, start,
+                    start + length, 0, new ArrayList<>()
+                );
+            }
+        }
+    }
+
+    private void buildWildcardStraight(
+            Map<String, List<Card>> candidates,
+            Map<Integer, Card> cardsByStrength,
+            List<Card> jokers,
+            int rank,
+            int endExclusive,
+            int jokersUsed,
+            List<Card> selected
+    ) {
+        if (rank == endExclusive) {
+            // 自然札が1枚だけの組み合わせは同一ランク組として扱うため除外。
+            if (jokersUsed > 0 && selected.size() - jokersUsed >= 2) {
+                addCandidate(candidates, List.copyOf(selected));
+            }
+            return;
+        }
+
+        Card natural = cardsByStrength.get(rank);
+        if (natural != null) {
+            selected.add(natural);
+            buildWildcardStraight(
+                candidates, cardsByStrength, jokers, rank + 1,
+                endExclusive, jokersUsed, selected
+            );
+            selected.remove(selected.size() - 1);
+        }
+
+        if (jokersUsed < jokers.size()) {
+            selected.add(jokers.get(jokersUsed));
+            buildWildcardStraight(
+                candidates, cardsByStrength, jokers, rank + 1,
+                endExclusive, jokersUsed + 1, selected
+            );
+            selected.remove(selected.size() - 1);
+        }
     }
 
     /** 7渡しで選択可能なカード組み合わせを列挙する。 */
