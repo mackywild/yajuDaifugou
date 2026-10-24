@@ -1,6 +1,7 @@
 package com.example.daifugo.game.rule;
 
 import com.example.daifugo.game.domain.CardCombination;
+import com.example.daifugo.game.domain.GameEventType;
 import com.example.daifugo.game.domain.GameState;
 import com.example.daifugo.game.domain.Player;
 import com.example.daifugo.game.domain.Rank;
@@ -28,6 +29,7 @@ public class EightCutRule implements Rule {
             CardCombination combination,
             RuleResult result
     ) {
+        state.emitEvent(GameEventType.EIGHT_CUT, player);
         result.requestFieldClear();
     }
 }
