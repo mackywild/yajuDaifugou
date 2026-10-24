@@ -2,6 +2,8 @@ package com.example.daifugo.response;
 
 import java.util.List;
 
+import com.example.daifugo.game.cpu.CpuMove;
+import com.example.daifugo.game.cpu.LegalMoveGenerator;
 import com.example.daifugo.game.domain.GameState;
 import com.example.daifugo.game.domain.Player;
 import com.example.daifugo.room.GameRoom;
@@ -10,6 +12,8 @@ import com.example.daifugo.room.GameRoom;
  * ゲーム内部の状態をクライアント向けレスポンスへ変換するクラス。
  */
 public class GameStateResponseMapper {
+
+    private final LegalMoveGenerator legalMoveGenerator = new LegalMoveGenerator();
 
     /**
      * GameRoomをクライアント向けレスポンスへ変換する。
@@ -52,6 +56,7 @@ public class GameStateResponseMapper {
                     false,
                     false,
                     SevenTransferResponse.none(),
+                    List.of(),
                     List.of());
         }
 
@@ -79,6 +84,11 @@ public class GameStateResponseMapper {
             currentPlayerId = currentPlayer.getId();
         }
 
+        List<List<CardResponse>> legalMoves = createLegalMoves(
+                room,
+                gameState,
+                requestPlayerId);
+
         return new GameStateResponse(
                 room.getRoomId(),
                 room.getGameMode().name(),
@@ -96,7 +106,44 @@ public class GameStateResponseMapper {
                 SevenTransferResponse.from(gameState.getPendingSevenTransfer()),
                 gameState.getEvents().stream()
                         .map(GameEventResponse::from)
-                        .toList());
+                        .toList(),
+                legalMoves);
+    }
+
+    private List<List<CardResponse>> createLegalMoves(
+            GameRoom room,
+            GameState gameState,
+            String requestPlayerId
+    ) {
+        if (gameState.isFinished()
+                || !gameState.getCurrentPlayer().getId().equals(requestPlayerId)) {
+            return List.of();
+        }
+
+        Player player = gameState.getCurrentPlayer();
+
+        if (gameState.hasPendingSevenTransfer()) {
+            if (!gameState.getPendingSevenTransfer().sourcePlayerId().equals(requestPlayerId)) {
+                return List.of();
+            }
+            return legalMoveGenerator.generateSevenTransfers(
+                            player,
+                            gameState.getPendingSevenTransfer().cardCount(),
+                            room.getRuleSettings())
+                    .stream()
+                    .map(cards -> cards.stream().map(CardResponse::from).toList())
+                    .toList();
+        }
+
+        return legalMoveGenerator.generate(
+                        gameState,
+                        player,
+                        room.getRuleSettings())
+                .stream()
+                .filter(move -> !move.pass())
+                .map(CpuMove::cards)
+                .map(cards -> cards.stream().map(CardResponse::from).toList())
+                .toList();
     }
 
     /**
