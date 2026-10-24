@@ -881,7 +881,7 @@ function recordMatchProgress(state){
   if(!self || !self.rank)return null;
   const yajuTarget=self.yajuStatus && self.yajuStatus!=='NONE';
   const yajuSuccess=self.yajuStatus==='COMPLETED';
-  const challenge=state.gameMode==='YAJU_CHALLENGE';
+  const challenge=state.gameMode==='YAJU_CHALLENGE' || state.gameMode==='MULTI_YAJU_CHALLENGE';
   const earned=earnedExp(self.rank,!!yajuTarget,yajuSuccess);
 
   progress.totalExp+=earned;
