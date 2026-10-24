@@ -5,6 +5,9 @@ package com.example.daifugo.game.domain;
  * Android側ではこの種別を音声キューへ変換する。
  */
 public enum GameEventType {
+    /** 8切りが発動して場が流れた。 */
+    EIGHT_CUT,
+
     /** 新たに野獣ルール対象者が発生した。 */
     YAJU_AVAILABLE,
 
