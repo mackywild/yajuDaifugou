@@ -64,6 +64,7 @@ data class YajuCutIn(
 )
 
 enum class RuleCutInType {
+    EIGHT_CUT,
     JACK_BACK,
     EARLY_SHOT,
 }
@@ -492,6 +493,12 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         enterRoom(response.roomId)
     }
 
+    fun createAllYajuRoom() = launchAction {
+        val playerName = validatedPlayerName()
+        val response = api.createAllYajuRoom(playerName)
+        enterRoom(response.roomId)
+    }
+
     fun joinRoom() = launchAction {
         val state = _uiState.value
         val playerName = validatedPlayerName()
@@ -824,7 +831,8 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                     rank = rank,
                     playerCount = newState.players.size,
                     yajuStatus = self.yajuStatus,
-                    challenge = newState.gameMode == "YAJU_CHALLENGE",
+                    challenge = newState.gameMode == "YAJU_CHALLENGE"
+                        || newState.gameMode == "MULTI_YAJU_CHALLENGE",
                 )?.let { matchResult ->
                     update {
                         copy(
@@ -892,6 +900,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
         val newRuleCutIns = unseen.mapNotNull { event ->
             val type = when (event.type) {
+                "EIGHT_CUT" -> RuleCutInType.EIGHT_CUT
                 "JACK_BACK" -> RuleCutInType.JACK_BACK
                 "EARLY_SHOT" -> RuleCutInType.EARLY_SHOT
                 else -> null
