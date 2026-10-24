@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import com.example.daifugo.game.config.GameRuleSettings;
 import com.example.daifugo.game.domain.Player;
+import com.example.daifugo.game.mode.GameMode;
 
 /** 8人卓の参加上限を確認する。 */
 class GameRoomCapacityTest {
@@ -28,6 +30,25 @@ class GameRoomCapacityTest {
         assertThrows(
             IllegalStateException.class,
             () -> room.addPlayer(new Player("p9", "P9"))
+        );
+    }
+
+    @Test
+    void 全員野獣卓は四人まで参加でき五人目は拒否される() {
+        GameRoom room = new GameRoom(
+                "all-yaju",
+                GameMode.MULTI_YAJU_CHALLENGE,
+                GameRuleSettings.standard());
+
+        for (int i = 1; i <= 4; i++) {
+            room.addPlayer(new Player("y" + i, "Y" + i));
+        }
+
+        assertTrue(room.isFull());
+        assertEquals(4, room.getPlayerCount());
+        assertThrows(
+                IllegalStateException.class,
+                () -> room.addPlayer(new Player("y5", "Y5"))
         );
     }
 }
