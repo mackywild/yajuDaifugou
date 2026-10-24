@@ -211,7 +211,10 @@ public class GameRoom {
      * @return 最大人数に達している場合true
      */
     public boolean isFull() {
-        return players.size() >= GameLimits.MAX_PLAYER_COUNT;
+        int maxPlayers = gameMode == GameMode.MULTI_YAJU_CHALLENGE
+                ? 4
+                : GameLimits.MAX_PLAYER_COUNT;
+        return players.size() >= maxPlayers;
     }
 
     /**

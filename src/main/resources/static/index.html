@@ -111,14 +111,25 @@
     .hand-wrap{margin-top:12px;padding:14px;border-radius:18px;background:#060a08;border:1px solid var(--line)}
     .hand-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
     .hand{display:flex;gap:5px;overflow-x:auto;padding:15px 4px 8px}
-    .card{flex:0 0 68px;width:68px;height:98px;background:#fffdf7;color:#161616;border:2px solid #d3cbbd;
-      border-radius:8px;padding:7px;display:flex;flex-direction:column;justify-content:space-between;text-align:left;
+    .card{flex:0 0 clamp(60px,4.7vw,72px);width:clamp(60px,4.7vw,72px);height:auto;aspect-ratio:5/7;
+      background:#fffdf7;color:#161616;border:2px solid #d3cbbd;border-radius:8px;padding:6px;
+      display:grid;place-items:center;position:relative;overflow:hidden;text-align:left;
       transition:.13s ease;box-shadow:0 4px 12px #0007}
     .card.red-suit{color:#b71e2b}.card.joker{color:#b98a20}
-    .card.selectable:hover{transform:translateY(-7px)}
-    .card.selected{transform:translateY(-14px) scale(1.05);border-color:var(--gold);background:#fff2c9}
-    .card .center{text-align:center;font-size:1.8rem}.card .rank{font-weight:1000}
-    .card.back{width:28px;height:41px;flex-basis:28px;padding:0;background:
+    .card .center{text-align:center;font-size:clamp(1.55rem,2.2vw,2rem);line-height:1}
+    .card-corner{position:absolute;display:flex;flex-direction:column;align-items:center;line-height:.86;
+      font-weight:1000;font-size:.78rem;min-width:1.35em}
+    .card-corner.top{top:5px;left:5px}
+    .card-corner.bottom{right:5px;bottom:5px;transform:rotate(180deg)}
+    .card-corner .suit-mini{font-size:.72em;margin-top:2px}
+    .card.selectable{cursor:pointer}
+    .card.selectable.legal{border-color:rgba(216,184,90,.78);box-shadow:0 4px 12px #0007,0 0 0 1px rgba(216,184,90,.28),0 0 18px rgba(216,184,90,.18)}
+    .card.selectable.legal:hover{transform:translateY(-7px)}
+    .card.selectable.blocked{opacity:.34;filter:grayscale(.55) brightness(.72);cursor:not-allowed}
+    .card.selected{opacity:1;filter:none;transform:translateY(-14px) scale(1.05);border-color:var(--gold);background:#fff2c9;
+      box-shadow:0 8px 22px #0009,0 0 22px rgba(216,184,90,.32)}
+    .legal-hint{margin-top:3px;color:#d8b85a;font-size:.62rem;font-weight:800;letter-spacing:.04em}
+    .card.back{width:28px;height:41px;aspect-ratio:auto;flex-basis:28px;padding:0;background:
       repeating-linear-gradient(45deg,#11294a 0 5px,#1d3b67 5px 9px);border-color:#c0a15c}
     .actions{display:grid;grid-template-columns:.75fr 1.25fr;gap:8px;margin-top:10px}
     .side{padding:14px}
@@ -144,8 +155,9 @@
     .player-avatar.active{border-color:var(--gold);box-shadow:0 0 0 2px rgba(216,184,90,.12),0 0 22px rgba(216,184,90,.25)}
     .player-avatar img{width:100%;height:100%;object-fit:cover}
     .avatar-fallback{width:100%;height:100%;display:grid;place-items:center}
-    .card.compact{flex-basis:54px;width:54px;height:78px;padding:5px}
+    .card.compact{flex-basis:54px;width:54px;height:auto;aspect-ratio:5/7;padding:5px}
     .card.compact .center{font-size:1.4rem}
+    .card.compact .card-corner{font-size:.66rem}
     .cpu-overlay{position:fixed;inset:0;z-index:1500;pointer-events:none;overflow:hidden}
     .cpu-thinking{position:fixed;left:50%;top:92px;transform:translateX(-50%);
       padding:10px 18px;border-radius:999px;background:rgba(3,6,5,.96);border:1px solid rgba(216,184,90,.5);
@@ -167,13 +179,21 @@
       transparent 0 44px,rgba(255,215,105,.07) 45px 49px,transparent 50px 88px);transform:skewY(-4deg)}
     .cutin.jack:before{background:repeating-linear-gradient(167deg,transparent 0 44px,rgba(138,109,255,.13) 45px 50px,transparent 51px 88px)}
     .cutin.early:before{background:repeating-linear-gradient(167deg,transparent 0 44px,rgba(255,91,91,.14) 45px 50px,transparent 51px 88px)}
+    .cutin.eight{background:rgba(0,12,8,.84)}
+    .cutin.eight:before{background:linear-gradient(90deg,transparent 0 32%,rgba(102,255,191,.13) 46%,rgba(255,225,133,.24) 50%,rgba(102,255,191,.13) 54%,transparent 68%);
+      animation:eightCutSweep .72s ease-out both;transform:none}
+    .cutin.eight:after{content:"8";position:absolute;font-size:min(58vw,620px);font-weight:1000;color:rgba(255,255,255,.035);
+      transform:rotate(-10deg);line-height:1}
+    @keyframes eightCutSweep{from{transform:translateX(-95%) skewX(-18deg);opacity:0}35%{opacity:1}to{transform:translateX(95%) skewX(-18deg);opacity:0}}
     .cutin-box{position:relative;min-width:min(560px,90vw);padding:32px;text-align:center;border-radius:25px;background:#090d0beF;
       border:2px solid var(--gold);box-shadow:0 0 90px rgba(216,184,90,.25);animation:cutInPop .42s cubic-bezier(.2,.8,.2,1)}
     .cutin.jack .cutin-box{border-color:#8a6dff;box-shadow:0 0 90px rgba(138,109,255,.25)}
     .cutin.early .cutin-box{border-color:#ff5b5b;box-shadow:0 0 90px rgba(255,91,91,.24)}
+    .cutin.eight .cutin-box{border-color:#72e5ac;box-shadow:0 0 100px rgba(82,230,165,.28);animation:eightCutPop .7s cubic-bezier(.16,.84,.2,1)}
+    @keyframes eightCutPop{0%{opacity:0;transform:scale(.72) rotate(-3deg)}45%{opacity:1;transform:scale(1.05) rotate(0)}100%{transform:scale(1)}}
     @keyframes cutInPop{from{opacity:0;transform:scale(.78)}to{opacity:1;transform:scale(1)}}
     .cutin-title{color:var(--gold);font-size:.9rem;font-weight:1000;letter-spacing:.27em}
-    .cutin.jack .cutin-title{color:#b7a8ff}.cutin.early .cutin-title{color:#ff6b6b}
+    .cutin.jack .cutin-title{color:#b7a8ff}.cutin.early .cutin-title{color:#ff6b6b}.cutin.eight .cutin-title{color:#72e5ac}
     .cutin-main{font-size:clamp(2rem,7vw,4.5rem);font-weight:1000;margin:8px 0}
     .cutin-players{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:12px 0}
     .cutin-player-chip{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#111812;border:1px solid var(--line)}
@@ -224,12 +244,31 @@
       animation:spin .7s linear infinite;margin:auto auto 14px}
     @keyframes spin{to{transform:rotate(360deg)}}
     @media(max-width:900px){
-      .menu-grid{grid-template-columns:1fr}.game-layout{grid-template-columns:1fr}.side{order:-1}
+      .menu-grid{grid-template-columns:1fr}
       .floor-grid{grid-template-columns:repeat(3,1fr)}
     }
-    @media(max-width:620px){
+    @media(min-width:768px) and (max-width:1199px){
+      body.game-active .shell{width:min(100%,1100px);padding:8px}
+      body.game-active #gameScreen .game-layout{grid-template-columns:1fr;gap:8px}
+      body.game-active #gameScreen .side{
+        order:-1;display:grid;grid-template-columns:minmax(190px,.7fr) minmax(0,1.8fr);
+        gap:8px 12px;align-items:start;padding:10px 12px
+      }
+      body.game-active #gameScreen .side>.hud-title{display:none}
+      body.game-active #gameScreen .turn-banner{grid-column:1;padding:10px 12px}
+      body.game-active #gameScreen .rules{grid-column:2;margin-top:0;align-self:center}
+      body.game-active #gameScreen #transferNotice{grid-column:1/-1;margin-top:0!important}
+      body.game-active #gameScreen .play-log{grid-column:1/-1;margin-top:0;max-height:78px}
+      body.game-active #gameScreen #leaveAfterGameButton{grid-column:1/-1;margin-top:0!important}
+      body.game-active #gameScreen .table-panel{padding:10px}
+      body.game-active #gameScreen .felt{min-height:210px;margin:6px 0;padding:18px;border-radius:26px}
+      body.game-active #gameScreen .opponent{min-width:132px;padding:8px}
+      body.game-active #gameScreen .hand-wrap{margin-top:8px;padding:10px}
+      body.game-active #gameScreen .hand{padding-top:14px}
+    }
+    @media(max-width:767px){
       .shell{padding:12px}.form-grid{grid-template-columns:1fr}.rule-grid{grid-template-columns:1fr}
-      .title-card{padding:42px 18px}.hero{min-height:190px}.card{flex-basis:60px;width:60px;height:90px}
+      .title-card{padding:42px 18px}.hero{min-height:190px}.card{flex-basis:60px;width:60px;height:auto;aspect-ratio:5/7}
       .floor-grid{grid-template-columns:repeat(2,1fr)}.stat-grid{grid-template-columns:1fr 1fr 1fr}
 
       /* スマホ対戦画面はPC版の単純縮小ではなく、場・手札・操作を最優先に再配置する。 */
@@ -341,11 +380,11 @@
       }
       body.game-active #gameScreen .field::-webkit-scrollbar{display:none}
       body.game-active #gameScreen .field .card{
-        flex-basis:50px;width:50px;height:74px;
+        flex-basis:50px;width:50px;height:auto;aspect-ratio:5/7;
         padding:4px;border-width:1px;
       }
       body.game-active #gameScreen .field .card .center{font-size:1.25rem}
-      body.game-active #gameScreen .field .card .rank{font-size:.68rem}
+      body.game-active #gameScreen .field .card .card-corner{font-size:.61rem}
 
       body.game-active #gameScreen .hand-wrap{
         margin-top:5px;
@@ -373,13 +412,13 @@
       }
       body.game-active #gameScreen .hand::-webkit-scrollbar{display:none}
       body.game-active #gameScreen .hand .card{
-        flex:0 0 52px;width:52px;height:78px;
+        flex:0 0 52px;width:52px;height:auto;aspect-ratio:5/7;
         padding:5px;border-width:1px;
         scroll-snap-align:center;
         touch-action:manipulation;
       }
       body.game-active #gameScreen .hand .card .center{font-size:1.3rem}
-      body.game-active #gameScreen .hand .card .rank{font-size:.7rem}
+      body.game-active #gameScreen .hand .card .card-corner{font-size:.63rem}
       body.game-active #gameScreen .hand .card.selectable:hover{transform:none}
       body.game-active #gameScreen .hand .card.selected{
         transform:translateY(-8px) scale(1.03);
@@ -568,7 +607,10 @@
           <div class="form-section">
             <h3>CREATE ROOM</h3>
             <p class="subtitle">新しい卓を作成して、招待リンクを共有します。</p>
-            <button class="btn gold wide" onclick="createRoom()">部屋を作る ▶</button>
+            <button class="btn gold wide" onclick="createRoom()">通常マルチ ▶</button>
+            <div style="height:8px"></div>
+            <button class="btn red wide" onclick="createAllYajuRoom()">全員野獣チャレンジ ▶</button>
+            <p class="mini" style="margin:8px 2px 0">2～4人限定。全員の初期手札に8 + 10を保証。</p>
           </div>
           <div class="form-section">
             <h3>JOIN ROOM</h3>
@@ -653,7 +695,7 @@
           </div>
           <div class="hand-wrap">
             <div class="hand-head">
-              <div><div class="hud-title">YOUR HAND</div><strong id="selfName"></strong></div>
+              <div><div class="hud-title">YOUR HAND</div><strong id="selfName"></strong><div id="legalHint" class="legal-hint"></div></div>
               <div id="handCount" class="status-pill">0 CARDS</div>
             </div>
             <div id="hand" class="hand"></div>
@@ -839,7 +881,7 @@ function recordMatchProgress(state){
   if(!self || !self.rank)return null;
   const yajuTarget=self.yajuStatus && self.yajuStatus!=='NONE';
   const yajuSuccess=self.yajuStatus==='COMPLETED';
-  const challenge=state.gameMode==='YAJU_CHALLENGE';
+  const challenge=state.gameMode==='YAJU_CHALLENGE' || state.gameMode==='MULTI_YAJU_CHALLENGE';
   const earned=earnedExp(self.rank,!!yajuTarget,yajuSuccess);
 
   progress.totalExp+=earned;
@@ -1206,6 +1248,15 @@ async function createRoom(){
   }catch(e){toast(e.message,true);}
 }
 
+async function createAllYajuRoom(){
+  try{
+    const response=await api('/api/rooms/multi-yaju',{method:'POST',body:JSON.stringify({playerName:playerName})});
+    bindRoom(response.roomId);
+    await refreshState();
+    connectSocket();
+  }catch(e){toast(e.message,true);}
+}
+
 async function joinRoom(){
   try{
     const id=byId('roomIdInput').value.trim().toLowerCase();
@@ -1318,6 +1369,7 @@ async function playCards(){
     if(!self)return;
     const cards=Array.from(selected).sort(function(a,b){return a-b;}).map(function(index){return self.hand[index];});
     if(!cards.length){toast('カードを選択してください',true);return;}
+    if(!isCurrentSelectionLegal(currentState)){toast('その組み合わせは今は出せません',true);return;}
     const seven=currentState.sevenTransfer||{};
     const transfer=seven.pending && seven.sourcePlayerId===self.playerId;
     if(transfer && cards.length!==seven.cardCount){
@@ -1377,10 +1429,13 @@ function render(state){
 function renderRoom(state){
   showOnly('roomScreen');
   byId('roomCode').textContent=state.roomId;
-  byId('roomMeta').textContent=(state.gameMode==='MULTIPLAYER'?'ONLINE':'CPU')+' / '+state.players.length+' PLAYERS';
-  byId('shareRoomButton').classList.toggle('hidden',state.gameMode!=='MULTIPLAYER');
-  byId('startRoomButton').classList.toggle('hidden',!state.host || state.gameMode!=='MULTIPLAYER');
-  byId('startRoomButton').disabled=state.players.length<2;
+  const multiplayer=state.gameMode==='MULTIPLAYER' || state.gameMode==='MULTI_YAJU_CHALLENGE';
+  const allYaju=state.gameMode==='MULTI_YAJU_CHALLENGE';
+  byId('roomMeta').textContent=(allYaju?'ALL YAJU 2-4':'ONLINE')+' / '+state.players.length+(allYaju?'/4':'')+' PLAYERS';
+  byId('shareRoomButton').classList.toggle('hidden',!multiplayer);
+  byId('startRoomButton').classList.toggle('hidden',!state.host || !multiplayer);
+  byId('startRoomButton').textContent=allYaju?'ALL YAJU START':'GAME START';
+  byId('startRoomButton').disabled=state.players.length<2 || (allYaju && state.players.length>4);
   const container=byId('roomPlayers');container.innerHTML='';
   state.players.forEach(function(p){
     const el=document.createElement('div');
@@ -1430,9 +1485,15 @@ function renderGame(state){
 
   const seven=state.sevenTransfer||{};
   const transfer=!!self && seven.pending && seven.sourcePlayerId===self.playerId;
+  const legalSelection=isCurrentSelectionLegal(state);
   byId('passButton').disabled=cpuSequenceRunning || !myTurn || transfer || !state.field.cards.length;
-  byId('playButton').disabled=cpuSequenceRunning || !myTurn || selected.size===0 || (transfer && selected.size!==seven.cardCount);
+  byId('playButton').disabled=cpuSequenceRunning || !myTurn || !legalSelection;
   byId('playButton').textContent=transfer?'TRANSFER '+selected.size+'/'+seven.cardCount+' ▶':'PLAY '+selected.size+' ▶';
+  const legalHint=byId('legalHint');
+  if(!myTurn)legalHint.textContent='相手の手番です';
+  else if(transfer)legalHint.textContent='光っているカードから '+seven.cardCount+'枚選択';
+  else if(Array.isArray(state.legalMoves) && !state.legalMoves.length)legalHint.textContent='出せる札なし / PASS';
+  else legalHint.textContent='光っているカードが出せます';
 
   const banner=byId('turnBanner');
   const current=state.players.find(function(p){return p.playerId===state.currentPlayerId;});
@@ -1462,6 +1523,7 @@ function renderRules(state){
   if(state.lockedMark)list.push(symbol(state.lockedMark)+' LOCK');
   if(state.players.some(function(p){return p.yajuStatus && p.yajuStatus!=='NONE';}))list.push('YAJU 8→10');
   if(state.gameMode==='YAJU_CHALLENGE')list.push('CHALLENGE');
+  if(state.gameMode==='MULTI_YAJU_CHALLENGE')list.push('ALL YAJU');
   list.push(state.gameMode);
   const el=byId('rulePills');el.innerHTML='';
   list.forEach(function(text){
@@ -1505,23 +1567,91 @@ function renderResult(state){
   });
 }
 
+function cardKey(card){
+  return (card&&card.suit?card.suit:'')+':'+(card&&card.rank?card.rank:'');
+}
+
+function cardMultiset(cards){
+  const counts={};
+  (cards||[]).forEach(function(card){
+    const key=cardKey(card);
+    counts[key]=(counts[key]||0)+1;
+  });
+  return counts;
+}
+
+function multisetContains(containerCards,candidateCards){
+  const container=cardMultiset(containerCards);
+  const candidate=cardMultiset(candidateCards);
+  return Object.keys(candidate).every(function(key){
+    return (container[key]||0)>=candidate[key];
+  });
+}
+
+function sameCardMultiset(a,b){
+  return (a||[]).length===(b||[]).length
+    && multisetContains(a,b)
+    && multisetContains(b,a);
+}
+
+function selectedCardsForState(state){
+  if(!state)return [];
+  const self=state.players.find(function(p){return p.self;});
+  if(!self)return [];
+  return Array.from(selected)
+    .sort(function(a,b){return a-b;})
+    .map(function(index){return self.hand[index];})
+    .filter(Boolean);
+}
+
+function canSelectHandIndex(state,index){
+  if(!state)return false;
+  const self=state.players.find(function(p){return p.self;});
+  if(!self || state.currentPlayerId!==self.playerId)return false;
+  if(!Array.isArray(state.legalMoves))return true;
+  if(selected.has(index))return true;
+  const candidate=selectedCardsForState(state).concat(self.hand[index]);
+  return state.legalMoves.some(function(move){return multisetContains(move,candidate);});
+}
+
+function isCurrentSelectionLegal(state){
+  const cards=selectedCardsForState(state);
+  if(!cards.length)return false;
+  if(!Array.isArray(state.legalMoves)){
+    const seven=state&&state.sevenTransfer||{};
+    return !seven.pending || cards.length===seven.cardCount;
+  }
+  return state.legalMoves.some(function(move){return sameCardMultiset(move,cards);});
+}
+
 function cardElement(card,selectable,index,compact){
   const el=document.createElement('button');
   el.type='button';
   const red=card.suit==='HEART'||card.suit==='DIAMOND';
+  const chosen=selected.has(index);
+  const legal=!selectable || chosen || canSelectHandIndex(currentState,index);
   el.className='card'+(red?' red-suit':'')+(card.joker?' joker':'')+(selectable?' selectable':'')+
-    (selected.has(index)?' selected':'')+(compact?' compact':'');
+    (selectable?(legal?' legal':' blocked'):'')+(chosen?' selected':'')+(compact?' compact':'');
   const rank=rankText(card.rank);
   const suit=symbol(card.suit);
-  el.innerHTML='<div class="rank">'+(card.joker?'JOKER':rank+' '+suit)+'</div>'+
+  const cornerRank=card.joker?'J':rank;
+  const cornerSuit=card.joker?'★':suit;
+  const corner='<span class="rank-value">'+cornerRank+'</span><span class="suit-mini">'+cornerSuit+'</span>';
+  el.innerHTML='<div class="card-corner top">'+corner+'</div>'+
     '<div class="center">'+(card.joker?'♛':suit)+'</div>'+
-    '<div class="rank" style="text-align:right">'+(card.joker?'J':rank)+'</div>';
+    '<div class="card-corner bottom">'+corner+'</div>';
   if(selectable){
+    el.disabled=!legal && !chosen;
     el.onclick=function(){
       if(!currentState)return;
       const self=currentState.players.find(function(p){return p.self;});
       if(!self || currentState.currentPlayerId!==self.playerId)return;
-      if(selected.has(index))selected.delete(index);else selected.add(index);
+      if(selected.has(index)){
+        selected.delete(index);
+      }else{
+        if(!canSelectHandIndex(currentState,index))return;
+        selected.add(index);
+      }
       renderGame(currentState);
     };
   }
@@ -1555,7 +1685,7 @@ function processEvents(events){
     cutinQueue.push({
       kind:'yaju',
       title:'YAJU CHANCE',
-      main:'野獣上がり確定',
+      main:currentState && currentState.gameMode==='MULTI_YAJU_CHALLENGE'?'全員野獣':'野獣上がり確定',
       playerIds:yajuAvailable.map(function(e){return e.playerId;}),
       players:yajuAvailable.map(function(e){return e.playerName;}),
       duration:2600
@@ -1563,6 +1693,11 @@ function processEvents(events){
   }
 
   unseen.forEach(function(e){
+    if(e.type==='EIGHT_CUT'){
+      cutinQueue.push({kind:'eight',title:'8 CUT',main:'場を流す',playerIds:[e.playerId],players:[e.playerName],duration:1150});
+      playLog.unshift(e.playerName+'：8切り');
+      playLog.splice(8);
+    }
     if(e.type==='YAJU_SUCCESS'){
       playLog.unshift(e.playerName+'：野獣上がり成功「やりますねぇ！」');
       playLog.splice(8);

@@ -151,7 +151,7 @@ public class GameRoomService {
      * @return 開始後の対戦部屋
      */
     public GameRoom startGame(String roomId) {
-        return startGameInternal(roomId, null);
+        return startGameInternal(roomId, null, false);
     }
 
     /**
@@ -162,10 +162,22 @@ public class GameRoomService {
         if (challengePlayerId == null || challengePlayerId.isBlank()) {
             throw new IllegalArgumentException("チャレンジ対象プレイヤーが不正です");
         }
-        return startGameInternal(roomId, challengePlayerId);
+        return startGameInternal(roomId, challengePlayerId, false);
     }
 
-    private GameRoom startGameInternal(String roomId, String challengePlayerId) {
+    /**
+     * 全員野獣チャレンジを開始する。
+     * 通常デッキの8/10は各4枚のため、参加者は2～4人に限定する。
+     */
+    public GameRoom startAllYajuChallenge(String roomId) {
+        return startGameInternal(roomId, null, true);
+    }
+
+    private GameRoom startGameInternal(
+            String roomId,
+            String challengePlayerId,
+            boolean allYajuChallenge
+    ) {
         GameRoom room = getRoom(roomId);
 
         synchronized (room) {
@@ -184,11 +196,21 @@ public class GameRoomService {
             GameRuleSettings settings = room.getRuleSettings();
             new GameInitializer(settings.jokerCount()).initialize(gameState);
 
-            if (challengePlayerId != null) {
-                if (!settings.yajuRule()) {
-                    throw new IllegalStateException("チャレンジモードでは野獣ルールが必要です");
+            if (challengePlayerId != null || allYajuChallenge) {
+                if (!settings.yajuRule() || !settings.eightCut()) {
+                    throw new IllegalStateException("チャレンジモードでは野獣ルールと8切りが必要です");
                 }
+            }
+
+            if (challengePlayerId != null) {
                 guaranteeYajuOpeningHand(gameState, challengePlayerId);
+            }
+
+            if (allYajuChallenge) {
+                if (gameState.getPlayers().size() > 4) {
+                    throw new IllegalStateException("全員野獣チャレンジは2～4人で開始してください");
+                }
+                guaranteeAllYajuOpeningHands(gameState);
             }
 
             /*
@@ -202,6 +224,48 @@ public class GameRoomService {
             GameEngine gameEngine = gameEngineFactory.create(settings);
             room.start(gameState, gameEngine);
             return room;
+        }
+    }
+
+    private void guaranteeAllYajuOpeningHands(GameState gameState) {
+        guaranteeRankForAll(gameState, Rank.EIGHT);
+        guaranteeRankForAll(gameState, Rank.TEN);
+        gameState.getPlayers().forEach(Player::sortHand);
+    }
+
+    private void guaranteeRankForAll(GameState gameState, Rank rank) {
+        for (Player receiver : gameState.getPlayers()) {
+            if (receiver.countRank(rank) > 0) {
+                continue;
+            }
+
+            Player donor = gameState.getPlayers().stream()
+                    .filter(player -> !player.getId().equals(receiver.getId()))
+                    .filter(player -> player.countRank(rank) > 1)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException(
+                            "全員野獣チャレンジ用の" + rank.name() + "を確保できません"));
+
+            Card incoming = donor.getHand().stream()
+                    .filter(card -> card.getRank() == rank)
+                    .findFirst()
+                    .orElseThrow();
+
+            long receiverEightCount = receiver.countRank(Rank.EIGHT);
+            long receiverTenCount = receiver.countRank(Rank.TEN);
+            Card outgoing = receiver.getHand().stream()
+                    .filter(card -> !(card.getSuit() == Mark.DIAMOND && card.getRank() == Rank.THREE))
+                    .filter(card -> !(card.getRank() == Rank.EIGHT && receiverEightCount <= 1))
+                    .filter(card -> !(card.getRank() == Rank.TEN && receiverTenCount <= 1))
+                    .filter(card -> card.getRank() != rank)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException(
+                            "全員野獣チャレンジ用の交換カードを確保できません"));
+
+            receiver.removeCards(List.of(outgoing));
+            donor.removeCards(List.of(incoming));
+            receiver.addCard(incoming);
+            donor.addCard(outgoing);
         }
     }
 

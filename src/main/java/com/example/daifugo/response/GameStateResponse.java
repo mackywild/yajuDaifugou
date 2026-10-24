@@ -49,6 +49,9 @@ public class GameStateResponse {
     /** 全端末共有イベント履歴 */
     private final List<GameEventResponse> events;
 
+    /** リクエスト本人が現在選択できる合法カード組み合わせ */
+    private final List<List<CardResponse>> legalMoves;
+
     /**
      * ゲーム状態レスポンスを生成する。
      *
@@ -66,6 +69,7 @@ public class GameStateResponse {
      * @param finished ゲーム終了済みの場合true
      * @param sevenTransfer 7渡し保留情報
      * @param events 全端末共有イベント履歴
+     * @param legalMoves リクエスト本人の合法カード組み合わせ
      */
     public GameStateResponse(
             String roomId,
@@ -81,7 +85,8 @@ public class GameStateResponse {
             boolean started,
             boolean finished,
             SevenTransferResponse sevenTransfer,
-            List<GameEventResponse> events) {
+            List<GameEventResponse> events,
+            List<List<CardResponse>> legalMoves) {
 
         this.roomId = roomId;
         this.gameMode = gameMode;
@@ -97,6 +102,9 @@ public class GameStateResponse {
         this.finished = finished;
         this.sevenTransfer = sevenTransfer;
         this.events = List.copyOf(events);
+        this.legalMoves = legalMoves.stream()
+                .map(List::copyOf)
+                .toList();
     }
 
     public String getRoomId() {
@@ -153,5 +161,9 @@ public class GameStateResponse {
 
     public List<GameEventResponse> getEvents() {
         return events;
+    }
+
+    public List<List<CardResponse>> getLegalMoves() {
+        return legalMoves;
     }
 }

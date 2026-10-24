@@ -2575,8 +2575,20 @@ private fun LobbyScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                     )
                     Spacer(Modifier.height(14.dp))
                     PremiumStartButton(
-                        label = "新しい部屋を作る  ▶",
+                        label = "通常マルチを作る  ▶",
                         onClick = viewModel::createRoom,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    PremiumStartButton(
+                        label = "全員野獣チャレンジ  ▶",
+                        accent = Danger,
+                        onClick = viewModel::createAllYajuRoom,
+                    )
+                    Spacer(Modifier.height(7.dp))
+                    Text(
+                        "全員の初期手札に8 + 10を保証する2〜4人限定卓。",
+                        color = Color.White.copy(alpha = 0.52f),
+                        fontSize = 10.sp,
                     )
                 }
             }
@@ -2624,6 +2636,8 @@ private fun RoomScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
     val game = state.gameState ?: return
     val clipboard = LocalClipboardManager.current
     val pcInviteUrl = state.serverUrl.trimEnd('/') + "/?room=" + game.roomId
+    val allYaju = game.gameMode == "MULTI_YAJU_CHALLENGE"
+    val roomCapacity = if (allYaju) 4 else GameLimits.MAX_PLAYER_COUNT
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -2698,12 +2712,18 @@ private fun RoomScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             }
         }
         item {
-            CasinoPanel(title = "プレイヤー ${game.players.size}/${GameLimits.MAX_PLAYER_COUNT}") {
+            CasinoPanel(
+                title = if (allYaju) {
+                    "全員野獣チャレンジ  ${game.players.size}/$roomCapacity"
+                } else {
+                    "プレイヤー ${game.players.size}/$roomCapacity"
+                }
+            ) {
                 game.players.forEachIndexed { index, player ->
                     PlayerLobbyRow(player, index + 1)
                     if (index != game.players.lastIndex) HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
-                repeat((GameLimits.MAX_PLAYER_COUNT - game.players.size).coerceAtLeast(0)) { index ->
+                repeat((roomCapacity - game.players.size).coerceAtLeast(0)) { index ->
                     if (game.players.isNotEmpty() || index > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     Text("○ 空席", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -2718,7 +2738,12 @@ private fun RoomScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                         .fillMaxWidth()
                         .height(54.dp),
                 ) {
-                    Text(if (game.players.size >= 2) "ゲームを開始する" else "あと1人必要です", fontWeight = FontWeight.Bold)
+                    Text(
+                        if (game.players.size < 2) "あと1人必要です"
+                        else if (allYaju) "全員野獣を開始する"
+                        else "ゲームを開始する",
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
             } else {
                 Surface(color = SoftGold, shape = RoundedCornerShape(14.dp)) {
@@ -4034,12 +4059,19 @@ private fun RuleCutInOverlay(
     val scale = remember(cutIn.id) { Animatable(0.82f) }
     val alpha = remember(cutIn.id) { Animatable(0f) }
     val isEarlyShot = cutIn.type == RuleCutInType.EARLY_SHOT
+    val isEightCut = cutIn.type == RuleCutInType.EIGHT_CUT
 
     LaunchedEffect(cutIn.id) {
-        alpha.animateTo(1f, tween(120))
-        scale.animateTo(1f, tween(340, easing = FastOutSlowInEasing))
-        delay(if (isEarlyShot) 1_650 else 1_900)
-        alpha.animateTo(0f, tween(180))
+        alpha.animateTo(1f, tween(if (isEightCut) 80 else 120))
+        scale.animateTo(1f, tween(if (isEightCut) 240 else 340, easing = FastOutSlowInEasing))
+        delay(
+            when {
+                isEightCut -> 850
+                isEarlyShot -> 1_650
+                else -> 1_900
+            }
+        )
+        alpha.animateTo(0f, tween(if (isEightCut) 120 else 180))
         onDismiss(cutIn.id)
     }
 
@@ -4051,7 +4083,11 @@ private fun RuleCutInOverlay(
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.fillMaxSize()) {
-            val accent = if (isEarlyShot) Color(0xFFFF5B5B) else Color(0xFF8A6DFF)
+            val accent = when {
+                isEightCut -> Color(0xFF72E5AC)
+                isEarlyShot -> Color(0xFFFF5B5B)
+                else -> Color(0xFF8A6DFF)
+            }
             repeat(10) { index ->
                 val y = size.height * (0.10f + index * 0.09f)
                 drawLine(
@@ -4081,14 +4117,26 @@ private fun RuleCutInOverlay(
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                if (isEarlyShot) "早漏" else "J BACK",
-                color = if (isEarlyShot) Color(0xFFFF6B6B) else Color(0xFFB7A8FF),
-                fontSize = 22.sp,
+                when {
+                    isEightCut -> "8 CUT"
+                    isEarlyShot -> "早漏"
+                    else -> "J BACK"
+                },
+                color = when {
+                    isEightCut -> Color(0xFF72E5AC)
+                    isEarlyShot -> Color(0xFFFF6B6B)
+                    else -> Color(0xFFB7A8FF)
+                },
+                fontSize = if (isEightCut) 28.sp else 22.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.sp,
             )
             Text(
-                if (isEarlyShot) "早すぎるッ！" else "バック気持ちいい",
+                when {
+                    isEightCut -> "場を流す"
+                    isEarlyShot -> "早すぎるッ！"
+                    else -> "バック気持ちいい"
+                },
                 color = Color.White,
                 fontSize = if (isEarlyShot) 38.sp else 34.sp,
                 fontWeight = FontWeight.Black,
@@ -4168,7 +4216,7 @@ private fun YajuCutInOverlay(
                 letterSpacing = 3.sp,
             )
             Text(
-                "野獣上がり確定",
+                if (game?.gameMode == "MULTI_YAJU_CHALLENGE") "全員野獣" else "野獣上がり確定",
                 color = Color.White,
                 fontSize = 38.sp,
                 fontWeight = FontWeight.Black,

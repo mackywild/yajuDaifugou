@@ -77,6 +77,29 @@ public class GameApiController {
     }
 
     /**
+     * 全員野獣チャレンジ用のマルチ部屋を作成する。
+     * 通常デッキの8/10枚数に合わせ、参加者は最大4人。
+     */
+    @PostMapping("/multi-yaju")
+    public JoinResponse createAllYajuRoom(
+            @RequestBody PlayerNameRequest request,
+            HttpSession session) {
+
+        ensureNotBoundToRoom(session);
+        validatePlayerName(request.playerName());
+
+        GameRoom room = roomService.createRoom(
+                GameMode.MULTI_YAJU_CHALLENGE,
+                GameRuleSettings.standard());
+        Player player = createPlayer(request.playerName());
+        roomService.joinRoom(room.getRoomId(), player);
+        bindSession(session, room.getRoomId(), player.getId());
+        webSocketHandler.broadcastStateChanged(room.getRoomId());
+
+        return new JoinResponse(room.getRoomId(), true);
+    }
+
+    /**
      * CPU戦【ひとりでイク】を作成し、その場でゲームを開始する。
      */
     @PostMapping("/cpu")
@@ -220,7 +243,11 @@ public class GameApiController {
                 throw new IllegalStateException("ゲームを開始できるのはホストだけです");
             }
 
-            roomService.startGame(roomId);
+            if (room.getGameMode() == GameMode.MULTI_YAJU_CHALLENGE) {
+                roomService.startAllYajuChallenge(roomId);
+            } else {
+                roomService.startGame(roomId);
+            }
             response = responseMapper.map(room, playerId);
         }
         webSocketHandler.broadcastStateChanged(roomId);
