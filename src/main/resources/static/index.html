@@ -1764,18 +1764,10 @@ function waitForCutins(){
 }
 
 function avatarMarkup(player,state,active){
-  const initial=esc((player.playerName||'?').trim().charAt(0).toUpperCase()||'?');
-  let image='';
-  if(player.cpu && state){
-    const cpus=state.players.filter(function(p){return p.cpu;});
-    const index=cpus.findIndex(function(p){return p.playerId===player.playerId;});
-    if(index>=0 && index<6){
-      const num=String(index+1).padStart(2,'0');
-      image='<img src="/assets/cpu_avatars/cpu_'+num+'.jpg" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">';
-    }
-  }
-  return '<span class="player-avatar'+(active?' active':'')+'">'+image+
-    '<span class="avatar-fallback" style="'+(image?'display:none':'display:grid')+'">'+initial+'</span></span>';
+  // CPUは画像を読み込まず共通アイコンで表示し、プレイヤーは従来の頭文字を表示する。
+  const label=player.cpu?'♟':esc((player.playerName||'?').trim().charAt(0).toUpperCase()||'?');
+  return '<span class="player-avatar'+(active?' active':'')+'">'+
+    '<span class="avatar-fallback">'+label+'</span></span>';
 }
 
 function currentCpuPlayer(){
