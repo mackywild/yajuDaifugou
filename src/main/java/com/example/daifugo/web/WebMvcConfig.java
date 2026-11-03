@@ -29,6 +29,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
         /* ログイン以外の更新APIにはセッション固有CSRFトークンを要求する。 */
         registry.addInterceptor(csrfInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/login");
+                .excludePathPatterns("/api/auth/login", "/api/auth/firebase/session");
     }
 }
