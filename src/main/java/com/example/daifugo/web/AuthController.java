@@ -34,6 +34,11 @@ public class AuthController {
     /** 環境変数から設定される共通パスワード */
     private final String accessPassword;
 
+    private final boolean firebaseWebEnabled;
+    private final FirebaseWebAuthService firebaseWebAuthService;
+
+    public static final String FIREBASE_UID_SESSION_KEY = "DAIFUGO_FIREBASE_UID";
+
     /** ログイン試行回数制限 */
     private final LoginAttemptService loginAttemptService;
 
@@ -51,6 +56,8 @@ public class AuthController {
      */
     public AuthController(
             @Value("${daifugo.access-password}") String accessPassword,
+            @Value("${daifugo.firebase.web-enabled:false}") boolean firebaseWebEnabled,
+            FirebaseWebAuthService firebaseWebAuthService,
             LoginAttemptService loginAttemptService,
             GameRoomService roomService,
             GameWebSocketHandler webSocketHandler) {
@@ -59,6 +66,8 @@ public class AuthController {
                     "DAIFUGO_PASSWORDを設定してください。共通パスワードなしでは起動できません。");
         }
         this.accessPassword = accessPassword;
+        this.firebaseWebEnabled = firebaseWebEnabled;
+        this.firebaseWebAuthService = firebaseWebAuthService;
         this.loginAttemptService = loginAttemptService;
         this.roomService = roomService;
         this.webSocketHandler = webSocketHandler;
@@ -103,7 +112,34 @@ public class AuthController {
      */
     @GetMapping("/session")
     public Map<String, Object> publicSession(HttpServletRequest request) {
-        return establishSession(request);
+        if (!firebaseWebEnabled) {
+            return establishSession(request);
+        }
+        HttpSession session = request.getSession(false);
+        return Map.of("authenticated", session != null
+                && session.getAttribute(FIREBASE_UID_SESSION_KEY) instanceof String);
+    }
+
+    /** 認証済みFirebase IDトークンを検証してWeb用HTTPセッションを発行する。 */
+    @PostMapping("/firebase/session")
+    public Map<String, Object> firebaseSession(
+            @RequestBody FirebaseLoginRequest requestBody,
+            HttpServletRequest request) {
+        String uid = firebaseWebAuthService.verifyGoogleToken(requestBody.idToken());
+        HttpSession existing = request.getSession(false);
+        if (existing != null) {
+            // 別UIDのセッションへ切り替える場合は対戦ルームの安全な退出を要求する。
+            Object previousUid = existing.getAttribute(FIREBASE_UID_SESSION_KEY);
+            if (previousUid instanceof String && !previousUid.equals(uid)) {
+                releaseRoomIfPossible(existing);
+            }
+        }
+        Map<String, Object> result = establishSession(request);
+        request.getSession(false).setAttribute(FIREBASE_UID_SESSION_KEY, uid);
+        return result;
+    }
+
+    public record FirebaseLoginRequest(String idToken) {
     }
 
     /**

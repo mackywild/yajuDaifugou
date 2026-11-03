@@ -473,6 +473,16 @@
   <div><div class="spinner"></div>CONNECTING TO ROYAL TABLE...</div>
 </div>
 
+<div id="firebaseLogin" class="title-screen hidden screen">
+  <div class="title-card">
+    <div class="eyebrow">SECURE PLAYER ACCOUNT</div>
+    <div class="title-logo">野獣大富豪</div>
+    <p class="subtitle">Googleアカウントでログインしてゲームを開始</p>
+    <button id="googleLoginButton" class="tap" onclick="signInGoogle()">Googleでログイン ▶</button>
+    <p id="firebaseLoginMessage" class="subtitle" role="status"></p>
+  </div>
+</div>
+
 <div id="titleScreen" class="title-screen hidden screen">
   <div class="title-card">
     <div class="eyebrow">ONLINE CARD GAME</div>
@@ -490,6 +500,7 @@
       <h1>ROYAL CASINO</h1>
     </div>
     <div id="networkPill" class="status-pill">● BROWSER</div>
+    <button id="firebaseLogoutButton" class="btn dark hidden" onclick="signOutGoogle()">ログアウト</button>
   </header>
 
   <main>
@@ -729,6 +740,7 @@
           <h2 style="font-size:3rem;margin:5px 0">RESULT</h2>
           <div id="yourRank" style="color:var(--gold);font-weight:1000"></div>
           <div id="resultExp" class="mini" style="margin-top:6px"></div>
+          <button id="retryResultButton" class="btn dark hidden" onclick="retryCloudResult()">クラウド保存を再試行</button>
         </div>
         <div id="resultList" class="result-list"></div>
         <button class="btn gold wide" style="margin-top:16px" onclick="leaveRoom()">RETURN TO LOUNGE ▶</button>
@@ -767,6 +779,7 @@ const COSMETICS=[
   {id:'effect_soft_glow',name:'ソフトグロー',category:'EFFECT',symbol:'✦',description:'カード提出時に淡く光るシンプルなプレイエフェクト。'}
 ];
 let progress=loadProgress();
+let firebaseWebEnabled=false;
 let csrfToken = '';
 let roomId = localStorage.getItem('yaju.pc.roomId') || '';
 let playerName = localStorage.getItem('yaju.pc.playerName') || progress.displayName || '';
@@ -834,7 +847,7 @@ function loadProgress(){
 }
 
 function saveProgress(){
-  localStorage.setItem(PROGRESS_KEY,JSON.stringify(progress));
+  if(!firebaseWebEnabled)localStorage.setItem(PROGRESS_KEY,JSON.stringify(progress));
 }
 
 function expRequiredForLevel(level){return 100+Math.max(0,level-1)*50;}
@@ -881,6 +894,7 @@ function earnedExp(rank,yajuTarget,yajuSuccess){
 }
 
 function recordMatchProgress(state){
+  if(firebaseWebEnabled)return null;
   if(!state || !state.finished || progress.seenMatches.includes(state.roomId))return null;
   const self=state.players.find(function(p){return p.self;});
   if(!self || !self.rank)return null;
@@ -935,39 +949,189 @@ async function api(url,options){
   return data;
 }
 
+// Firebaseが無効な間は従来のサーバーセッションで動作し、安全に段階移行する。
 async function bootstrap(){
   try{
-    const session=await api('/api/auth/session');
-    csrfToken=session.csrfToken||'';
-    sessionStorage.setItem('yaju.pc.csrfToken',csrfToken);
-    byId('bootScreen').classList.add('hidden');
-    byId('titleScreen').classList.remove('hidden');
-    const invited=new URLSearchParams(location.search).get('room');
-    if(invited) localStorage.setItem('yaju.pc.inviteRoom',invited.toLowerCase());
-  }catch(e){
-    byId('bootScreen').innerHTML='<div>SERVER CONNECTION FAILED<br><small>'+esc(e.message)+'</small></div>';
+    const version=await api('/api/version',{cache:'no-store'});
+    byId('networkPill').textContent='● WEB '+String(version.buildSha||'unknown').slice(0,12);
+    const config=await api('/api/config/firebase',{cache:'no-store'});
+    firebaseWebEnabled=Boolean(config.enabled);
+    if(firebaseWebEnabled){
+      if(!config.apiKey || !config.authDomain || !config.projectId || !config.appId){
+        throw new Error('FirebaseのWeb設定が不足しています');
+      }
+      await loadFirebaseWebSdk();
+      firebase.initializeApp({
+        apiKey:config.apiKey,authDomain:config.authDomain,
+        projectId:config.projectId,appId:config.appId
+      });
+      byId('firebaseLogoutButton').classList.remove('hidden');
+      firebase.auth().onAuthStateChanged(async function(user){
+        if(!user){showGoogleLogin();return;}
+        try{await establishFirebaseSession(user);showTitleAfterLogin();}
+        catch(error){showGoogleLogin(error.message);}
+      });
+    }else{
+      const session=await api('/api/auth/session');
+      csrfToken=session.csrfToken||'';
+      showTitleAfterLogin();
+    }
+  }catch(error){
+    byId('bootScreen').innerHTML='<div>SERVER CONNECTION FAILED<br><small>'+esc(error.message)+'</small></div>';
   }
+}
+
+function showTitleAfterLogin(){
+  byId('bootScreen').classList.add('hidden');
+  byId('firebaseLogin').classList.add('hidden');
+  byId('titleScreen').classList.remove('hidden');
+  const invited=new URLSearchParams(location.search).get('room');
+  if(invited)localStorage.setItem('yaju.pc.inviteRoom',invited.toLowerCase());
+}
+
+function showGoogleLogin(message){
+  csrfToken='';
+  byId('bootScreen').classList.add('hidden');
+  byId('titleScreen').classList.add('hidden');
+  byId('appShell').classList.add('hidden');
+  byId('firebaseLogin').classList.remove('hidden');
+  byId('firebaseLoginMessage').textContent=message||'';
+}
+
+function loadFirebaseScript(url){
+  return new Promise(function(resolve,reject){
+    const script=document.createElement('script');
+    script.src=url;script.onload=resolve;script.onerror=function(){reject(new Error('認証ライブラリの読込に失敗しました'));};
+    document.head.appendChild(script);
+  });
+}
+
+async function loadFirebaseWebSdk(){
+  // 使用するFirebase SDKは明示バージョン固定にする。
+  await loadFirebaseScript('https://www.gstatic.com/firebasejs/12.5.0/firebase-app-compat.js');
+  await loadFirebaseScript('https://www.gstatic.com/firebasejs/12.5.0/firebase-auth-compat.js');
+}
+
+async function establishFirebaseSession(user){
+  const idToken=await user.getIdToken();
+  csrfToken='';
+  const response=await api('/api/auth/firebase/session',{
+    method:'POST',body:JSON.stringify({idToken:idToken})
+  });
+  csrfToken=response.csrfToken;
+  sessionStorage.setItem('yaju.pc.csrfToken',csrfToken);
+  await loadFirebaseProgress();
+}
+
+// Firestoreが正本。旧データの移行はアカウント確認後に一度だけ実施する。
+async function loadFirebaseProgress(){
+  const response=await api('/api/users/me/progress');
+  if(response.exists){
+    applyFirebaseProgress(response.progress);
+    return;
+  }
+  const alreadyMigrated=Boolean(localStorage.getItem('yaju.pc.legacyMigratedUid'));
+  const hasLegacy=!alreadyMigrated && Boolean(localStorage.getItem(PROGRESS_KEY));
+  const importLegacy=hasLegacy && window.confirm(
+    'このブラウザに旧ゲームデータがあります。現在のGoogleアカウントへ引き継ぎますか？');
+  const source=importLegacy?progress:defaultProgress();
+  const imported=await api('/api/users/me/progress/migrate',{
+    method:'POST',body:JSON.stringify(source)
+  });
+  if(importLegacy){
+    localStorage.setItem('yaju.pc.legacyMigratedUid',firebase.auth().currentUser.uid);
+  }
+  applyFirebaseProgress(imported.progress);
+}
+
+function applyFirebaseProgress(cloudProgress){
+  progress=Object.assign(defaultProgress(),cloudProgress||{});
+  progress.stats=Object.assign(defaultProgress().stats,progress.stats||{});
+  progress.inventory=Object.assign({},progress.inventory||{});
+  progress.presents=Array.isArray(progress.presents)?progress.presents:[];
+  progress.daily=Object.assign(defaultProgress().daily,progress.daily||{});
+  if(progress.daily.date!==localDateKey()){
+    progress.daily={date:localDateKey(),matchesPlayed:0,wins:0,
+      challengePlayed:0,claimedMissionIds:[]};
+  }
+  playerName=progress.displayName||'';
+  byId('profileName').value=playerName;
+  byId('menuPlayerName').textContent=playerName;
+}
+
+async function cloudUpdate(path,method,payload){
+  const response=await api('/api/users/me'+path,{
+    method:method,body:payload===undefined?undefined:JSON.stringify(payload)
+  });
+  applyFirebaseProgress(response.progress);
+  return response.progress;
+}
+
+async function recordCloudResult(state){
+  const self=state.players.find(function(player){return player.self;});
+  if(!self || !self.rank)return;
+  try{
+    await cloudUpdate('/matches/'+encodeURIComponent(state.roomId)+'/record','POST');
+    const target=self.yajuStatus&&self.yajuStatus!=='NONE';
+    const success=self.yajuStatus==='COMPLETED';
+    byId('resultExp').textContent='+'+earnedExp(self.rank,!!target,success)+' EXP（クラウド保存済）';
+    byId('retryResultButton').classList.add('hidden');
+  }catch(error){
+    byId('resultExp').textContent='戦績を保存できませんでした：'+error.message;
+    byId('retryResultButton').classList.remove('hidden');
+  }
+}
+
+function retryCloudResult(){
+  if(currentState && currentState.finished)recordCloudResult(currentState);
+}
+
+async function signInGoogle(){
+  const button=byId('googleLoginButton');
+  button.disabled=true;
+  try{
+    const provider=new firebase.auth.GoogleAuthProvider();
+    await firebase.auth().signInWithPopup(provider);
+    // 認証確定後のデータ取得・画面遷移はonAuthStateChangedで行う。
+  }catch(error){
+    showGoogleLogin(error.message||'ログインできませんでした');
+  }finally{button.disabled=false;}
+}
+
+async function signOutGoogle(){
+  try{
+    await api('/api/auth/logout',{method:'POST'});
+    await firebase.auth().signOut();
+    roomId='';currentState=null;selected.clear();
+    localStorage.removeItem('yaju.pc.roomId');
+    sessionStorage.removeItem('yaju.pc.csrfToken');
+    showGoogleLogin();
+  }catch(error){toast(error.message,true);}
 }
 
 function startFromTitle(){
   byId('titleScreen').classList.add('hidden');
   byId('appShell').classList.remove('hidden');
-  if(!playerName){
+  if(!playerName || !progress.profileConfigured){
     showOnly('profileScreen');
     return;
   }
   restoreOrMenu();
 }
 
-function saveProfile(){
+async function saveProfile(){
   const value=byId('profileName').value.trim();
   if(!value){toast('プレイヤー名を入力してください',true);return;}
   if(value.length>20){toast('プレイヤー名は20文字以内です',true);return;}
+  if(firebaseWebEnabled){
+    try{await cloudUpdate('/profile','PATCH',{displayName:value});}
+    catch(error){toast(error.message,true);return;}
+  }
   playerName=value;
   progress.displayName=value;
   progress.profileConfigured=true;
   saveProgress();
-  localStorage.setItem('yaju.pc.playerName',playerName);
+  if(!firebaseWebEnabled)localStorage.setItem('yaju.pc.playerName',playerName);
   byId('menuPlayerName').textContent=playerName;
   restoreOrMenu();
 }
@@ -1029,9 +1193,15 @@ function renderMission(){
   });
 }
 
-function claimMission(id){
+async function claimMission(id){
   const mission=missionViews().find(function(m){return m.id===id;});
   if(!mission || !mission.claimable)return;
+  if(firebaseWebEnabled){
+    try{await cloudUpdate('/missions/'+encodeURIComponent(id)+'/claim','POST');
+      renderMission();renderMenuMeta();toast('プレゼントBOXへ送りました');}
+    catch(error){toast(error.message,true);}
+    return;
+  }
   const presentId='mission:'+progress.daily.date+':'+mission.id;
   if(!progress.presents.some(function(p){return p.id===presentId;})){
     progress.presents.push({id:presentId,title:'ミッション達成報酬',itemId:mission.itemId,itemName:mission.itemName,quantity:1,source:mission.title});
@@ -1066,12 +1236,17 @@ function renderProfile(){
 function statHtml(label,value){return '<div class="stat"><strong>'+esc(value)+'</strong><span>'+esc(label)+'</span></div>';}
 function equipmentHtml(label,id){return '<div class="equipment-row"><span>'+esc(label)+'</span><strong>'+esc(cosmeticName(id))+'</strong></div>';}
 
-function saveProfileFromMeta(){
+async function saveProfileFromMeta(){
   const value=byId('profileEditName').value.trim();
   if(!value){toast('プレイヤー名を入力してください',true);return;}
   if(value.length>20){toast('プレイヤー名は20文字以内です',true);return;}
+  if(firebaseWebEnabled){
+    try{await cloudUpdate('/profile','PATCH',{displayName:value});}
+    catch(error){toast(error.message,true);return;}
+  }
   playerName=value;progress.displayName=value;progress.profileConfigured=true;
-  localStorage.setItem('yaju.pc.playerName',value);saveProgress();
+  if(!firebaseWebEnabled)localStorage.setItem('yaju.pc.playerName',value);
+  saveProgress();
   renderProfile();renderMenuMeta();toast('プレイヤー名を保存しました');
 }
 
@@ -1117,9 +1292,15 @@ function isEquipped(item){
     (item.category==='EFFECT'&&progress.equippedEffectId===item.id);
 }
 
-function equipCosmetic(id){
+async function equipCosmetic(id){
   const item=COSMETICS.find(function(x){return x.id===id;});
   if(!item || !(progress.inventory[id]>0)){toast('未所持のアイテムは装備できません',true);return;}
+  if(firebaseWebEnabled){
+    try{await cloudUpdate('/equipment','POST',{itemId:id});
+      renderCollection();toast(item.name+'を装備しました');}
+    catch(error){toast(error.message,true);}
+    return;
+  }
   if(item.category==='AVATAR')progress.equippedAvatarId=id;
   if(item.category==='FRAME')progress.equippedFrameId=id;
   if(item.category==='CARD_SKIN')progress.equippedCardSkinId=id;
@@ -1150,16 +1331,28 @@ function renderPresent(){
   });
 }
 
-function receivePresent(id){
+async function receivePresent(id){
   const index=progress.presents.findIndex(function(p){return p.id===id;});
   if(index<0)return;
+  if(firebaseWebEnabled){
+    try{await cloudUpdate('/presents/'+encodeURIComponent(id)+'/receive','POST');
+      renderPresent();renderMenuMeta();toast('受け取りました');}
+    catch(error){toast(error.message,true);}
+    return;
+  }
   const present=progress.presents[index];
   progress.inventory[present.itemId]=(progress.inventory[present.itemId]||0)+(present.quantity||1);
   progress.presents.splice(index,1);
   saveProgress();renderPresent();renderMenuMeta();toast(present.itemName+'を受け取りました');
 }
 
-function receiveAllPresents(){
+async function receiveAllPresents(){
+  if(firebaseWebEnabled){
+    try{await cloudUpdate('/presents/receive-all','POST');
+      renderPresent();renderMenuMeta();toast('すべて受け取りました');}
+    catch(error){toast(error.message,true);}
+    return;
+  }
   progress.presents.slice().forEach(function(p){
     progress.inventory[p.itemId]=(progress.inventory[p.itemId]||0)+(p.quantity||1);
   });
@@ -1173,9 +1366,15 @@ function openSettings(){
   showOnly('settingsScreen');
 }
 function renderSettings(){byId('bgmSwitch').classList.toggle('on',progress.settings.bgm!==false);}
-function toggleBgm(){
-  progress.settings.bgm=progress.settings.bgm===false;
-  saveProgress();renderSettings();
+async function toggleBgm(){
+  if(firebaseWebEnabled){
+    try{await cloudUpdate('/settings','PATCH',{bgm:progress.settings.bgm===false});}
+    catch(error){toast(error.message,true);return;}
+  }else{
+    progress.settings.bgm=progress.settings.bgm===false;
+    saveProgress();
+  }
+  renderSettings();
   if(currentState)syncGameAudio(currentState);else if(progress.settings.bgm===false)stopYajuBgm();
 }
 
@@ -1559,6 +1758,7 @@ function renderResult(state){
   hideCpuOverlay();
   const earned=recordMatchProgress(state);
   showOnly('resultScreen');
+  if(firebaseWebEnabled)recordCloudResult(state);
   const ranking=state.players.slice().sort(function(a,b){return (a.rank||999)-(b.rank||999);});
   const self=ranking.find(function(p){return p.self;});
   byId('yourRank').textContent=self&&self.rank?'YOUR RANK  #'+self.rank:'MATCH COMPLETE';
@@ -2004,7 +2204,6 @@ function rankText(rank){
 }
 
 window.addEventListener('DOMContentLoaded',function(){
-  saveProgress();
   if(progress.profileConfigured && !localStorage.getItem('yaju.pc.playerName')){
     playerName=progress.displayName;
     localStorage.setItem('yaju.pc.playerName',playerName);
