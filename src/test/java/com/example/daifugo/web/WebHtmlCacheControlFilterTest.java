@@ -19,6 +19,14 @@ class WebHtmlCacheControlFilterTest {
     }
 
     @Test
+    void ユーザーデータAPIもキャッシュさせない() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me/progress");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        new WebHtmlCacheControlFilter().doFilter(request, response, new MockFilterChain());
+        assertEquals("no-store, max-age=0", response.getHeader("Cache-Control"));
+    }
+
+    @Test
     void 画像にはHTMLのキャッシュ制御を適用しない() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/assets/audio/yaju_bgm.mp3");
         MockHttpServletResponse response = new MockHttpServletResponse();
