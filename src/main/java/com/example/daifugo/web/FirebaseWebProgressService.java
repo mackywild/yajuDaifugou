@@ -302,7 +302,7 @@ public class FirebaseWebProgressService {
     }
 
     /** 旧データは未検証として保持し、フィールド・サイズ・数値を制限する。 */
-    private static Map<String, Object> sanitizeLegacy(Map<String, Object> input) {
+    static Map<String, Object> sanitizeLegacy(Map<String, Object> input) {
         Map<String, Object> legacy = input == null ? Map.of() : input;
         Map<String, Object> result = new HashMap<>();
         String displayName = String.valueOf(legacy.getOrDefault("displayName", "PLAYER")).trim();
