@@ -1359,9 +1359,15 @@ function openSettings(){
   showOnly('settingsScreen');
 }
 function renderSettings(){byId('bgmSwitch').classList.toggle('on',progress.settings.bgm!==false);}
-function toggleBgm(){
-  progress.settings.bgm=progress.settings.bgm===false;
-  saveProgress();renderSettings();
+async function toggleBgm(){
+  if(firebaseWebEnabled){
+    try{await cloudUpdate('/settings','PATCH',{bgm:progress.settings.bgm===false});}
+    catch(error){toast(error.message,true);return;}
+  }else{
+    progress.settings.bgm=progress.settings.bgm===false;
+    saveProgress();
+  }
+  renderSettings();
   if(currentState)syncGameAudio(currentState);else if(progress.settings.bgm===false)stopYajuBgm();
 }
 
