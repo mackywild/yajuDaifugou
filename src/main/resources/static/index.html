@@ -1028,13 +1028,17 @@ async function loadFirebaseProgress(){
     applyFirebaseProgress(response.progress);
     return;
   }
-  const hasLegacy=Boolean(localStorage.getItem(PROGRESS_KEY));
+  const alreadyMigrated=Boolean(localStorage.getItem('yaju.pc.legacyMigratedUid'));
+  const hasLegacy=!alreadyMigrated && Boolean(localStorage.getItem(PROGRESS_KEY));
   const importLegacy=hasLegacy && window.confirm(
     'このブラウザに旧ゲームデータがあります。現在のGoogleアカウントへ引き継ぎますか？');
   const source=importLegacy?progress:defaultProgress();
   const imported=await api('/api/users/me/progress/migrate',{
     method:'POST',body:JSON.stringify(source)
   });
+  if(importLegacy){
+    localStorage.setItem('yaju.pc.legacyMigratedUid',firebase.auth().currentUser.uid);
+  }
   applyFirebaseProgress(imported.progress);
 }
 
@@ -1125,7 +1129,7 @@ async function saveProfile(){
   progress.displayName=value;
   progress.profileConfigured=true;
   saveProgress();
-  localStorage.setItem('yaju.pc.playerName',playerName);
+  if(!firebaseWebEnabled)localStorage.setItem('yaju.pc.playerName',playerName);
   byId('menuPlayerName').textContent=playerName;
   restoreOrMenu();
 }
@@ -1239,7 +1243,8 @@ async function saveProfileFromMeta(){
     catch(error){toast(error.message,true);return;}
   }
   playerName=value;progress.displayName=value;progress.profileConfigured=true;
-  localStorage.setItem('yaju.pc.playerName',value);saveProgress();
+  if(!firebaseWebEnabled)localStorage.setItem('yaju.pc.playerName',value);
+  saveProgress();
   renderProfile();renderMenuMeta();toast('プレイヤー名を保存しました');
 }
 
@@ -2197,7 +2202,6 @@ function rankText(rank){
 }
 
 window.addEventListener('DOMContentLoaded',function(){
-  saveProgress();
   if(progress.profileConfigured && !localStorage.getItem('yaju.pc.playerName')){
     playerName=progress.displayName;
     localStorage.setItem('yaju.pc.playerName',playerName);
