@@ -952,9 +952,9 @@ async function api(url,options){
 // Firebaseが無効な間は従来のサーバーセッションで動作し、安全に段階移行する。
 async function bootstrap(){
   try{
-    const version=await api('/api/version');
+    const version=await api('/api/version',{cache:'no-store'});
     byId('networkPill').textContent='● WEB '+String(version.buildSha||'unknown').slice(0,12);
-    const config=await api('/api/config/firebase');
+    const config=await api('/api/config/firebase',{cache:'no-store'});
     firebaseWebEnabled=Boolean(config.enabled);
     if(firebaseWebEnabled){
       if(!config.apiKey || !config.authDomain || !config.projectId || !config.appId){
