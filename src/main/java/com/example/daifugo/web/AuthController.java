@@ -98,6 +98,12 @@ public class AuthController {
 
         loginAttemptService.recordSuccess(attemptKey);
 
+        HttpSession existing = request.getSession(false);
+        if (existing != null && existing.getAttribute(FIREBASE_UID_SESSION_KEY) != null) {
+            // 旧クライアント認証に切り替える前に、Firebaseユーザーの部屋を解除する。
+            releaseRoomIfPossible(existing);
+            existing.removeAttribute(FIREBASE_UID_SESSION_KEY);
+        }
         return establishSession(request);
     }
 
@@ -130,7 +136,8 @@ public class AuthController {
         if (existing != null) {
             // 別UIDのセッションへ切り替える場合は対戦ルームの安全な退出を要求する。
             Object previousUid = existing.getAttribute(FIREBASE_UID_SESSION_KEY);
-            if (previousUid instanceof String && !previousUid.equals(uid)) {
+            // Firebase以外のセッションから切替える場合も旧ルームを引き継がない。
+            if (!uid.equals(previousUid)) {
                 releaseRoomIfPossible(existing);
             }
         }
