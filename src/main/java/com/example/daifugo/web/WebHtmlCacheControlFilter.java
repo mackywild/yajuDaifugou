@@ -18,7 +18,7 @@ public class WebHtmlCacheControlFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain chain) throws ServletException, IOException {
         String path = request.getRequestURI();
-        if ("/".equals(path) || "/index.html".equals(path)) {
+        if ("/".equals(path) || "/index.html".equals(path) || path.startsWith("/api/")) {
             response.setHeader("Cache-Control", "no-store, max-age=0");
             response.setHeader("Pragma", "no-cache");
         }
