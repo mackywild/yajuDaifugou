@@ -473,6 +473,16 @@
   <div><div class="spinner"></div>CONNECTING TO ROYAL TABLE...</div>
 </div>
 
+<div id="firebaseLogin" class="title-screen hidden screen">
+  <div class="title-card">
+    <div class="eyebrow">SECURE PLAYER ACCOUNT</div>
+    <div class="title-logo">野獣大富豪</div>
+    <p class="subtitle">Googleアカウントでログインしてゲームを開始</p>
+    <button id="googleLoginButton" class="tap" onclick="signInGoogle()">Googleでログイン ▶</button>
+    <p id="firebaseLoginMessage" class="subtitle" role="status"></p>
+  </div>
+</div>
+
 <div id="titleScreen" class="title-screen hidden screen">
   <div class="title-card">
     <div class="eyebrow">ONLINE CARD GAME</div>
@@ -490,6 +500,7 @@
       <h1>ROYAL CASINO</h1>
     </div>
     <div id="networkPill" class="status-pill">● BROWSER</div>
+    <button id="firebaseLogoutButton" class="btn dark hidden" onclick="signOutGoogle()">ログアウト</button>
   </header>
 
   <main>
@@ -767,6 +778,7 @@ const COSMETICS=[
   {id:'effect_soft_glow',name:'ソフトグロー',category:'EFFECT',symbol:'✦',description:'カード提出時に淡く光るシンプルなプレイエフェクト。'}
 ];
 let progress=loadProgress();
+let firebaseWebEnabled=false;
 let csrfToken = '';
 let roomId = localStorage.getItem('yaju.pc.roomId') || '';
 let playerName = localStorage.getItem('yaju.pc.playerName') || progress.displayName || '';
@@ -935,18 +947,99 @@ async function api(url,options){
   return data;
 }
 
+// Firebaseが無効な間は従来のサーバーセッションで動作し、安全に段階移行する。
 async function bootstrap(){
   try{
-    const session=await api('/api/auth/session');
-    csrfToken=session.csrfToken||'';
-    sessionStorage.setItem('yaju.pc.csrfToken',csrfToken);
-    byId('bootScreen').classList.add('hidden');
-    byId('titleScreen').classList.remove('hidden');
-    const invited=new URLSearchParams(location.search).get('room');
-    if(invited) localStorage.setItem('yaju.pc.inviteRoom',invited.toLowerCase());
-  }catch(e){
-    byId('bootScreen').innerHTML='<div>SERVER CONNECTION FAILED<br><small>'+esc(e.message)+'</small></div>';
+    const config=await api('/api/config/firebase');
+    firebaseWebEnabled=Boolean(config.enabled);
+    if(firebaseWebEnabled){
+      if(!config.apiKey || !config.authDomain || !config.projectId || !config.appId){
+        throw new Error('FirebaseのWeb設定が不足しています');
+      }
+      await loadFirebaseWebSdk();
+      firebase.initializeApp({
+        apiKey:config.apiKey,authDomain:config.authDomain,
+        projectId:config.projectId,appId:config.appId
+      });
+      byId('firebaseLogoutButton').classList.remove('hidden');
+      firebase.auth().onAuthStateChanged(async function(user){
+        if(!user){showGoogleLogin();return;}
+        try{await establishFirebaseSession(user);showTitleAfterLogin();}
+        catch(error){showGoogleLogin(error.message);}
+      });
+    }else{
+      const session=await api('/api/auth/session');
+      csrfToken=session.csrfToken||'';
+      showTitleAfterLogin();
+    }
+  }catch(error){
+    byId('bootScreen').innerHTML='<div>SERVER CONNECTION FAILED<br><small>'+esc(error.message)+'</small></div>';
   }
+}
+
+function showTitleAfterLogin(){
+  byId('bootScreen').classList.add('hidden');
+  byId('firebaseLogin').classList.add('hidden');
+  byId('titleScreen').classList.remove('hidden');
+  const invited=new URLSearchParams(location.search).get('room');
+  if(invited)localStorage.setItem('yaju.pc.inviteRoom',invited.toLowerCase());
+}
+
+function showGoogleLogin(message){
+  csrfToken='';
+  byId('bootScreen').classList.add('hidden');
+  byId('titleScreen').classList.add('hidden');
+  byId('appShell').classList.add('hidden');
+  byId('firebaseLogin').classList.remove('hidden');
+  byId('firebaseLoginMessage').textContent=message||'';
+}
+
+function loadFirebaseScript(url){
+  return new Promise(function(resolve,reject){
+    const script=document.createElement('script');
+    script.src=url;script.onload=resolve;script.onerror=function(){reject(new Error('認証ライブラリの読込に失敗しました'));};
+    document.head.appendChild(script);
+  });
+}
+
+async function loadFirebaseWebSdk(){
+  // 使用するFirebase SDKは明示バージョン固定にする。
+  await loadFirebaseScript('https://www.gstatic.com/firebasejs/12.5.0/firebase-app-compat.js');
+  await loadFirebaseScript('https://www.gstatic.com/firebasejs/12.5.0/firebase-auth-compat.js');
+}
+
+async function establishFirebaseSession(user){
+  const idToken=await user.getIdToken();
+  csrfToken='';
+  const response=await api('/api/auth/firebase/session',{
+    method:'POST',body:JSON.stringify({idToken:idToken})
+  });
+  csrfToken=response.csrfToken;
+  sessionStorage.setItem('yaju.pc.csrfToken',csrfToken);
+}
+
+async function signInGoogle(){
+  const button=byId('googleLoginButton');
+  button.disabled=true;
+  try{
+    const provider=new firebase.auth.GoogleAuthProvider();
+    const result=await firebase.auth().signInWithPopup(provider);
+    await establishFirebaseSession(result.user);
+    showTitleAfterLogin();
+  }catch(error){
+    showGoogleLogin(error.message||'ログインできませんでした');
+  }finally{button.disabled=false;}
+}
+
+async function signOutGoogle(){
+  try{
+    await api('/api/auth/logout',{method:'POST'});
+    await firebase.auth().signOut();
+    roomId='';currentState=null;selected.clear();
+    localStorage.removeItem('yaju.pc.roomId');
+    sessionStorage.removeItem('yaju.pc.csrfToken');
+    showGoogleLogin();
+  }catch(error){toast(error.message,true);}
 }
 
 function startFromTitle(){
