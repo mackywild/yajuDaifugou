@@ -952,6 +952,8 @@ async function api(url,options){
 // Firebaseが無効な間は従来のサーバーセッションで動作し、安全に段階移行する。
 async function bootstrap(){
   try{
+    const version=await api('/api/version');
+    byId('networkPill').textContent='● WEB '+String(version.buildSha||'unknown').slice(0,12);
     const config=await api('/api/config/firebase');
     firebaseWebEnabled=Boolean(config.enabled);
     if(firebaseWebEnabled){
