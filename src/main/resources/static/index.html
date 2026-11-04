@@ -473,6 +473,17 @@
   <div><div class="spinner"></div>CONNECTING TO ROYAL TABLE...</div>
 </div>
 
+<div id="maintenanceScreen" class="title-screen hidden screen" role="status" aria-live="polite">
+  <div class="title-card" style="max-width:620px">
+    <div class="eyebrow">SERVER MAINTENANCE</div>
+    <div class="title-logo">野獣大富豪</div>
+    <div class="suits">♠ ♥ ♦ ♣</div>
+    <h2 style="color:var(--gold);margin:12px 0">ただいまメンテナンス中</h2>
+    <p class="subtitle">ゲームを安全に更新しています。セーブデータは保持されます。<br>終了後は再ログインせずに再開できます。</p>
+    <p class="subtitle">この画面は自動的に更新されます。</p>
+  </div>
+</div>
+
 <div id="firebaseLogin" class="title-screen hidden screen">
   <div class="title-card">
     <div class="eyebrow">SECURE PLAYER ACCOUNT</div>
@@ -780,6 +791,8 @@ const COSMETICS=[
 ];
 let progress=loadProgress();
 let firebaseWebEnabled=false;
+let maintenanceVisible=false;
+let maintenancePollRunning=false;
 let cloudResultInFlight=null;
 let cloudResultSavedRoomId=null;
 let csrfToken = '';
@@ -947,13 +960,46 @@ async function api(url,options){
   const res=await fetch(url,Object.assign({},options,{credentials:'same-origin',headers:headers}));
   let data=null;
   try{data=await res.json();}catch(_){}
+  if(res.status===503 && data && data.code==='MAINTENANCE')showMaintenance();
   if(!res.ok) throw new Error(data && data.message ? data.message : 'HTTP '+res.status);
   return data;
+}
+
+// メンテナンス画面を表示中もログイン情報・Firestoreデータを消去しない。
+function showMaintenance(){
+  maintenanceVisible=true;
+  closeRealtime();
+  byId('bootScreen').classList.add('hidden');
+  byId('titleScreen').classList.add('hidden');
+  byId('firebaseLogin').classList.add('hidden');
+  byId('appShell').classList.add('hidden');
+  byId('maintenanceScreen').classList.remove('hidden');
+}
+
+async function pollMaintenance(){
+  if(maintenancePollRunning)return;
+  maintenancePollRunning=true;
+  try{
+    const response=await fetch('/api/system/status',{cache:'no-store',credentials:'same-origin'});
+    if(!response.ok)return;
+    const status=await response.json();
+    if(status.mode==='MAINTENANCE')showMaintenance();
+    else if(maintenanceVisible && status.mode==='NORMAL')location.reload();
+    else if(status.mode==='DRAINING' && !maintenanceVisible){
+      byId('networkPill').textContent='● 更新準備中・新規対戦停止';
+    }
+  }catch(_){
+    // 一時的な切断では画面を消さず次回の確認を待つ。
+  }finally{
+    maintenancePollRunning=false;
+  }
 }
 
 // Firebaseが無効な間は従来のサーバーセッションで動作し、安全に段階移行する。
 async function bootstrap(){
   try{
+    const status=await api('/api/system/status',{cache:'no-store'});
+    if(status.mode==='MAINTENANCE'){showMaintenance();return;}
     const version=await api('/api/version',{cache:'no-store'});
     byId('networkPill').textContent='● WEB '+String(version.buildSha||'unknown').slice(0,12);
     const config=await api('/api/config/firebase',{cache:'no-store'});
@@ -984,6 +1030,7 @@ async function bootstrap(){
 }
 
 function showTitleAfterLogin(){
+  if(maintenanceVisible)return;
   byId('bootScreen').classList.add('hidden');
   byId('firebaseLogin').classList.add('hidden');
   byId('titleScreen').classList.remove('hidden');
@@ -992,6 +1039,7 @@ function showTitleAfterLogin(){
 }
 
 function showGoogleLogin(message){
+  if(maintenanceVisible)return;
   csrfToken='';
   byId('bootScreen').classList.add('hidden');
   byId('titleScreen').classList.add('hidden');
@@ -1143,6 +1191,7 @@ async function signOutGoogle(){
 }
 
 function startFromTitle(){
+  if(maintenanceVisible)return;
   byId('titleScreen').classList.add('hidden');
   byId('appShell').classList.remove('hidden');
   if(!playerName || !progress.profileConfigured){
@@ -2238,6 +2287,7 @@ function rankText(rank){
 }
 
 window.addEventListener('DOMContentLoaded',function(){
+  setInterval(pollMaintenance,15000);
   if(progress.profileConfigured && !localStorage.getItem('yaju.pc.playerName')){
     playerName=progress.displayName;
     localStorage.setItem('yaju.pc.playerName',playerName);
