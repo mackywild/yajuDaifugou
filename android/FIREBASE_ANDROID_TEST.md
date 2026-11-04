@@ -29,8 +29,27 @@ GitHub → リポジトリ Settings → Secrets and variables → Actions に以
 | `FIREBASE_PROJECT_ID` | Webと同じFirebaseプロジェクトID |
 | `FIREBASE_WEB_CLIENT_ID` | Google OAuthのWebクライアントID（`...apps.googleusercontent.com`） |
 | `YAJU_ANDROID_SERVER_URL` | （推奨）デバッグAPKで使うアクセス可能な**HTTPSのStaging URL** |
+| `YAJU_ANDROID_TEST_KEYSTORE_B64` | **Firebase用に固定したテスト署名keystore**のbase64。ストア用鍵とは分離 |
+| `YAJU_TEST_STORE_PASSWORD` | テストkeystoreパスワード |
+| `YAJU_TEST_KEY_ALIAS` | テスト鍵のalias |
+| `YAJU_TEST_KEY_PASSWORD` | テスト秘密鍵のパスワード |
 
 Androidプロジェクトでのローカルビルドは、同名の環境変数または`~/.gradle/gradle.properties` のプロパティで注入できる。ビルドは`cd android && ./gradlew :app:testDebugUnitTest :app:assembleDebug`。
+
+### GitHub配布APKでGoogleログインを試すための固定署名（重要）
+
+GitHub Actionsの既定のデバッグ署名はランナーごとに変わるため、Firebaseに登録したSHAと一致しない可能性がある。**Firebase構成のあるCIでは固定テスト署名を必須**とする。公開用アップロード鍵ではなく**専用の検証鍵**を作り、リポジトリにはコミットしない。
+
+1. Android StudioのJDK等が使える環境でテスト鍵を1回だけ生成する。例：
+   ```bash
+   keytool -genkeypair -v -keystore yaju-firebase-test.jks -alias yaju-firebase-test -keyalg RSA -keysize 2048 -validity 3650
+   ```
+2. `keytool -list -v -keystore yaju-firebase-test.jks -alias yaju-firebase-test` でSHA-1/SHA-256を表示し、Firebase Androidアプリに登録する。
+3. Windows PowerShellなら `[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\\path\\yaju-firebase-test.jks"))` をSecretsに登録する。
+4. `YAJU_ANDROID_TEST_KEYSTORE_B64` と3つのパスワード／alias Secretを登録して再ビルドする。**Firebase公開設定だけが入力され、固定署名がないCIは明示的に失敗する**。
+5. Playストア経由の場合はGoogle Play App Signingの別証明書もFirebaseに登録する。異なる署名のAPKは既存インストールにそのまま上書きできないため、アンインストール前に端末データのバックアップを検討する。
+
+ローカルビルドは通常の`~/.android/debug.keystore`が利用されるため、そのSHAをFirebaseに登録すれば固定テスト鍵なしでも検証できる。
 
 **注**：fork由来のPRにはSecretsが渡らない場合がある。その場合はFirebase未設定のAPKとしてビルドされる。Firebase設定の有無はアプリ内の「FIREBASE ACCOUNT」に表示される。
 
