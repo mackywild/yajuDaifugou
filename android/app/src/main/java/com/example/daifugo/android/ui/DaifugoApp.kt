@@ -569,7 +569,7 @@ private fun AccountSetupScreen(
                             fontWeight = FontWeight.Black,
                         )
                         Text(
-                            "Android向けの任意連携です。PC版とのクロスプレイにGoogleアカウントは不要です。",
+                            "Play GamesはAndroid用の任意連携です。FirebaseのGoogleログインとは別です。",
                             color = Color.White.copy(alpha = 0.48f),
                             fontSize = 11.sp,
                         )
@@ -617,7 +617,7 @@ private fun AccountSetupScreen(
 
             item {
                 Text(
-                    "Google Play Gamesなしでも全ゲームモードを利用できます。",
+                    "Play Games連携は任意です。Web版とのクラウド同期にはGoogleログインを利用します。",
                     modifier = Modifier.fillMaxWidth(),
                     color = Color.White.copy(alpha = 0.42f),
                     textAlign = TextAlign.Center,
@@ -4476,6 +4476,7 @@ private fun ResultScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
             item {
                 Button(
                     onClick = viewModel::leaveRoom,
+                    enabled = state.cloudResultStatus != "SAVING",
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp),
