@@ -45,11 +45,17 @@ jobs:
         run: |
           sdkmanager "platform-tools" "platforms;android-37.0" "build-tools;36.0.0"
 
-      - name: Build debug APK and AAB
+      - name: Run Android unit tests and build debug APK/AAB
         working-directory: android
+        # Firebase公開設定。未登録の場合は従来どおりオフラインAPKを作成する。
+        env:
+          FIREBASE_ANDROID_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
+          FIREBASE_ANDROID_APP_ID: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_WEB_CLIENT_ID: ${{ secrets.FIREBASE_WEB_CLIENT_ID }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleDebug :app:bundleDebug
+          ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug :app:bundleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
