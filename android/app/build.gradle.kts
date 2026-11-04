@@ -61,7 +61,19 @@ android {
     }
 
     buildTypes {
+        debug {
+            // デバッグAPKのみ非公開Stagingへの接続を許可。本番配布は固定URL。
+            val debugServerUrl = providers.gradleProperty("YAJU_ANDROID_SERVER_URL")
+                .orElse(providers.environmentVariable("YAJU_ANDROID_SERVER_URL"))
+                .orNull.orEmpty().ifBlank { "https://yaju-daifugou.com" }
+            require(debugServerUrl.startsWith("https://")) {
+                "Androidデバッグ接続先はHTTPSのみ指定できます"
+            }
+            buildConfigField("String", "YAJU_SERVER_URL", "\""+debugServerUrl.trimEnd('/')+"\"")
+        }
+
         release {
+            buildConfigField("String", "YAJU_SERVER_URL", "\"https://yaju-daifugou.com\"")
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("releaseUpload")
             }
