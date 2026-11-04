@@ -2259,7 +2259,7 @@ private fun FirebaseAccountPanel(state: DaifugoUiState, viewModel: DaifugoViewMo
                 !state.firebaseConfigured -> "Firebase未設定のAPKです。CIでFirebase構成を指定するとGoogleログインをテストできます。"
                 state.cloudMigrationRequired -> "Googleログイン済み。初回データ登録方法を選択してください。"
                 state.firebaseUid != null && state.cloudReady -> "✓ Web版とクラウドデータを共有しています"
-                else -> "Web版と共通のGoogleアカウントでログインできます。",
+                else -> "Web版と共通のGoogleアカウントでログインできます。"
             },
             color = if (state.cloudReady) Color(0xFF78D6A1) else Color.White.copy(alpha = 0.82f),
             fontSize = 12.sp,
@@ -4458,7 +4458,7 @@ private fun ResultScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                                 "SAVED" -> "✓ サーバー確定の順位をFirestoreへ保存しました"
                                 "SAVING" -> "戦績をクラウドに保存しています…"
                                 "FAILED" -> "保存に失敗しました。退出前に再送してください。"
-                                else -> "クラウドへの戦績反映を確認中です",
+                                else -> "クラウドへの戦績反映を確認中です"
                             },
                             color = Color.White,
                         )
