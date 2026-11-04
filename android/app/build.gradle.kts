@@ -36,10 +36,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
-        buildConfigField("String", "FIREBASE_API_KEY", "\"\${providers.gradleProperty("YAJU_FIREBASE_API_KEY").orElse("").get()}\"")
-        buildConfigField("String", "FIREBASE_ANDROID_APP_ID", "\"\${providers.gradleProperty("YAJU_FIREBASE_ANDROID_APP_ID").orElse("").get()}\"")
-        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"\${providers.gradleProperty("YAJU_FIREBASE_PROJECT_ID").orElse("").get()}\"")
-        buildConfigField("String", "FIREBASE_WEB_CLIENT_ID", "\"\${providers.gradleProperty("YAJU_FIREBASE_WEB_CLIENT_ID").orElse("").get()}\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"${providers.gradleProperty("YAJU_FIREBASE_API_KEY").orElse("").get()}\"")
+        buildConfigField("String", "FIREBASE_ANDROID_APP_ID", "\"${providers.gradleProperty("YAJU_FIREBASE_ANDROID_APP_ID").orElse("").get()}\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${providers.gradleProperty("YAJU_FIREBASE_PROJECT_ID").orElse("").get()}\"")
+        buildConfigField("String", "FIREBASE_WEB_CLIENT_ID", "\"${providers.gradleProperty("YAJU_FIREBASE_WEB_CLIENT_ID").orElse("").get()}\"")
     }
 
     signingConfigs {
