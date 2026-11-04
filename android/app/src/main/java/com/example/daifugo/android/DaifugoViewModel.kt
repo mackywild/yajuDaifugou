@@ -356,19 +356,12 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun completeAccountSetup() {
         if (_uiState.value.firebaseUserId != null) {
-            cloudAction("アカウント設定が完了しました") {
-                api.cloudProfile(_uiState.value.playerName.trim())
-            }
-            // クラウド保存完了後のみメニューへ進む。
-            viewModelScope.launch {
-                // cloudActionの完了はStateFlowの更新で検知する。
-                uiState.collect { state ->
-                    if (state.firebaseUserId != null && state.progress.profileConfigured
-                        && !state.loading && state.errorMessage == null) {
-                        update { copy(screen = DaifugoScreen.MAIN_MENU) }
-                        return@launch
-                    }
-                }
+            launchAction {
+                val uid = _uiState.value.firebaseUserId ?: error("ログインが必要です")
+                require(!_uiState.value.firebaseMigrationPending) { "クラウドの初期設定を完了してください" }
+                val cloud = api.cloudProfile(_uiState.value.playerName.trim())
+                acceptCloudProgress(uid, cloud)
+                update { copy(screen = DaifugoScreen.MAIN_MENU, infoMessage = "アカウント設定が完了しました") }
             }
             return
         }
