@@ -3,6 +3,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// CI SecretsまたはローカルGradleプロパティからAndroid用Firebase公開設定を受け取る。
+fun firebaseProperty(name: String): String =
+    providers.gradleProperty(name).orElse(providers.environmentVariable(name)).orNull.orEmpty().also {
+        require(it.matches(Regex("[A-Za-z0-9:._-]*"))) { "Firebase設定の形式が不正です: $name" }
+    }
+
 val releaseKeystorePath = System.getenv("YAJU_KEYSTORE_PATH")
 val releaseStorePassword = System.getenv("YAJU_STORE_PASSWORD")
 val releaseKeyAlias = System.getenv("YAJU_KEY_ALIAS")
@@ -12,6 +18,18 @@ val hasReleaseSigning = listOf(
     releaseStorePassword,
     releaseKeyAlias,
     releaseKeyPassword,
+).all { !it.isNullOrBlank() }
+
+// CIで再現可能なGoogle OAuth署名を使う。Play公開用uploadキーとは分離。
+val testKeystorePath = System.getenv("YAJU_TEST_KEYSTORE_PATH")
+val testStorePassword = System.getenv("YAJU_TEST_STORE_PASSWORD")
+val testKeyAlias = System.getenv("YAJU_TEST_KEY_ALIAS")
+val testKeyPassword = System.getenv("YAJU_TEST_KEY_PASSWORD")
+val hasTestSigning = listOf(
+    testKeystorePath,
+    testStorePassword,
+    testKeyAlias,
+    testKeyPassword,
 ).all { !it.isNullOrBlank() }
 
 val appVersionCode = providers.gradleProperty("YAJU_VERSION_CODE")
@@ -36,9 +54,22 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+
+        buildConfigField("String", "FIREBASE_ANDROID_API_KEY", "\""+firebaseProperty("FIREBASE_ANDROID_API_KEY")+"\"")
+        buildConfigField("String", "FIREBASE_ANDROID_APP_ID", "\""+firebaseProperty("FIREBASE_ANDROID_APP_ID")+"\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\""+firebaseProperty("FIREBASE_PROJECT_ID")+"\"")
+        buildConfigField("String", "FIREBASE_WEB_CLIENT_ID", "\""+firebaseProperty("FIREBASE_WEB_CLIENT_ID")+"\"")
     }
 
     signingConfigs {
+        if (hasTestSigning) {
+            create("firebaseTest") {
+                storeFile = file(testKeystorePath!!)
+                storePassword = testStorePassword
+                keyAlias = testKeyAlias
+                keyPassword = testKeyPassword
+            }
+        }
         if (hasReleaseSigning) {
             create("releaseUpload") {
                 storeFile = file(releaseKeystorePath!!)
@@ -50,7 +81,22 @@ android {
     }
 
     buildTypes {
+        debug {
+            if (hasTestSigning) {
+                signingConfig = signingConfigs.getByName("firebaseTest")
+            }
+            // デバッグAPKのみ非公開Stagingへの接続を許可。本番配布は固定URL。
+            val debugServerUrl = providers.gradleProperty("YAJU_ANDROID_SERVER_URL")
+                .orElse(providers.environmentVariable("YAJU_ANDROID_SERVER_URL"))
+                .orNull.orEmpty().ifBlank { "https://yaju-daifugou.com" }
+            require(debugServerUrl.startsWith("https://")) {
+                "Androidデバッグ接続先はHTTPSのみ指定できます"
+            }
+            buildConfigField("String", "YAJU_SERVER_URL", "\""+debugServerUrl.trimEnd('/')+"\"")
+        }
+
         release {
+            buildConfigField("String", "YAJU_SERVER_URL", "\"https://yaju-daifugou.com\"")
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("releaseUpload")
             }
@@ -98,6 +144,14 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
+
+    // Web版と共通UIDで認証する。Firestoreアクセスは既存Spring Boot経由。
+    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     implementation("com.google.android.gms:play-services-games-v2:22.1.0")
 
@@ -105,4 +159,6 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     testImplementation("junit:junit:4.13.2")
+    // Android SDKのorg.jsonスタブではなくJVM上で実動作するJSON実装を使用。
+    testImplementation("org.json:json:20250517")
 }

@@ -2,6 +2,18 @@
 
 マルチプレイではSpring Boot版Daifugoサーバーへ接続し、CPU戦【ひとりでイク】では端末内ゲームコアだけで完全オフライン動作するAndroidアプリです。
 
+## Android / Web 共通Firebaseアカウント（検証用）
+
+- **Googleログイン（Firebase Authentication）**：AndroidでCredential Managerを使用し、Web版と同じFirebase UIDでログインする。
+- **進行データの同期**：プロフィール、戦績、装備、ミッション、プレゼント、BGM設定をSpring Boot経由でFirestoreに読み書きする。
+- **初回引き継ぎの確認**：端末データを移行するか、新規クラウドデータを作成するか選択できる。既存クラウドデータは移行操作で上書きしない。
+- **戦績保存の安全性**：オンライン戦はサーバーが確定した結果のみ保存し、失敗時は結果画面で再送する。オフラインCPU戦は引き続き端末保存（クラウドEXPには加算しない）。
+- **Play Gamesとの違い**：Play Gamesは従来の任意機能。Firebase Googleログインと同一アカウントとはみなさない。
+- **構成が未登録のAPKでも起動可能**。テスト時はFirebaseのAndroid構成値をビルドへ渡す必要がある。
+- **debug APKのStaging接続**：`YAJU_ANDROID_SERVER_URL`にHTTPSのStaging URLを設定。未指定なら公開URL。releaseは公開URL固定。
+
+Firebaseコンソール、GitHub Actions Secrets、実機テスト項目、リリース停止条件は **[Firebase Android 検証手順](FIREBASE_ANDROID_TEST.md)** を参照。
+
 ## 技術構成
 - Kotlin 2.4.10
 - Jetpack Compose BOM 2026.08.00
