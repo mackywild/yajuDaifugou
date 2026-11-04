@@ -117,6 +117,7 @@ data class DaifugoUiState(
     val playGamesSignedIn: Boolean = false,
     val playGamesDisplayName: String? = null,
     val progress: PlayerProgress = PlayerProgress(),
+    val bgmEnabled: Boolean = true,
     val lastEarnedExp: Int = 0,
     val roomId: String? = null,
     val gameState: GameStateDto? = null,
@@ -153,6 +154,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             serverUrl = DEFAULT_PUBLIC_SERVER_URL,
             playerName = if (initialProgress.profileConfigured) initialProgress.displayName else "",
             progress = initialProgress,
+            bgmEnabled = preferences.getBoolean("bgmEnabled", true),
         )
     )
     val uiState: StateFlow<DaifugoUiState> = _uiState.asStateFlow()
@@ -226,6 +228,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 firebaseEmail = identity.email,
                 firebaseMigrationPending = cloud == null,
                 progress = progress ?: PlayerProgress(),
+                bgmEnabled = cloud?.optJSONObject("settings")?.optBoolean("bgm", true) ?: true,
                 playerName = progress?.displayName?.takeIf { progress.profileConfigured }.orEmpty(),
                 roomId = null,
                 gameState = null,
@@ -248,6 +251,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             copy(
                 firebaseMigrationPending = false,
                 progress = progress,
+                bgmEnabled = cloud.optJSONObject("settings")?.optBoolean("bgm", true) ?: true,
                 playerName = if (progress.profileConfigured) progress.displayName else "",
                 screen = if (progress.profileConfigured) DaifugoScreen.MAIN_MENU
                     else DaifugoScreen.ACCOUNT_SETUP,
@@ -270,6 +274,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 firebaseMigrationPending = false,
                 cloudSaveFailedRoomId = null,
                 progress = local,
+                bgmEnabled = preferences.getBoolean("bgmEnabled", true),
                 playerName = if (local.profileConfigured) local.displayName else "",
                 roomId = null,
                 gameState = null,
@@ -282,7 +287,13 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     private fun acceptCloudProgress(uid: String, cloud: JSONObject) {
         if (_uiState.value.firebaseUserId != uid) return
         val progress = progressRepository.parseCloudProgress(cloud, uid)
-        update { copy(progress = progress, playerName = progress.displayName) }
+        update {
+            copy(
+                progress = progress,
+                playerName = progress.displayName,
+                bgmEnabled = cloud.optJSONObject("settings")?.optBoolean("bgm", true) ?: true,
+            )
+        }
     }
 
     private fun cloudAction(message: String, operation: suspend () -> JSONObject) = launchAction {
@@ -291,6 +302,27 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         val cloud = operation()
         acceptCloudProgress(uid, cloud)
         update { copy(infoMessage = message) }
+    }
+
+    /** Webで更新されたデータも明示的に再取得できる。UID変更中の結果は破棄する。 */
+    fun refreshCloudProgress() {
+        val uid = _uiState.value.firebaseUserId ?: return
+        viewModelScope.launch {
+            runCatching { api.cloudProgress() }
+                .onSuccess { cloud -> cloud?.let { acceptCloudProgress(uid, it) } }
+                .onFailure(::handleError)
+        }
+    }
+
+    fun setBgmEnabled(enabled: Boolean) {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction(if (enabled) "BGMをオンにしました" else "BGMをオフにしました") {
+                api.cloudBgm(enabled)
+            }
+        } else {
+            preferences.edit().putBoolean("bgmEnabled", enabled).apply()
+            update { copy(bgmEnabled = enabled) }
+        }
     }
 
     fun setServerUrl(value: String) = update { copy(serverUrl = value) }
@@ -487,13 +519,16 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun openMission() = update { copy(screen = DaifugoScreen.MISSION, errorMessage = null, infoMessage = null) }
 
-    fun openProfile() = update {
+    fun openProfile() {
+        update {
         copy(
             screen = DaifugoScreen.PROFILE,
             playerName = progress.displayName,
             errorMessage = null,
             infoMessage = null,
         )
+        }
+        refreshCloudProgress()
     }
 
     fun openCollection() = update { copy(screen = DaifugoScreen.COLLECTION, errorMessage = null, infoMessage = null) }
