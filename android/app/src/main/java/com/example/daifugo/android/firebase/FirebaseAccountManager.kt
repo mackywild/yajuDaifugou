@@ -9,7 +9,6 @@ import androidx.credentials.GetCredentialRequest
 import com.example.daifugo.android.BuildConfig
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
@@ -64,7 +63,7 @@ class FirebaseAccountManager(context: Context) {
         val credential = CredentialManager.create(activity)
             .getCredential(context = activity, request = request).credential
         require(credential is CustomCredential &&
-            credential.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+            credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
             "Google認証情報を取得できませんでした"
         }
         val googleIdToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
