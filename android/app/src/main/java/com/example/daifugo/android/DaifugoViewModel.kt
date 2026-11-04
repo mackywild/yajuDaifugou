@@ -1010,20 +1010,31 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             val self = newState.selfPlayer
             val rank = self?.rank
             if (self != null && rank != null) {
-                progressRepository.recordMatch(
-                    matchId = newState.roomId,
-                    rank = rank,
-                    playerCount = newState.players.size,
-                    yajuStatus = self.yajuStatus,
-                    challenge = newState.gameMode == "YAJU_CHALLENGE"
-                        || newState.gameMode == "MULTI_YAJU_CHALLENGE",
-                )?.let { matchResult ->
-                    update {
-                        copy(
-                            progress = matchResult.progress,
-                            lastEarnedExp = matchResult.earnedExp,
-                            infoMessage = "+${matchResult.earnedExp} EXP を獲得",
-                        )
+                if (!newState.isLocalCpuGame && _uiState.value.firebaseUserId != null) {
+                    // オンライン戦績はサーバー確定順位からのみ付与する。リトライしても二重加算されない。
+                    recordCloudResult(newState.roomId)
+                } else {
+                    val matchResult = progressRepository.recordMatch(
+                        matchId = newState.roomId,
+                        rank = rank,
+                        playerCount = newState.players.size,
+                        yajuStatus = self.yajuStatus,
+                        challenge = newState.gameMode == "YAJU_CHALLENGE"
+                            || newState.gameMode == "MULTI_YAJU_CHALLENGE",
+                    )
+                    if (_uiState.value.firebaseUserId == null) {
+                        matchResult?.let { result ->
+                            update {
+                                copy(
+                                    progress = result.progress,
+                                    lastEarnedExp = result.earnedExp,
+                                    infoMessage = "+${result.earnedExp} EXP を獲得",
+                                )
+                            }
+                        }
+                    } else {
+                        // ローカルCPU戦の結果を検証済みFirestore戦績に混入させない。
+                        update { copy(infoMessage = "オフラインCPU戦の報酬はクラウドに加算されません") }
                     }
                 }
             }
@@ -1046,6 +1057,50 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 selectedCardIndices = if (turnChanged || handChanged) emptySet() else selectedCardIndices,
                 errorMessage = null,
             )
+        }
+    }
+
+    /** クラウド保存失敗は結果画面から再試行できる。成功済みルームは再送しない。 */
+    fun retryCloudResult() {
+        val roomId = _uiState.value.cloudSaveFailedRoomId ?: return
+        if (_uiState.value.gameState?.roomId == roomId
+            && _uiState.value.gameState?.finished == true) {
+            recordCloudResult(roomId)
+        }
+    }
+
+    private fun recordCloudResult(roomId: String) {
+        val uid = _uiState.value.firebaseUserId ?: return
+        val key = "$uid:$roomId"
+        if (key in cloudSavedRooms || !cloudSavingRooms.add(key)) return
+        viewModelScope.launch {
+            val beforeExp = _uiState.value.progress.totalExp
+            runCatching { api.cloudRecordMatch(roomId) }
+                .onSuccess { cloud ->
+                    cloudSavedRooms.add(key)
+                    if (_uiState.value.firebaseUserId == uid) {
+                        acceptCloudProgress(uid, cloud)
+                        val gained = (cloud.optInt("totalExp", beforeExp) - beforeExp).coerceAtLeast(0)
+                        update {
+                            copy(
+                                lastEarnedExp = gained,
+                                cloudSaveFailedRoomId = null,
+                                infoMessage = "戦績をクラウドに保存しました（+${gained} EXP）",
+                            )
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    if (_uiState.value.firebaseUserId == uid) {
+                        update {
+                            copy(
+                                cloudSaveFailedRoomId = roomId,
+                                errorMessage = "クラウド戦績保存に失敗しました: ${error.message ?: "通信エラー"}",
+                            )
+                        }
+                    }
+                }
+            cloudSavingRooms.remove(key)
         }
     }
 
