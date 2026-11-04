@@ -2,6 +2,7 @@ package com.example.daifugo.android
 
 import android.app.Activity
 import android.app.Application
+import com.example.daifugo.android.BuildConfig
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.daifugo.android.data.ApiException
@@ -1133,9 +1134,9 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     companion object {
         /**
-         * 現在の公開PC/Android共通ゲームサーバー。
-         * 公開環境は取得済みドメインへのHTTPS接続を標準とする。
+         * 通常のAndroid配布では公開URL、debugではHTTPSのStaging URLを許可する。
+         * テストAPKからのFirebase検証時に公開サーバーへ誤接続しないための切替点。
          */
-        const val DEFAULT_PUBLIC_SERVER_URL = "https://yaju-daifugou.com"
+        val DEFAULT_PUBLIC_SERVER_URL = BuildConfig.YAJU_SERVER_URL
     }
 }
