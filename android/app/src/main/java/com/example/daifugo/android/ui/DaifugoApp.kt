@@ -46,6 +46,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -199,6 +200,25 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
         onDispose {
             YajuAudioPlayer.stopAllBgm()
         }
+    }
+
+    // 初回のクラウド作成で端末データを勝手に上書き・移行しない。
+    if (state.firebaseMigrationPending && state.firebaseUserId != null) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("クラウドデータの初期設定") },
+            text = { Text("このGoogleアカウントにはまだゲームデータがありません。端末内の戦績・所持品を引き継ぐか、新規作成するか選択してください。既存のクラウドデータは上書きされません。") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.completeFirebaseMigration(true) }, enabled = !state.loading) {
+                    Text("端末データを引き継ぐ")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.completeFirebaseMigration(false) }, enabled = !state.loading) {
+                    Text("新規作成")
+                }
+            },
+        )
     }
 
     Surface(
@@ -805,6 +825,35 @@ private fun MainMenuScreen(
                     selected = selected,
                     onEnter = ::enterSelected,
                 )
+            }
+
+            if (state.firebaseEnabled) {
+                item {
+                    PremiumCasinoInfoPanel("FIREBASE CLOUD") {
+                        Text(
+                            when {
+                                state.firebaseUserId != null ->
+                                    "● 同期アカウント: ${state.firebaseEmail ?: "Googleアカウント"}"
+                                !state.firebaseConfigured ->
+                                    "Android用Firebase設定がありません。クラウド検証用APKが必要です。"
+                                else -> "GoogleでログインするとWeb版と戦績・所持品を共有できます。"
+                            },
+                            color = Color.White.copy(alpha = 0.84f),
+                            fontSize = 13.sp,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        if (state.firebaseUserId == null && state.firebaseConfigured) {
+                            PremiumStartButton(
+                                label = "GOOGLEでログイン",
+                                onClick = { (context as? Activity)?.let(viewModel::signInGoogle) },
+                            )
+                        } else if (state.firebaseUserId != null) {
+                            TextButton(onClick = viewModel::signOutGoogle, enabled = !state.loading) {
+                                Text("Googleログアウト", color = CasinoGold)
+                            }
+                        }
+                    }
+                }
             }
 
             item { PremiumSectionTitle("MAIN PLAY", "CHOOSE YOUR TABLE") }
@@ -1675,6 +1724,34 @@ private fun ProfileScreen(
                         color = Color.White.copy(alpha = 0.65f),
                         style = MaterialTheme.typography.labelMedium,
                     )
+                }
+            }
+        }
+
+        if (state.firebaseEnabled) {
+            item {
+                PremiumCasinoInfoPanel("FIREBASE ACCOUNT") {
+                    Text(
+                        when {
+                            state.firebaseUserId != null ->
+                                "クラウド同期中: ${state.firebaseEmail ?: "Google"}"
+                            state.firebaseConfigured ->
+                                "Web版と同じGoogleアカウントでログインできます。"
+                            else -> "Android版Firebaseのビルド設定がありません。"
+                        },
+                        color = Color.White,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    if (state.firebaseUserId == null && state.firebaseConfigured) {
+                        PremiumStartButton(
+                            label = "GOOGLEでログイン",
+                            onClick = { (LocalContext.current as? Activity)?.let(viewModel::signInGoogle) },
+                        )
+                    } else if (state.firebaseUserId != null) {
+                        TextButton(onClick = viewModel::signOutGoogle, enabled = !state.loading) {
+                            Text("Googleログアウト", color = CasinoGold)
+                        }
+                    }
                 }
             }
         }
@@ -4335,6 +4412,16 @@ private fun ResultScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.5.sp,
                     )
+                }
+            }
+
+            if (state.cloudSaveFailedRoomId == game.roomId) {
+                item {
+                    PremiumCasinoInfoPanel("クラウド保存エラー") {
+                        Text("確定戦績を保存できませんでした。ルームを離れる前に再試行してください。", color = Color.White)
+                        Spacer(Modifier.height(8.dp))
+                        PremiumStartButton(label = "保存を再試行", onClick = viewModel::retryCloudResult)
+                    }
                 }
             }
 
