@@ -82,7 +82,12 @@ class FirebaseAccountManager(context: Context) {
     /** ログアウト時はCredential Managerの選択状態も解放する。 */
     suspend fun signOut(context: Context) {
         auth?.signOut()
-        CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
+        // 認証本体のログアウト後に資格情報UIの解放が失敗しても、ログアウトを無効にしない。
+        try {
+            CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
+        } catch (_: Exception) {
+            // 再ログイン時にCredential Managerが改めてアカウント選択を実施する。
+        }
     }
 
     private companion object {
