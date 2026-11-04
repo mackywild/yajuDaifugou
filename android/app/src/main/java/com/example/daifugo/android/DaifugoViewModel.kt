@@ -355,6 +355,23 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun completeAccountSetup() {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction("アカウント設定が完了しました") {
+                api.cloudProfile(_uiState.value.playerName.trim())
+            }
+            // クラウド保存完了後のみメニューへ進む。
+            viewModelScope.launch {
+                // cloudActionの完了はStateFlowの更新で検知する。
+                uiState.collect { state ->
+                    if (state.firebaseUserId != null && state.progress.profileConfigured
+                        && !state.loading && state.errorMessage == null) {
+                        update { copy(screen = DaifugoScreen.MAIN_MENU) }
+                        return@launch
+                    }
+                }
+            }
+            return
+        }
         val state = _uiState.value
         runCatching {
             progressRepository.updateDisplayName(state.playerName)
@@ -374,6 +391,12 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun saveProfileName() {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction("プレイヤー名を更新しました") {
+                api.cloudProfile(_uiState.value.playerName.trim())
+            }
+            return
+        }
         val state = _uiState.value
         runCatching {
             progressRepository.updateDisplayName(state.playerName)
@@ -430,7 +453,21 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
         val serverUrl = DEFAULT_PUBLIC_SERVER_URL
         api.configure(serverUrl)
-        val response = api.openPublicSession()
+        val config = api.firebaseConfig()
+        update { copy(firebaseEnabled = config.enabled, firebaseConfigured = firebaseAccounts.configured) }
+        val response = if (config.enabled) {
+            val uid = _uiState.value.firebaseUserId
+                ?: error("オンライン対戦にはGoogleログインが必要です。プロフィールからログインしてください")
+            require(!_uiState.value.firebaseMigrationPending) { "クラウドデータの初期設定を完了してください" }
+            require(firebaseAccounts.configured && config.projectId == firebaseAccounts.projectId) {
+                "FirebaseのAndroid設定とサーバー設定が一致しません"
+            }
+            val identity = firebaseAccounts.restore() ?: error("Googleログインをやり直してください")
+            require(identity.uid == uid) { "Googleアカウントが切り替わりました。再ログインしてください" }
+            api.openFirebaseSession(identity.idToken)
+        } else {
+            api.openPublicSession()
+        }
         if (!response.authenticated) {
             error("マルチプレイサーバーへ接続できませんでした")
         }
@@ -473,6 +510,10 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     fun openSettings() = update { copy(screen = DaifugoScreen.SETTINGS, errorMessage = null, infoMessage = null) }
 
     fun receivePresent(presentId: String) {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction("プレゼントを受け取りました") { api.cloudReceivePresent(presentId) }
+            return
+        }
         runCatching { progressRepository.receivePresent(presentId) }
             .onSuccess { result ->
                 val name = result.received.firstOrNull()?.itemName ?: "アイテム"
@@ -488,6 +529,10 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun receiveAllPresents() {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction("プレゼントを一括受取しました") { api.cloudReceiveAllPresents() }
+            return
+        }
         runCatching { progressRepository.receiveAllPresents() }
             .onSuccess { result ->
                 update {
@@ -506,6 +551,10 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun equipCosmetic(itemId: String) {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction("アイテムを装備しました") { api.cloudEquipment(itemId) }
+            return
+        }
         runCatching { progressRepository.equipCosmetic(itemId) }
             .onSuccess { progress ->
                 update {
@@ -520,6 +569,10 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun claimDailyMission(missionId: String) {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction("ミッション報酬を受け取りました") { api.cloudClaimMission(missionId) }
+            return
+        }
         runCatching { progressRepository.claimDailyMission(missionId) }
             .onSuccess { progress ->
                 update {
@@ -535,7 +588,12 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun backToMenu() = update { copy(screen = DaifugoScreen.MAIN_MENU, errorMessage = null, infoMessage = null) }
 
-    fun logout() = launchAction {
+    fun logout() {
+        if (_uiState.value.firebaseUserId != null) {
+            signOutGoogle()
+            return
+        }
+        launchAction {
         runCatching { api.logout() }
         localCpu.close()
         stopRoomRealtime()
@@ -551,6 +609,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 ruleCutIns = emptyList(),
                 infoMessage = "ログアウトしました",
             )
+        }
         }
     }
 
