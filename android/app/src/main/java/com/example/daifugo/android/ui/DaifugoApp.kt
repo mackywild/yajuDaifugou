@@ -731,6 +731,7 @@ private fun MainMenuScreen(
     viewModel: DaifugoViewModel,
     onPlayGamesSignIn: () -> Unit,
 ) {
+    val context = LocalContext.current
     var selected by remember { mutableStateOf(CasinoMenuItem.SOLO) }
     val missionBadge = DailyMissionRules.views(state.progress.daily).count { it.claimable }
     val presentBadge = state.progress.presents.size
@@ -1651,6 +1652,7 @@ private fun ProfileScreen(
     viewModel: DaifugoViewModel,
     onPlayGamesSignIn: () -> Unit,
 ) {
+    val context = LocalContext.current
     val progress = state.progress
     val avatarName = progress.equippedAvatarId?.let(CosmeticCatalog::find)?.displayName ?: "未設定"
     val frameName = progress.equippedFrameId?.let(CosmeticCatalog::find)?.displayName ?: "未設定"
@@ -1745,7 +1747,7 @@ private fun ProfileScreen(
                     if (state.firebaseUserId == null && state.firebaseConfigured) {
                         PremiumStartButton(
                             label = "GOOGLEでログイン",
-                            onClick = { (LocalContext.current as? Activity)?.let(viewModel::signInGoogle) },
+                            onClick = { (context as? Activity)?.let(viewModel::signInGoogle) },
                         )
                     } else if (state.firebaseUserId != null) {
                         TextButton(onClick = viewModel::signOutGoogle, enabled = !state.loading) {
