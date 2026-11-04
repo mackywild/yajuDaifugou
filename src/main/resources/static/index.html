@@ -780,6 +780,8 @@ const COSMETICS=[
 ];
 let progress=loadProgress();
 let firebaseWebEnabled=false;
+let cloudResultInFlight=null;
+let cloudResultSavedRoomId=null;
 let csrfToken = '';
 let roomId = localStorage.getItem('yaju.pc.roomId') || '';
 let playerName = localStorage.getItem('yaju.pc.playerName') || progress.displayName || '';
@@ -1014,6 +1016,16 @@ async function loadFirebaseWebSdk(){
 
 async function establishFirebaseSession(user){
   const idToken=await user.getIdToken();
+  const previousUid=sessionStorage.getItem('yaju.pc.firebaseUid');
+  if(previousUid && previousUid!==user.uid){
+    // 別アカウントのルーム・プロフィール・保存状態は引き継がない。
+    roomId='';
+    currentState=null;
+    playerName='';
+    progress=defaultProgress();
+    localStorage.removeItem('yaju.pc.roomId');
+    cloudResultSavedRoomId=null;
+  }
   csrfToken='';
   const response=await api('/api/auth/firebase/session',{
     method:'POST',body:JSON.stringify({idToken:idToken})
@@ -1021,6 +1033,7 @@ async function establishFirebaseSession(user){
   csrfToken=response.csrfToken;
   sessionStorage.setItem('yaju.pc.csrfToken',csrfToken);
   await loadFirebaseProgress();
+  sessionStorage.setItem('yaju.pc.firebaseUid',user.uid);
 }
 
 // Firestoreが正本。旧データの移行はアカウント確認後に一度だけ実施する。
@@ -1034,7 +1047,9 @@ async function loadFirebaseProgress(){
   const hasLegacy=!alreadyMigrated && Boolean(localStorage.getItem(PROGRESS_KEY));
   const importLegacy=hasLegacy && window.confirm(
     'このブラウザに旧ゲームデータがあります。現在のGoogleアカウントへ引き継ぎますか？');
-  const source=importLegacy?progress:defaultProgress();
+  const source=importLegacy?loadProgress():Object.assign(defaultProgress(),{
+    displayName:'PLAYER',profileConfigured:false
+  });
   const imported=await api('/api/users/me/progress/migrate',{
     method:'POST',body:JSON.stringify(source)
   });
@@ -1060,18 +1075,29 @@ function applyFirebaseProgress(cloudProgress){
 }
 
 async function cloudUpdate(path,method,payload){
+  const currentUid=firebase.auth().currentUser?.uid;
+  if(!currentUid || sessionStorage.getItem('yaju.pc.firebaseUid')!==currentUid){
+    throw new Error('Googleログインをやり直してください');
+  }
   const response=await api('/api/users/me'+path,{
     method:method,body:payload===undefined?undefined:JSON.stringify(payload)
   });
+  if(firebase.auth().currentUser?.uid!==currentUid){
+    throw new Error('アカウントが変更されました。もう一度操作してください');
+  }
   applyFirebaseProgress(response.progress);
   return response.progress;
 }
 
 async function recordCloudResult(state){
   const self=state.players.find(function(player){return player.self;});
-  if(!self || !self.rank)return;
+  if(!self || !self.rank || cloudResultSavedRoomId===state.roomId)return;
+  // WebSocketやポーリングによる結果画面の再描画で、同じ保存要求を連打しない。
+  if(cloudResultInFlight===state.roomId)return;
+  cloudResultInFlight=state.roomId;
   try{
     await cloudUpdate('/matches/'+encodeURIComponent(state.roomId)+'/record','POST');
+    cloudResultSavedRoomId=state.roomId;
     const target=self.yajuStatus&&self.yajuStatus!=='NONE';
     const success=self.yajuStatus==='COMPLETED';
     byId('resultExp').textContent='+'+earnedExp(self.rank,!!target,success)+' EXP（クラウド保存済）';
@@ -1079,6 +1105,8 @@ async function recordCloudResult(state){
   }catch(error){
     byId('resultExp').textContent='戦績を保存できませんでした：'+error.message;
     byId('retryResultButton').classList.remove('hidden');
+  }finally{
+    cloudResultInFlight=null;
   }
 }
 
@@ -1105,6 +1133,11 @@ async function signOutGoogle(){
     roomId='';currentState=null;selected.clear();
     localStorage.removeItem('yaju.pc.roomId');
     sessionStorage.removeItem('yaju.pc.csrfToken');
+    sessionStorage.removeItem('yaju.pc.firebaseUid');
+    csrfToken='';
+    cloudResultSavedRoomId=null;
+    progress=defaultProgress();
+    playerName='';
     showGoogleLogin();
   }catch(error){toast(error.message,true);}
 }
@@ -1758,11 +1791,12 @@ function renderResult(state){
   hideCpuOverlay();
   const earned=recordMatchProgress(state);
   showOnly('resultScreen');
-  if(firebaseWebEnabled)recordCloudResult(state);
   const ranking=state.players.slice().sort(function(a,b){return (a.rank||999)-(b.rank||999);});
   const self=ranking.find(function(p){return p.self;});
   byId('yourRank').textContent=self&&self.rank?'YOUR RANK  #'+self.rank:'MATCH COMPLETE';
-  byId('resultExp').textContent=earned==null?'':('+'+earned+' EXP 獲得');
+  byId('resultExp').textContent=earned==null?(firebaseWebEnabled?
+    (cloudResultSavedRoomId===state.roomId?'クラウドへ保存済み':'クラウドへ戦績を保存中…'):''):('+'+earned+' EXP 獲得');
+  if(firebaseWebEnabled && cloudResultSavedRoomId!==state.roomId)recordCloudResult(state);
   const list=byId('resultList');list.innerHTML='';
   ranking.forEach(function(p){
     const row=document.createElement('div');row.className='result-row'+(p.rank===1?' first':'');
