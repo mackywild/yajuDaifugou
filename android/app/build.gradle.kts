@@ -36,6 +36,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+        buildConfigField("String", "FIREBASE_API_KEY", "\"${providers.gradleProperty("YAJU_FIREBASE_API_KEY").orElse("").get()}\"")
+        buildConfigField("String", "FIREBASE_ANDROID_APP_ID", "\"${providers.gradleProperty("YAJU_FIREBASE_ANDROID_APP_ID").orElse("").get()}\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${providers.gradleProperty("YAJU_FIREBASE_PROJECT_ID").orElse("").get()}\"")
+        buildConfigField("String", "FIREBASE_WEB_CLIENT_ID", "\"${providers.gradleProperty("YAJU_FIREBASE_WEB_CLIENT_ID").orElse("").get()}\"")
     }
 
     signingConfigs {
@@ -100,6 +104,13 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
     implementation("com.google.android.gms:play-services-games-v2:22.1.0")
+
+    // Web版と同じFirebase UIDで認証する。設定値未指定でも従来APKはビルドできる。
+    implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

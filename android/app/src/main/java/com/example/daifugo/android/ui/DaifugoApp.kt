@@ -46,6 +46,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -170,13 +171,13 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
      * 初期配牌で条件を満たした場合も、7渡しで途中から条件を満たした場合も
      * GameState更新直後に再生状態へ反映される。
      */
-    val yajuBgmActive = state.gameState?.let { game ->
+    val yajuBgmActive = state.bgmEnabled && state.gameState?.let { game ->
         !game.finished && game.players.any { player ->
             player.yajuStatus == "ACTIVE" || player.yajuStatus == "EIGHT_PLAYED"
         }
     } == true
 
-    val menuBgmActive = state.screen != DaifugoScreen.GAME &&
+    val menuBgmActive = state.bgmEnabled && state.screen != DaifugoScreen.GAME &&
         state.screen != DaifugoScreen.RESULT
 
     LaunchedEffect(menuBgmActive) {
@@ -199,6 +200,25 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
         onDispose {
             YajuAudioPlayer.stopAllBgm()
         }
+    }
+
+    // 初回のクラウド作成で端末データを勝手に上書き・移行しない。
+    if (state.firebaseMigrationPending && state.firebaseUserId != null) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("クラウドデータの初期設定") },
+            text = { Text("このGoogleアカウントにはまだゲームデータがありません。端末内の戦績・所持品を引き継ぐか、新規作成するか選択してください。既存のクラウドデータは上書きされません。") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.completeFirebaseMigration(true) }, enabled = !state.loading) {
+                    Text("端末データを引き継ぐ")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.completeFirebaseMigration(false) }, enabled = !state.loading) {
+                    Text("新規作成")
+                }
+            },
+        )
     }
 
     Surface(
@@ -280,12 +300,7 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                             )
                             DaifugoScreen.COLLECTION -> CollectionScreen(state, viewModel)
                             DaifugoScreen.PRESENT_BOX -> PresentBoxScreen(state, viewModel)
-                            DaifugoScreen.SETTINGS -> MenuPlaceholderScreen(
-                                title = "SYSTEM",
-                                subtitle = "設定",
-                                description = "BGM・SE・演出などを設定する。",
-                                onBack = viewModel::backToMenu,
-                            )
+                            DaifugoScreen.SETTINGS -> SettingsScreen(state, viewModel)
                             DaifugoScreen.ROOM -> RoomScreen(state, viewModel)
                             DaifugoScreen.GAME -> GameScreen(state, viewModel)
                             DaifugoScreen.RESULT -> ResultScreen(state, viewModel)
@@ -711,6 +726,7 @@ private fun MainMenuScreen(
     viewModel: DaifugoViewModel,
     onPlayGamesSignIn: () -> Unit,
 ) {
+    val context = LocalContext.current
     var selected by remember { mutableStateOf(CasinoMenuItem.SOLO) }
     val missionBadge = DailyMissionRules.views(state.progress.daily).count { it.claimable }
     val presentBadge = state.progress.presents.size
@@ -805,6 +821,35 @@ private fun MainMenuScreen(
                     selected = selected,
                     onEnter = ::enterSelected,
                 )
+            }
+
+            if (state.firebaseEnabled) {
+                item {
+                    PremiumCasinoInfoPanel("FIREBASE CLOUD") {
+                        Text(
+                            when {
+                                state.firebaseUserId != null ->
+                                    "● 同期アカウント: ${state.firebaseEmail ?: "Googleアカウント"}"
+                                !state.firebaseConfigured ->
+                                    "Android用Firebase設定がありません。クラウド検証用APKが必要です。"
+                                else -> "GoogleでログインするとWeb版と戦績・所持品を共有できます。"
+                            },
+                            color = Color.White.copy(alpha = 0.84f),
+                            fontSize = 13.sp,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        if (state.firebaseUserId == null && state.firebaseConfigured) {
+                            PremiumStartButton(
+                                label = "GOOGLEでログイン",
+                                onClick = { (context as? Activity)?.let(viewModel::signInGoogle) },
+                            )
+                        } else if (state.firebaseUserId != null) {
+                            TextButton(onClick = viewModel::signOutGoogle, enabled = !state.loading) {
+                                Text("Googleログアウト", color = CasinoGold)
+                            }
+                        }
+                    }
+                }
             }
 
             item { PremiumSectionTitle("MAIN PLAY", "CHOOSE YOUR TABLE") }
@@ -1597,11 +1642,59 @@ private fun MissionScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
 }
 
 @Composable
+private fun SettingsScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFF020504), Color(0xFF082319), Color(0xFF030504)))),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("SYSTEM SETTINGS", modifier = Modifier.weight(1f), color = CasinoGold,
+                    fontSize = 24.sp, fontWeight = FontWeight.Black)
+                TextButton(onClick = viewModel::backToMenu) { Text("‹ BACK") }
+            }
+        }
+        item {
+            PremiumCasinoInfoPanel("サウンド") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("BGM", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("メニュー・対戦中のBGMを切り替えます。",
+                            color = Color.White.copy(alpha = 0.64f), fontSize = 12.sp)
+                    }
+                    Switch(checked = state.bgmEnabled, onCheckedChange = viewModel::setBgmEnabled,
+                        enabled = !state.loading)
+                }
+            }
+        }
+        item {
+            PremiumCasinoInfoPanel("データ保存先") {
+                Text(
+                    if (state.firebaseUserId != null) "GoogleアカウントのFirestoreへ同期"
+                    else "端末内保存（Googleクラウド未連携）",
+                    color = Color.White,
+                )
+                if (state.firebaseUserId != null) {
+                    Spacer(Modifier.height(10.dp))
+                    TextButton(onClick = viewModel::refreshCloudProgress) {
+                        Text("クラウドの最新情報を取得")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProfileScreen(
     state: DaifugoUiState,
     viewModel: DaifugoViewModel,
     onPlayGamesSignIn: () -> Unit,
 ) {
+    val context = LocalContext.current
     val progress = state.progress
     val avatarName = progress.equippedAvatarId?.let(CosmeticCatalog::find)?.displayName ?: "未設定"
     val frameName = progress.equippedFrameId?.let(CosmeticCatalog::find)?.displayName ?: "未設定"
@@ -1627,6 +1720,11 @@ private fun ProfileScreen(
                 }
                 TextButton(onClick = viewModel::backToMenu) {
                     Text("‹ BACK", color = Color.White.copy(alpha = 0.72f))
+                }
+                if (state.firebaseUserId != null) {
+                    TextButton(onClick = viewModel::refreshCloudProgress) {
+                        Text("同期", color = CasinoGold)
+                    }
                 }
             }
         }
@@ -1675,6 +1773,34 @@ private fun ProfileScreen(
                         color = Color.White.copy(alpha = 0.65f),
                         style = MaterialTheme.typography.labelMedium,
                     )
+                }
+            }
+        }
+
+        if (state.firebaseEnabled) {
+            item {
+                PremiumCasinoInfoPanel("FIREBASE ACCOUNT") {
+                    Text(
+                        when {
+                            state.firebaseUserId != null ->
+                                "クラウド同期中: ${state.firebaseEmail ?: "Google"}"
+                            state.firebaseConfigured ->
+                                "Web版と同じGoogleアカウントでログインできます。"
+                            else -> "Android版Firebaseのビルド設定がありません。"
+                        },
+                        color = Color.White,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    if (state.firebaseUserId == null && state.firebaseConfigured) {
+                        PremiumStartButton(
+                            label = "GOOGLEでログイン",
+                            onClick = { (context as? Activity)?.let(viewModel::signInGoogle) },
+                        )
+                    } else if (state.firebaseUserId != null) {
+                        TextButton(onClick = viewModel::signOutGoogle, enabled = !state.loading) {
+                            Text("Googleログアウト", color = CasinoGold)
+                        }
+                    }
                 }
             }
         }
@@ -4335,6 +4461,16 @@ private fun ResultScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.5.sp,
                     )
+                }
+            }
+
+            if (state.cloudSaveFailedRoomId == game.roomId) {
+                item {
+                    PremiumCasinoInfoPanel("クラウド保存エラー") {
+                        Text("確定戦績を保存できませんでした。ルームを離れる前に再試行してください。", color = Color.White)
+                        Spacer(Modifier.height(8.dp))
+                        PremiumStartButton(label = "保存を再試行", onClick = viewModel::retryCloudResult)
+                    }
                 }
             }
 

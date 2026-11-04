@@ -47,9 +47,14 @@ jobs:
 
       - name: Build debug APK and AAB
         working-directory: android
+        env:
+          ORG_GRADLE_PROJECT_YAJU_FIREBASE_API_KEY: ${{ vars.YAJU_FIREBASE_API_KEY }}
+          ORG_GRADLE_PROJECT_YAJU_FIREBASE_ANDROID_APP_ID: ${{ vars.YAJU_FIREBASE_ANDROID_APP_ID }}
+          ORG_GRADLE_PROJECT_YAJU_FIREBASE_PROJECT_ID: ${{ vars.YAJU_FIREBASE_PROJECT_ID }}
+          ORG_GRADLE_PROJECT_YAJU_FIREBASE_WEB_CLIENT_ID: ${{ vars.YAJU_FIREBASE_WEB_CLIENT_ID }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleDebug :app:bundleDebug
+          ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug :app:bundleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

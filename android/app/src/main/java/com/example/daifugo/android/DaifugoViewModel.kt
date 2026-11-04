@@ -1,5 +1,6 @@
 package com.example.daifugo.android
 
+import android.app.Activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,8 @@ import com.example.daifugo.android.data.CardDto
 import com.example.daifugo.android.data.DaifugoApiClient
 import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.RuleSettingsDto
+import com.example.daifugo.android.firebase.FirebaseAccountManager
+import com.example.daifugo.android.firebase.FirebaseIdentity
 import com.example.daifugo.android.local.LocalCpuActionType
 import com.example.daifugo.android.local.LocalCpuGameManager
 import com.example.daifugo.android.progression.DailyMissionRules
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 /** アプリ内の主要画面。 */
 enum class DaifugoScreen {
@@ -103,10 +107,17 @@ data class DaifugoUiState(
     val ruleYaju: Boolean = true,
     val ruleJackBack: Boolean = true,
     val ruleForbiddenFinish: Boolean = true,
+    val firebaseEnabled: Boolean = false,
+    val firebaseConfigured: Boolean = false,
+    val firebaseUserId: String? = null,
+    val firebaseEmail: String? = null,
+    val firebaseMigrationPending: Boolean = false,
+    val cloudSaveFailedRoomId: String? = null,
     val playGamesConfigured: Boolean = false,
     val playGamesSignedIn: Boolean = false,
     val playGamesDisplayName: String? = null,
     val progress: PlayerProgress = PlayerProgress(),
+    val bgmEnabled: Boolean = true,
     val lastEarnedExp: Int = 0,
     val roomId: String? = null,
     val gameState: GameStateDto? = null,
@@ -131,6 +142,9 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     private val localCpu = LocalCpuGameManager()
     private val preferences = application.getSharedPreferences("daifugo", 0)
     private val progressRepository = PlayerProgressRepository(application)
+    private val firebaseAccounts = FirebaseAccountManager(application)
+    private val cloudSavedRooms = mutableSetOf<String>()
+    private val cloudSavingRooms = mutableSetOf<String>()
     private val initialProgress = progressRepository.load()
 
     private val _uiState = MutableStateFlow(
@@ -140,6 +154,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             serverUrl = DEFAULT_PUBLIC_SERVER_URL,
             playerName = if (initialProgress.profileConfigured) initialProgress.displayName else "",
             progress = initialProgress,
+            bgmEnabled = preferences.getBoolean("bgmEnabled", true),
         )
     )
     val uiState: StateFlow<DaifugoUiState> = _uiState.asStateFlow()
@@ -161,6 +176,154 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
      * 新しい接続を上書き・二重再接続しないために使用する。
      */
     private var realtimeGeneration: Long = 0L
+
+    init {
+        // オフラインCPU戦は認証・ネットワーク障害時にも起動できるようにする。
+        viewModelScope.launch {
+            runCatching {
+                api.configure(DEFAULT_PUBLIC_SERVER_URL)
+                val config = api.firebaseConfig()
+                update { copy(firebaseEnabled = config.enabled, firebaseConfigured = firebaseAccounts.configured) }
+                if (config.enabled && firebaseAccounts.configured) {
+                    require(config.projectId == firebaseAccounts.projectId) {
+                        "Android版とサーバーのFirebaseプロジェクトが異なります"
+                    }
+                    firebaseAccounts.restore()?.let { connectFirebase(it) }
+                }
+            }.onFailure { exception ->
+                // Firebase設定・接続失敗はオフラインゲーム起動を妨げない。
+                update { copy(infoMessage = "クラウド接続: ${exception.message ?: "確認できません"}") }
+            }
+        }
+    }
+
+    /** Google Play Gamesとは別のFirebase認証。Web版と同じUIDを使用する。 */
+    fun signInGoogle(activity: Activity) = launchAction {
+        require(_uiState.value.gameState?.let { it.started && !it.finished } != true) {
+            "対戦中はアカウントを切り替えられません"
+        }
+        api.configure(DEFAULT_PUBLIC_SERVER_URL)
+        val config = api.firebaseConfig()
+        require(config.enabled) { "サーバー側でFirebase機能が無効です" }
+        require(firebaseAccounts.configured) { "Firebase設定済みのAndroid APKが必要です" }
+        require(config.projectId == firebaseAccounts.projectId) {
+            "Android版とサーバーのFirebaseプロジェクトが異なります"
+        }
+        val identity = firebaseAccounts.signIn(activity)
+        connectFirebase(identity)
+        update { copy(firebaseEnabled = true, firebaseConfigured = true, infoMessage = "Googleでログインしました") }
+    }
+
+    /** UIDが切り替わったら以前の表示を残さず、サーバー認証後にクラウド正本へ入れ替える。 */
+    private suspend fun connectFirebase(identity: FirebaseIdentity) {
+        val session = api.openFirebaseSession(identity.idToken)
+        require(session.authenticated) { "Firebaseセッションを作成できませんでした" }
+        val cloud = api.cloudProgress()
+        stopRoomRealtime()
+        val current = _uiState.value
+        val progress = cloud?.let { progressRepository.parseCloudProgress(it, identity.uid) }
+        update {
+            copy(
+                firebaseUserId = identity.uid,
+                firebaseEmail = identity.email,
+                firebaseMigrationPending = cloud == null,
+                progress = progress ?: PlayerProgress(),
+                bgmEnabled = cloud?.optJSONObject("settings")?.optBoolean("bgm", true) ?: true,
+                playerName = progress?.displayName?.takeIf { progress.profileConfigured }.orEmpty(),
+                roomId = null,
+                gameState = null,
+                cloudSaveFailedRoomId = null,
+                screen = if (cloud == null) DaifugoScreen.MAIN_MENU
+                    else if (progress?.profileConfigured == true) DaifugoScreen.MAIN_MENU
+                    else DaifugoScreen.ACCOUNT_SETUP,
+                errorMessage = null,
+            )
+        }
+    }
+
+    /** 移行は初回だけ。既存クラウドデータがある場合はサーバーが必ず既存値を返す。 */
+    fun completeFirebaseMigration(importLocal: Boolean) = launchAction {
+        val uid = _uiState.value.firebaseUserId ?: error("Googleログインが必要です")
+        require(_uiState.value.firebaseMigrationPending) { "初期設定済みです" }
+        val cloud = api.migrateCloudProgress(progressRepository.cloudMigrationPayload(importLocal))
+        val progress = progressRepository.parseCloudProgress(cloud, uid)
+        update {
+            copy(
+                firebaseMigrationPending = false,
+                progress = progress,
+                bgmEnabled = cloud.optJSONObject("settings")?.optBoolean("bgm", true) ?: true,
+                playerName = if (progress.profileConfigured) progress.displayName else "",
+                screen = if (progress.profileConfigured) DaifugoScreen.MAIN_MENU
+                    else DaifugoScreen.ACCOUNT_SETUP,
+                infoMessage = if (importLocal) "端末のデータを引き継ぎました" else "クラウドデータを新規作成しました",
+            )
+        }
+    }
+
+    fun signOutGoogle() = launchAction {
+        require(_uiState.value.firebaseUserId != null) { "ログインしていません" }
+        // 退出を拒否された場合はFirebase認証も維持し、卓の所有者が行方不明にならないようにする。
+        api.logout()
+        firebaseAccounts.signOut()
+        stopRoomRealtime()
+        val local = progressRepository.load()
+        update {
+            copy(
+                firebaseUserId = null,
+                firebaseEmail = null,
+                firebaseMigrationPending = false,
+                cloudSaveFailedRoomId = null,
+                progress = local,
+                bgmEnabled = preferences.getBoolean("bgmEnabled", true),
+                playerName = if (local.profileConfigured) local.displayName else "",
+                roomId = null,
+                gameState = null,
+                screen = DaifugoScreen.MAIN_MENU,
+                infoMessage = "Googleからログアウトしました",
+            )
+        }
+    }
+
+    private fun acceptCloudProgress(uid: String, cloud: JSONObject) {
+        if (_uiState.value.firebaseUserId != uid) return
+        val progress = progressRepository.parseCloudProgress(cloud, uid)
+        update {
+            copy(
+                progress = progress,
+                playerName = progress.displayName,
+                bgmEnabled = cloud.optJSONObject("settings")?.optBoolean("bgm", true) ?: true,
+            )
+        }
+    }
+
+    private fun cloudAction(message: String, operation: suspend () -> JSONObject) = launchAction {
+        val uid = _uiState.value.firebaseUserId ?: error("Googleログインが必要です")
+        require(!_uiState.value.firebaseMigrationPending) { "クラウドデータの初期設定が必要です" }
+        val cloud = operation()
+        acceptCloudProgress(uid, cloud)
+        update { copy(infoMessage = message) }
+    }
+
+    /** Webで更新されたデータも明示的に再取得できる。UID変更中の結果は破棄する。 */
+    fun refreshCloudProgress() {
+        val uid = _uiState.value.firebaseUserId ?: return
+        viewModelScope.launch {
+            runCatching { api.cloudProgress() }
+                .onSuccess { cloud -> cloud?.let { acceptCloudProgress(uid, it) } }
+                .onFailure(::handleError)
+        }
+    }
+
+    fun setBgmEnabled(enabled: Boolean) {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction(if (enabled) "BGMをオンにしました" else "BGMをオフにしました") {
+                api.cloudBgm(enabled)
+            }
+        } else {
+            preferences.edit().putBoolean("bgmEnabled", enabled).apply()
+            update { copy(bgmEnabled = enabled) }
+        }
+    }
 
     fun setServerUrl(value: String) = update { copy(serverUrl = value) }
     fun setPassword(value: String) = update { copy(password = value) }
@@ -196,7 +359,8 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         }
 
         update {
-            val signedInProgress = if (authenticated) progress else this.progress
+            val signedInProgress = if (firebaseUserId != null) this.progress
+                else if (authenticated) progress else this.progress
             copy(
                 playGamesConfigured = configured,
                 playGamesSignedIn = authenticated,
@@ -223,6 +387,16 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun completeAccountSetup() {
+        if (_uiState.value.firebaseUserId != null) {
+            launchAction {
+                val uid = _uiState.value.firebaseUserId ?: error("ログインが必要です")
+                require(!_uiState.value.firebaseMigrationPending) { "クラウドの初期設定を完了してください" }
+                val cloud = api.cloudProfile(_uiState.value.playerName.trim())
+                acceptCloudProgress(uid, cloud)
+                update { copy(screen = DaifugoScreen.MAIN_MENU, infoMessage = "アカウント設定が完了しました") }
+            }
+            return
+        }
         val state = _uiState.value
         runCatching {
             progressRepository.updateDisplayName(state.playerName)
@@ -242,6 +416,12 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun saveProfileName() {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction("プレイヤー名を更新しました") {
+                api.cloudProfile(_uiState.value.playerName.trim())
+            }
+            return
+        }
         val state = _uiState.value
         runCatching {
             progressRepository.updateDisplayName(state.playerName)
@@ -298,7 +478,21 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
         val serverUrl = DEFAULT_PUBLIC_SERVER_URL
         api.configure(serverUrl)
-        val response = api.openPublicSession()
+        val config = api.firebaseConfig()
+        update { copy(firebaseEnabled = config.enabled, firebaseConfigured = firebaseAccounts.configured) }
+        val response = if (config.enabled) {
+            val uid = _uiState.value.firebaseUserId
+                ?: error("オンライン対戦にはGoogleログインが必要です。プロフィールからログインしてください")
+            require(!_uiState.value.firebaseMigrationPending) { "クラウドデータの初期設定を完了してください" }
+            require(firebaseAccounts.configured && config.projectId == firebaseAccounts.projectId) {
+                "FirebaseのAndroid設定とサーバー設定が一致しません"
+            }
+            val identity = firebaseAccounts.restore() ?: error("Googleログインをやり直してください")
+            require(identity.uid == uid) { "Googleアカウントが切り替わりました。再ログインしてください" }
+            api.openFirebaseSession(identity.idToken)
+        } else {
+            api.openPublicSession()
+        }
         if (!response.authenticated) {
             error("マルチプレイサーバーへ接続できませんでした")
         }
@@ -325,13 +519,16 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun openMission() = update { copy(screen = DaifugoScreen.MISSION, errorMessage = null, infoMessage = null) }
 
-    fun openProfile() = update {
+    fun openProfile() {
+        update {
         copy(
             screen = DaifugoScreen.PROFILE,
             playerName = progress.displayName,
             errorMessage = null,
             infoMessage = null,
         )
+        }
+        refreshCloudProgress()
     }
 
     fun openCollection() = update { copy(screen = DaifugoScreen.COLLECTION, errorMessage = null, infoMessage = null) }
@@ -341,6 +538,10 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     fun openSettings() = update { copy(screen = DaifugoScreen.SETTINGS, errorMessage = null, infoMessage = null) }
 
     fun receivePresent(presentId: String) {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction("プレゼントを受け取りました") { api.cloudReceivePresent(presentId) }
+            return
+        }
         runCatching { progressRepository.receivePresent(presentId) }
             .onSuccess { result ->
                 val name = result.received.firstOrNull()?.itemName ?: "アイテム"
@@ -356,6 +557,10 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun receiveAllPresents() {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction("プレゼントを一括受取しました") { api.cloudReceiveAllPresents() }
+            return
+        }
         runCatching { progressRepository.receiveAllPresents() }
             .onSuccess { result ->
                 update {
@@ -374,6 +579,10 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun equipCosmetic(itemId: String) {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction("アイテムを装備しました") { api.cloudEquipment(itemId) }
+            return
+        }
         runCatching { progressRepository.equipCosmetic(itemId) }
             .onSuccess { progress ->
                 update {
@@ -388,6 +597,10 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun claimDailyMission(missionId: String) {
+        if (_uiState.value.firebaseUserId != null) {
+            cloudAction("ミッション報酬を受け取りました") { api.cloudClaimMission(missionId) }
+            return
+        }
         runCatching { progressRepository.claimDailyMission(missionId) }
             .onSuccess { progress ->
                 update {
@@ -403,7 +616,12 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun backToMenu() = update { copy(screen = DaifugoScreen.MAIN_MENU, errorMessage = null, infoMessage = null) }
 
-    fun logout() = launchAction {
+    fun logout() {
+        if (_uiState.value.firebaseUserId != null) {
+            signOutGoogle()
+            return
+        }
+        launchAction {
         runCatching { api.logout() }
         localCpu.close()
         stopRoomRealtime()
@@ -419,6 +637,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 ruleCutIns = emptyList(),
                 infoMessage = "ログアウトしました",
             )
+        }
         }
     }
 
@@ -826,20 +1045,31 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
             val self = newState.selfPlayer
             val rank = self?.rank
             if (self != null && rank != null) {
-                progressRepository.recordMatch(
-                    matchId = newState.roomId,
-                    rank = rank,
-                    playerCount = newState.players.size,
-                    yajuStatus = self.yajuStatus,
-                    challenge = newState.gameMode == "YAJU_CHALLENGE"
-                        || newState.gameMode == "MULTI_YAJU_CHALLENGE",
-                )?.let { matchResult ->
-                    update {
-                        copy(
-                            progress = matchResult.progress,
-                            lastEarnedExp = matchResult.earnedExp,
-                            infoMessage = "+${matchResult.earnedExp} EXP を獲得",
-                        )
+                if (!newState.isLocalCpuGame && _uiState.value.firebaseUserId != null) {
+                    // オンライン戦績はサーバー確定順位からのみ付与する。リトライしても二重加算されない。
+                    recordCloudResult(newState.roomId)
+                } else {
+                    val matchResult = progressRepository.recordMatch(
+                        matchId = newState.roomId,
+                        rank = rank,
+                        playerCount = newState.players.size,
+                        yajuStatus = self.yajuStatus,
+                        challenge = newState.gameMode == "YAJU_CHALLENGE"
+                            || newState.gameMode == "MULTI_YAJU_CHALLENGE",
+                    )
+                    if (_uiState.value.firebaseUserId == null) {
+                        matchResult?.let { result ->
+                            update {
+                                copy(
+                                    progress = result.progress,
+                                    lastEarnedExp = result.earnedExp,
+                                    infoMessage = "+${result.earnedExp} EXP を獲得",
+                                )
+                            }
+                        }
+                    } else {
+                        // ローカルCPU戦の結果を検証済みFirestore戦績に混入させない。
+                        update { copy(infoMessage = "オフラインCPU戦の報酬はクラウドに加算されません") }
                     }
                 }
             }
@@ -862,6 +1092,50 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 selectedCardIndices = if (turnChanged || handChanged) emptySet() else selectedCardIndices,
                 errorMessage = null,
             )
+        }
+    }
+
+    /** クラウド保存失敗は結果画面から再試行できる。成功済みルームは再送しない。 */
+    fun retryCloudResult() {
+        val roomId = _uiState.value.cloudSaveFailedRoomId ?: return
+        if (_uiState.value.gameState?.roomId == roomId
+            && _uiState.value.gameState?.finished == true) {
+            recordCloudResult(roomId)
+        }
+    }
+
+    private fun recordCloudResult(roomId: String) {
+        val uid = _uiState.value.firebaseUserId ?: return
+        val key = "$uid:$roomId"
+        if (key in cloudSavedRooms || !cloudSavingRooms.add(key)) return
+        viewModelScope.launch {
+            val beforeExp = _uiState.value.progress.totalExp
+            runCatching { api.cloudRecordMatch(roomId) }
+                .onSuccess { cloud ->
+                    cloudSavedRooms.add(key)
+                    if (_uiState.value.firebaseUserId == uid) {
+                        acceptCloudProgress(uid, cloud)
+                        val gained = (cloud.optInt("totalExp", beforeExp) - beforeExp).coerceAtLeast(0)
+                        update {
+                            copy(
+                                lastEarnedExp = gained,
+                                cloudSaveFailedRoomId = null,
+                                infoMessage = "戦績をクラウドに保存しました（+${gained} EXP）",
+                            )
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    if (_uiState.value.firebaseUserId == uid) {
+                        update {
+                            copy(
+                                cloudSaveFailedRoomId = roomId,
+                                errorMessage = "クラウド戦績保存に失敗しました: ${error.message ?: "通信エラー"}",
+                            )
+                        }
+                    }
+                }
+            cloudSavingRooms.remove(key)
         }
     }
 
