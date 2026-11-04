@@ -24,6 +24,8 @@ class ApiException(
  * Spring Boot版DaifugoのREST/WebSocketクライアント。
  * RESTがゲーム操作の正本、WebSocketは状態変更通知専用として使用する。
  */
+data class FirebaseServerConfig(val enabled: Boolean, val projectId: String)
+
 class DaifugoApiClient {
     private val cookieJar = SessionCookieJar()
     private val client = OkHttpClient.Builder()
@@ -55,6 +57,68 @@ class DaifugoApiClient {
      * サーバー共通パスワードを要求しない。返却されたCSRFトークンと
      * JSESSIONIDは以後のREST / WebSocketで共有する。
      */
+    /** サーバーがFirebaseモードか確認する。WebとAndroidで同じ切替フラグを使う。 */
+    suspend fun firebaseConfig(): FirebaseServerConfig {
+        val json = JSONObject(execute(request("/api/config/firebase").get().build(), needsCsrf = false))
+        return FirebaseServerConfig(
+            enabled = json.optBoolean("enabled", false),
+            projectId = json.optString("projectId", ""),
+        )
+    }
+
+    /** Firebase IDトークンをサーバーが検証し、既存のCookie+CSRFセッションへ変換する。 */
+    suspend fun openFirebaseSession(idToken: String): LoginResponse {
+        val body = JSONObject().put("idToken", idToken).toString().toRequestBody(JSON)
+        val response = execute(
+            request("/api/auth/firebase/session").post(body).build(),
+            needsCsrf = false,
+        )
+        return ServerJson.login(response).also { csrfToken = it.csrfToken }
+    }
+
+    suspend fun cloudProgress(): JSONObject? {
+        val json = JSONObject(execute(request("/api/users/me/progress").get().build()))
+        return if (json.optBoolean("exists", false)) json.getJSONObject("progress") else null
+    }
+
+    /** 初回のみ新規作成する。既存Firestoreデータはサーバー側トランザクションで保護される。 */
+    suspend fun migrateCloudProgress(legacy: JSONObject): JSONObject =
+        cloudWrite("/progress/migrate", "POST", legacy)
+
+    suspend fun cloudProfile(displayName: String): JSONObject =
+        cloudWrite("/profile", "PATCH", JSONObject().put("displayName", displayName))
+
+    suspend fun cloudEquipment(itemId: String): JSONObject =
+        cloudWrite("/equipment", "POST", JSONObject().put("itemId", itemId))
+
+    suspend fun cloudClaimMission(missionId: String): JSONObject =
+        cloudWrite("/missions/${encodePath(missionId)}/claim", "POST")
+
+    suspend fun cloudReceivePresent(presentId: String): JSONObject =
+        cloudWrite("/presents/${encodePath(presentId)}/receive", "POST")
+
+    suspend fun cloudReceiveAllPresents(): JSONObject =
+        cloudWrite("/presents/receive-all", "POST")
+
+    suspend fun cloudRecordMatch(roomId: String): JSONObject =
+        cloudWrite("/matches/${encodePath(roomId)}/record", "POST")
+
+    suspend fun cloudBgm(enabled: Boolean): JSONObject =
+        cloudWrite("/settings", "PATCH", JSONObject().put("bgm", enabled))
+
+    private suspend fun cloudWrite(
+        path: String,
+        method: String,
+        payload: JSONObject = JSONObject(),
+    ): JSONObject {
+        val json = execute(
+            request("/api/users/me$path")
+                .method(method, payload.toString().toRequestBody(JSON))
+                .build(),
+        )
+        return JSONObject(json).getJSONObject("progress")
+    }
+
     suspend fun openPublicSession(): LoginResponse {
         val json = execute(
             request("/api/auth/session")
