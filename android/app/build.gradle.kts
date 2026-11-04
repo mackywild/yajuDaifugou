@@ -136,4 +136,6 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     testImplementation("junit:junit:4.13.2")
+    // Android SDKのorg.jsonスタブではなくJVM上で実動作するJSON実装を使用。
+    testImplementation("org.json:json:20250517")
 }
