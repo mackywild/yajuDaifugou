@@ -1,0 +1,25 @@
+# 【将来用・現VPSでは起動しない】メモリ増設後の常設検証サーバー例。\n# 現在の960MiB VPSでは単一JARをSSHトンネルから検証する。\n# 必ず127.0.0.1のみで待ち受け、公開Caddyには接続しない。
+[Unit]
+Description=Yaju Daifugo staging game server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=daifugo
+Group=daifugo
+WorkingDirectory=/opt/yaju-daifugo-staging
+EnvironmentFile=/etc/daifugo/staging.env
+Environment=PORT=8081
+Environment=SERVER_ADDRESS=127.0.0.1
+ExecStart=/usr/bin/java -jar /opt/yaju-daifugo-staging/daifugo.jar
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/yaju-daifugo-staging
+
+[Install]
+WantedBy=multi-user.target
