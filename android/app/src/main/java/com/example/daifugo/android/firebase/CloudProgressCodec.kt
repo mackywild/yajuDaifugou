@@ -8,6 +8,7 @@ import com.example.daifugo.android.progression.PresentEntry
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
+import java.time.ZoneId
 
 data class CloudProgressSnapshot(
     val progress: PlayerProgress,
@@ -47,7 +48,7 @@ object CloudProgressCodec {
             )
         }
         val claimed = daily.optJSONArray("claimedMissionIds") ?: JSONArray()
-        val today = LocalDate.now().toString()
+        val today = LocalDate.now(ZoneId.of("Asia/Tokyo")).toString()
         val dailyState = if (daily.optString("date") == today) {
             DailyMissionState(
                 date = today,
