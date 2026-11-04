@@ -10,7 +10,6 @@ import com.example.daifugo.android.data.DaifugoApiClient
 import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.RuleSettingsDto
 import com.example.daifugo.android.firebase.CloudProgressCodec
-import com.example.daifugo.android.firebase.CloudProgressSnapshot
 import com.example.daifugo.android.firebase.FirebaseAccountManager
 import com.example.daifugo.android.local.LocalCpuActionType
 import com.example.daifugo.android.local.LocalCpuGameManager
@@ -444,7 +443,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     /**
      * PCブラウザ版と同じ公開サーバーへ直接接続してMULTIPLAYERを開く。
-     * Google Play Gamesや共通パスワードはクロスプレイ条件にしない。
+     * Firebaseが有効ならWebと同じGoogle認証を使い、無効なら従来セッションを維持する。
      */
     fun openMultiplayer() = launchAction {
         stopRoomRealtime()
