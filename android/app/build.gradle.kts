@@ -3,6 +3,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// CI SecretsまたはローカルGradleプロパティからAndroid用Firebase公開設定を受け取る。
+fun firebaseProperty(name: String): String =
+    providers.gradleProperty(name).orElse(providers.environmentVariable(name)).orNull.orEmpty().also {
+        require(it.matches(Regex("[A-Za-z0-9:._-]*"))) { "Firebase設定の形式が不正です: $name" }
+    }
+
 val releaseKeystorePath = System.getenv("YAJU_KEYSTORE_PATH")
 val releaseStorePassword = System.getenv("YAJU_STORE_PASSWORD")
 val releaseKeyAlias = System.getenv("YAJU_KEY_ALIAS")
@@ -36,6 +42,11 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+
+        buildConfigField("String", "FIREBASE_ANDROID_API_KEY", "\""+firebaseProperty("FIREBASE_ANDROID_API_KEY")+"\"")
+        buildConfigField("String", "FIREBASE_ANDROID_APP_ID", "\""+firebaseProperty("FIREBASE_ANDROID_APP_ID")+"\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\""+firebaseProperty("FIREBASE_PROJECT_ID")+"\"")
+        buildConfigField("String", "FIREBASE_WEB_CLIENT_ID", "\""+firebaseProperty("FIREBASE_WEB_CLIENT_ID")+"\"")
     }
 
     signingConfigs {
@@ -98,6 +109,14 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
+
+    // Web版と共通UIDで認証する。Firestoreアクセスは既存Spring Boot経由。
+    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     implementation("com.google.android.gms:play-services-games-v2:22.1.0")
 
