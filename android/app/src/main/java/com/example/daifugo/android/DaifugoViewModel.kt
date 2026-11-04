@@ -1,5 +1,6 @@
 package com.example.daifugo.android
 
+import android.app.Activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,8 @@ import com.example.daifugo.android.data.CardDto
 import com.example.daifugo.android.data.DaifugoApiClient
 import com.example.daifugo.android.data.GameStateDto
 import com.example.daifugo.android.data.RuleSettingsDto
+import com.example.daifugo.android.firebase.FirebaseAccountManager
+import com.example.daifugo.android.firebase.FirebaseIdentity
 import com.example.daifugo.android.local.LocalCpuActionType
 import com.example.daifugo.android.local.LocalCpuGameManager
 import com.example.daifugo.android.progression.DailyMissionRules
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 /** アプリ内の主要画面。 */
 enum class DaifugoScreen {
@@ -103,6 +107,12 @@ data class DaifugoUiState(
     val ruleYaju: Boolean = true,
     val ruleJackBack: Boolean = true,
     val ruleForbiddenFinish: Boolean = true,
+    val firebaseEnabled: Boolean = false,
+    val firebaseConfigured: Boolean = false,
+    val firebaseUserId: String? = null,
+    val firebaseEmail: String? = null,
+    val firebaseMigrationPending: Boolean = false,
+    val cloudSaveFailedRoomId: String? = null,
     val playGamesConfigured: Boolean = false,
     val playGamesSignedIn: Boolean = false,
     val playGamesDisplayName: String? = null,
@@ -131,6 +141,9 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
     private val localCpu = LocalCpuGameManager()
     private val preferences = application.getSharedPreferences("daifugo", 0)
     private val progressRepository = PlayerProgressRepository(application)
+    private val firebaseAccounts = FirebaseAccountManager(application)
+    private val cloudSavedRooms = mutableSetOf<String>()
+    private val cloudSavingRooms = mutableSetOf<String>()
     private val initialProgress = progressRepository.load()
 
     private val _uiState = MutableStateFlow(
@@ -161,6 +174,124 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
      * 新しい接続を上書き・二重再接続しないために使用する。
      */
     private var realtimeGeneration: Long = 0L
+
+    init {
+        // オフラインCPU戦は認証・ネットワーク障害時にも起動できるようにする。
+        viewModelScope.launch {
+            runCatching {
+                api.configure(DEFAULT_PUBLIC_SERVER_URL)
+                val config = api.firebaseConfig()
+                update { copy(firebaseEnabled = config.enabled, firebaseConfigured = firebaseAccounts.configured) }
+                if (config.enabled && firebaseAccounts.configured) {
+                    require(config.projectId == firebaseAccounts.projectId) {
+                        "Android版とサーバーのFirebaseプロジェクトが異なります"
+                    }
+                    firebaseAccounts.restore()?.let { connectFirebase(it) }
+                }
+            }.onFailure { exception ->
+                // Firebase設定・接続失敗はオフラインゲーム起動を妨げない。
+                update { copy(infoMessage = "クラウド接続: ${exception.message ?: "確認できません"}") }
+            }
+        }
+    }
+
+    /** Google Play Gamesとは別のFirebase認証。Web版と同じUIDを使用する。 */
+    fun signInGoogle(activity: Activity) = launchAction {
+        require(_uiState.value.gameState?.let { it.started && !it.finished } != true) {
+            "対戦中はアカウントを切り替えられません"
+        }
+        api.configure(DEFAULT_PUBLIC_SERVER_URL)
+        val config = api.firebaseConfig()
+        require(config.enabled) { "サーバー側でFirebase機能が無効です" }
+        require(firebaseAccounts.configured) { "Firebase設定済みのAndroid APKが必要です" }
+        require(config.projectId == firebaseAccounts.projectId) {
+            "Android版とサーバーのFirebaseプロジェクトが異なります"
+        }
+        val identity = firebaseAccounts.signIn(activity)
+        connectFirebase(identity)
+        update { copy(firebaseEnabled = true, firebaseConfigured = true, infoMessage = "Googleでログインしました") }
+    }
+
+    /** UIDが切り替わったら以前の表示を残さず、サーバー認証後にクラウド正本へ入れ替える。 */
+    private suspend fun connectFirebase(identity: FirebaseIdentity) {
+        val session = api.openFirebaseSession(identity.idToken)
+        require(session.authenticated) { "Firebaseセッションを作成できませんでした" }
+        val cloud = api.cloudProgress()
+        stopRoomRealtime()
+        val current = _uiState.value
+        val progress = cloud?.let { progressRepository.parseCloudProgress(it, identity.uid) }
+        update {
+            copy(
+                firebaseUserId = identity.uid,
+                firebaseEmail = identity.email,
+                firebaseMigrationPending = cloud == null,
+                progress = progress ?: PlayerProgress(),
+                playerName = progress?.displayName?.takeIf { progress.profileConfigured }.orEmpty(),
+                roomId = null,
+                gameState = null,
+                cloudSaveFailedRoomId = null,
+                screen = if (cloud == null) DaifugoScreen.MAIN_MENU
+                    else if (progress?.profileConfigured == true) DaifugoScreen.MAIN_MENU
+                    else DaifugoScreen.ACCOUNT_SETUP,
+                errorMessage = null,
+            )
+        }
+    }
+
+    /** 移行は初回だけ。既存クラウドデータがある場合はサーバーが必ず既存値を返す。 */
+    fun completeFirebaseMigration(importLocal: Boolean) = launchAction {
+        val uid = _uiState.value.firebaseUserId ?: error("Googleログインが必要です")
+        require(_uiState.value.firebaseMigrationPending) { "初期設定済みです" }
+        val cloud = api.migrateCloudProgress(progressRepository.cloudMigrationPayload(importLocal))
+        val progress = progressRepository.parseCloudProgress(cloud, uid)
+        update {
+            copy(
+                firebaseMigrationPending = false,
+                progress = progress,
+                playerName = if (progress.profileConfigured) progress.displayName else "",
+                screen = if (progress.profileConfigured) DaifugoScreen.MAIN_MENU
+                    else DaifugoScreen.ACCOUNT_SETUP,
+                infoMessage = if (importLocal) "端末のデータを引き継ぎました" else "クラウドデータを新規作成しました",
+            )
+        }
+    }
+
+    fun signOutGoogle() = launchAction {
+        require(_uiState.value.firebaseUserId != null) { "ログインしていません" }
+        // 退出を拒否された場合はFirebase認証も維持し、卓の所有者が行方不明にならないようにする。
+        api.logout()
+        firebaseAccounts.signOut()
+        stopRoomRealtime()
+        val local = progressRepository.load()
+        update {
+            copy(
+                firebaseUserId = null,
+                firebaseEmail = null,
+                firebaseMigrationPending = false,
+                cloudSaveFailedRoomId = null,
+                progress = local,
+                playerName = if (local.profileConfigured) local.displayName else "",
+                roomId = null,
+                gameState = null,
+                screen = DaifugoScreen.MAIN_MENU,
+                infoMessage = "Googleからログアウトしました",
+            )
+        }
+    }
+
+    private fun acceptCloudProgress(uid: String, cloud: JSONObject) {
+        if (_uiState.value.firebaseUserId != uid) return
+        val progress = progressRepository.parseCloudProgress(cloud, uid)
+        update { copy(progress = progress, playerName = progress.displayName) }
+    }
+
+    private fun cloudAction(message: String, operation: suspend () -> JSONObject) = launchAction {
+        val uid = _uiState.value.firebaseUserId ?: error("Googleログインが必要です")
+        require(!_uiState.value.firebaseMigrationPending) { "クラウドデータの初期設定が必要です" }
+        val cloud = operation()
+        acceptCloudProgress(uid, cloud)
+        update { copy(infoMessage = message) }
+    }
 
     fun setServerUrl(value: String) = update { copy(serverUrl = value) }
     fun setPassword(value: String) = update { copy(password = value) }
@@ -196,7 +327,8 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         }
 
         update {
-            val signedInProgress = if (authenticated) progress else this.progress
+            val signedInProgress = if (firebaseUserId != null) this.progress
+                else if (authenticated) progress else this.progress
             copy(
                 playGamesConfigured = configured,
                 playGamesSignedIn = authenticated,
