@@ -45,6 +45,32 @@ jobs:
         run: |
           sdkmanager "platform-tools" "platforms;android-37.0" "build-tools;36.0.0"
 
+      - name: Restore fixed Firebase test signing key (when configured)
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
+          TEST_KEYSTORE_B64: ${{ secrets.YAJU_ANDROID_TEST_KEYSTORE_B64 }}
+          TEST_STORE_PASSWORD: ${{ secrets.YAJU_TEST_STORE_PASSWORD }}
+          TEST_KEY_ALIAS: ${{ secrets.YAJU_TEST_KEY_ALIAS }}
+          TEST_KEY_PASSWORD: ${{ secrets.YAJU_TEST_KEY_PASSWORD }}
+        run: |
+          if [ -z "$TEST_KEYSTORE_B64" ]; then
+            if [ -n "$FIREBASE_API_KEY" ]; then
+              echo "::error::Firebase実機用APKには固定署名が必要です。YAJU_ANDROID_TEST_KEYSTORE_B64ほかテスト署名Secretsを設定してください"
+              exit 1
+            fi
+            echo "Firebase未設定: 通常のデバッグ署名を使用します"
+          else
+            test -n "$TEST_STORE_PASSWORD" && test -n "$TEST_KEY_ALIAS" && test -n "$TEST_KEY_PASSWORD" || {
+              echo "::error::Firebaseテスト署名のパスワード/エイリアスSecretsが不足しています"
+              exit 1
+            }
+            printf '%s' "$TEST_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/yaju-firebase-test.jks"
+            keytool -list -keystore "$RUNNER_TEMP/yaju-firebase-test.jks" \
+              -storepass "$TEST_STORE_PASSWORD" -alias "$TEST_KEY_ALIAS" >/dev/null
+            echo "YAJU_TEST_KEYSTORE_PATH=$RUNNER_TEMP/yaju-firebase-test.jks" >> "$GITHUB_ENV"
+            echo "FirebaseデバッグAPKには固定のテスト証明書を使用します"
+          fi
+
       - name: Run Android unit tests and build debug APK/AAB
         working-directory: android
         # Firebase公開設定。未登録の場合は従来どおりオフラインAPKを作成する。
@@ -54,6 +80,9 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           FIREBASE_WEB_CLIENT_ID: ${{ secrets.FIREBASE_WEB_CLIENT_ID }}
           YAJU_ANDROID_SERVER_URL: ${{ secrets.YAJU_ANDROID_SERVER_URL }}
+          YAJU_TEST_STORE_PASSWORD: ${{ secrets.YAJU_TEST_STORE_PASSWORD }}
+          YAJU_TEST_KEY_ALIAS: ${{ secrets.YAJU_TEST_KEY_ALIAS }}
+          YAJU_TEST_KEY_PASSWORD: ${{ secrets.YAJU_TEST_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug :app:bundleDebug
@@ -71,3 +100,7 @@ jobs:
           name: YajuDaifugou-v0.5.0-test01-debug-aab
           path: android/app/build/outputs/bundle/debug/app-debug.aab
           if-no-files-found: error
+
+      - name: Remove temporary test signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/yaju-firebase-test.jks"
