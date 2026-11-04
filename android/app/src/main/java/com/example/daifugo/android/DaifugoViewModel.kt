@@ -386,42 +386,31 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         )
     }
 
-    fun completeAccountSetup() {
-        val state = _uiState.value
-        runCatching {
-            progressRepository.updateDisplayName(state.playerName)
-        }
-            .onSuccess { progress ->
-                update {
-                    copy(
-                        progress = progress,
-                        playerName = progress.displayName,
-                        screen = DaifugoScreen.MAIN_MENU,
-                        errorMessage = null,
-                        infoMessage = "アカウント設定が完了しました",
-                    )
+    fun completeAccountSetup() = progressAction(
+        message = "アカウント設定が完了しました",
+        localAction = { progressRepository.updateDisplayName(_uiState.value.playerName) },
+        remoteAction = {
+            api.cloudProfile(_uiState.value.playerName.trim())
+        },
+    ).also {
+        // ローカルとクラウドのどちらでも、名前設定完了後はメニューへ進む。
+        viewModelScope.launch {
+            _uiState.collect { state ->
+                if (!state.loading && state.progress.profileConfigured &&
+                    state.screen == DaifugoScreen.ACCOUNT_SETUP && state.errorMessage == null
+                ) {
+                    update { copy(screen = DaifugoScreen.MAIN_MENU) }
+                    return@collect
                 }
             }
-            .onFailure(::handleError)
+        }
     }
 
-    fun saveProfileName() {
-        val state = _uiState.value
-        runCatching {
-            progressRepository.updateDisplayName(state.playerName)
-        }
-            .onSuccess { progress ->
-                update {
-                    copy(
-                        progress = progress,
-                        playerName = progress.displayName,
-                        errorMessage = null,
-                        infoMessage = "プレイヤー名を更新しました",
-                    )
-                }
-            }
-            .onFailure(::handleError)
-    }
+    fun saveProfileName() = progressAction(
+        message = "プレイヤー名を更新しました",
+        localAction = { progressRepository.updateDisplayName(_uiState.value.playerName) },
+        remoteAction = { api.cloudProfile(_uiState.value.playerName.trim()) },
+    )
 
     /** 表示中の野獣確定カットインを、同一イベントの場合だけ閉じる。 */
     fun clearYajuCutIn(id: Long) = update {
@@ -459,12 +448,21 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
      */
     fun openMultiplayer() = launchAction {
         stopRoomRealtime()
-
         val serverUrl = DEFAULT_PUBLIC_SERVER_URL
         api.configure(serverUrl)
-        val response = api.openPublicSession()
+
+        val user = firebaseAccountManager.currentUser
+        val response = if (user != null) {
+            if (_uiState.value.firebaseUid != user.uid) connectFirebaseAccount()
+            require(_uiState.value.cloudReady) {
+                "プロフィールでクラウド初回登録を完了してください"
+            }
+            api.openFirebaseSession(firebaseAccountManager.idToken())
+        } else {
+            api.openPublicSession()
+        }
         if (!response.authenticated) {
-            error("マルチプレイサーバーへ接続できませんでした")
+            error("Googleログインが必要です。プロフィールから連携してください")
         }
 
         preferences.edit().putString("serverUrl", serverUrl).apply()
@@ -478,7 +476,7 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
                 gameState = null,
                 socketConnected = false,
                 errorMessage = null,
-                infoMessage = "ONLINE TABLEへ接続しました",
+                infoMessage = if (user != null) "Firebaseアカウントで接続しました" else "ONLINE TABLEへ接続しました",
             )
         }
     }
@@ -504,66 +502,29 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
 
     fun openSettings() = update { copy(screen = DaifugoScreen.SETTINGS, errorMessage = null, infoMessage = null) }
 
-    fun receivePresent(presentId: String) {
-        runCatching { progressRepository.receivePresent(presentId) }
-            .onSuccess { result ->
-                val name = result.received.firstOrNull()?.itemName ?: "アイテム"
-                update {
-                    copy(
-                        progress = result.progress,
-                        infoMessage = "$name を受け取りました",
-                        errorMessage = null,
-                    )
-                }
-            }
-            .onFailure(::handleError)
-    }
+    fun receivePresent(presentId: String) = progressAction(
+        message = "プレゼントを受け取りました",
+        localAction = { progressRepository.receivePresent(presentId).progress },
+        remoteAction = { api.cloudReceivePresent(presentId) },
+    )
 
-    fun receiveAllPresents() {
-        runCatching { progressRepository.receiveAllPresents() }
-            .onSuccess { result ->
-                update {
-                    copy(
-                        progress = result.progress,
-                        infoMessage = if (result.received.isEmpty()) {
-                            "受け取れるプレゼントはありません"
-                        } else {
-                            "${result.received.size}件のプレゼントを受け取りました"
-                        },
-                        errorMessage = null,
-                    )
-                }
-            }
-            .onFailure(::handleError)
-    }
+    fun receiveAllPresents() = progressAction(
+        message = "プレゼントをまとめて受け取りました",
+        localAction = { progressRepository.receiveAllPresents().progress },
+        remoteAction = { api.cloudReceiveAll() },
+    )
 
-    fun equipCosmetic(itemId: String) {
-        runCatching { progressRepository.equipCosmetic(itemId) }
-            .onSuccess { progress ->
-                update {
-                    copy(
-                        progress = progress,
-                        infoMessage = "アイテムを装備しました",
-                        errorMessage = null,
-                    )
-                }
-            }
-            .onFailure(::handleError)
-    }
+    fun equipCosmetic(itemId: String) = progressAction(
+        message = "アイテムを装備しました",
+        localAction = { progressRepository.equipCosmetic(itemId) },
+        remoteAction = { api.cloudEquipment(itemId) },
+    )
 
-    fun claimDailyMission(missionId: String) {
-        runCatching { progressRepository.claimDailyMission(missionId) }
-            .onSuccess { progress ->
-                update {
-                    copy(
-                        progress = progress,
-                        infoMessage = "デイリーミッション報酬を受け取りました",
-                        errorMessage = null,
-                    )
-                }
-            }
-            .onFailure(::handleError)
-    }
+    fun claimDailyMission(missionId: String) = progressAction(
+        message = "デイリーミッション報酬を受け取りました",
+        localAction = { progressRepository.claimDailyMission(missionId) },
+        remoteAction = { api.cloudClaimMission(missionId) },
+    )
 
     fun backToMenu() = update { copy(screen = DaifugoScreen.MAIN_MENU, errorMessage = null, infoMessage = null) }
 
