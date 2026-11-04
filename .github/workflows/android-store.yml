@@ -98,6 +98,10 @@ jobs:
           YAJU_STORE_PASSWORD: ${{ secrets.YAJU_STORE_PASSWORD }}
           YAJU_KEY_ALIAS: ${{ secrets.YAJU_KEY_ALIAS }}
           YAJU_KEY_PASSWORD: ${{ secrets.YAJU_KEY_PASSWORD }}
+          ORG_GRADLE_PROJECT_YAJU_FIREBASE_API_KEY: ${{ vars.YAJU_FIREBASE_API_KEY }}
+          ORG_GRADLE_PROJECT_YAJU_FIREBASE_ANDROID_APP_ID: ${{ vars.YAJU_FIREBASE_ANDROID_APP_ID }}
+          ORG_GRADLE_PROJECT_YAJU_FIREBASE_PROJECT_ID: ${{ vars.YAJU_FIREBASE_PROJECT_ID }}
+          ORG_GRADLE_PROJECT_YAJU_FIREBASE_WEB_CLIENT_ID: ${{ vars.YAJU_FIREBASE_WEB_CLIENT_ID }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon :app:bundleRelease \
