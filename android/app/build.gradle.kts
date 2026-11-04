@@ -20,6 +20,18 @@ val hasReleaseSigning = listOf(
     releaseKeyPassword,
 ).all { !it.isNullOrBlank() }
 
+// CIで再現可能なGoogle OAuth署名を使う。Play公開用uploadキーとは分離。
+val testKeystorePath = System.getenv("YAJU_TEST_KEYSTORE_PATH")
+val testStorePassword = System.getenv("YAJU_TEST_STORE_PASSWORD")
+val testKeyAlias = System.getenv("YAJU_TEST_KEY_ALIAS")
+val testKeyPassword = System.getenv("YAJU_TEST_KEY_PASSWORD")
+val hasTestSigning = listOf(
+    testKeystorePath,
+    testStorePassword,
+    testKeyAlias,
+    testKeyPassword,
+).all { !it.isNullOrBlank() }
+
 val appVersionCode = providers.gradleProperty("YAJU_VERSION_CODE")
     .orNull
     ?.toIntOrNull()
@@ -50,6 +62,14 @@ android {
     }
 
     signingConfigs {
+        if (hasTestSigning) {
+            create("firebaseTest") {
+                storeFile = file(testKeystorePath!!)
+                storePassword = testStorePassword
+                keyAlias = testKeyAlias
+                keyPassword = testKeyPassword
+            }
+        }
         if (hasReleaseSigning) {
             create("releaseUpload") {
                 storeFile = file(releaseKeystorePath!!)
@@ -62,6 +82,9 @@ android {
 
     buildTypes {
         debug {
+            if (hasTestSigning) {
+                signingConfig = signingConfigs.getByName("firebaseTest")
+            }
             // デバッグAPKのみ非公開Stagingへの接続を許可。本番配布は固定URL。
             val debugServerUrl = providers.gradleProperty("YAJU_ANDROID_SERVER_URL")
                 .orElse(providers.environmentVariable("YAJU_ANDROID_SERVER_URL"))
