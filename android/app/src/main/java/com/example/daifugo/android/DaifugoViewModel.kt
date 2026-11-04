@@ -294,7 +294,8 @@ class DaifugoViewModel(application: Application) : AndroidViewModel(application)
         require(_uiState.value.screen !in setOf(DaifugoScreen.ROOM, DaifugoScreen.GAME, DaifugoScreen.RESULT)) {
             "対戦中はログアウトできません"
         }
-        if (_uiState.value.firebaseUid != null) api.logout()
+        // サーバー障害でも端末のログアウトを妨げない。接続中ゲームではログアウトを禁止済み。
+        if (_uiState.value.firebaseUid != null) runCatching { api.logout() }
         firebaseAccountManager.signOut(getApplication())
         api.clearSession()
         cloudResultAttempts.clear()
