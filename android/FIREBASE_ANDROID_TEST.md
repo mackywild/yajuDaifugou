@@ -28,6 +28,7 @@ GitHub → リポジトリ Settings → Secrets and variables → Actions に以
 | `FIREBASE_ANDROID_APP_ID` | `1:...:android:...` のAndroidアプリID |
 | `FIREBASE_PROJECT_ID` | Webと同じFirebaseプロジェクトID |
 | `FIREBASE_WEB_CLIENT_ID` | Google OAuthのWebクライアントID（`...apps.googleusercontent.com`） |
+| `YAJU_ANDROID_SERVER_URL` | （推奨）デバッグAPKで使うアクセス可能な**HTTPSのStaging URL** |
 
 Androidプロジェクトでのローカルビルドは、同名の環境変数または`~/.gradle/gradle.properties` のプロパティで注入できる。ビルドは`cd android && ./gradlew :app:testDebugUnitTest :app:assembleDebug`。
 
@@ -43,7 +44,7 @@ Androidプロジェクトでのローカルビルドは、同名の環境変数�
 - HTTPS・`POST /api/auth/firebase/session`・`GET /api/users/me/progress` が有効
 - Firestore Security Rulesはクライアントからの読み書きを拒否（サーバーAdmin SDK経由のみ）
 
-現状、Androidの公開接続先は`https://yaju-daifugou.com`固定。**Firebase本番環境を使った試験はStaging側の接続先を別途ビルド設定可能にするまで実施しないこと**。PRをマージしただけではVPS側のFirebaseは有効にならない。
+**debug APK**のみ`YAJU_ANDROID_SERVER_URL`でHTTPS接続先を上書きできる。未指定なら`https://yaju-daifugou.com`に接続するため、**本番側のFirebaseを有効にせずに試すにはStagingのURLを必ず設定すること**。公開サイトのlocalhost:8081は端末から直接アクセスできないため、VPN等で端末が到達できるHTTPSゲートウェイを用意する。**release APKは公開URL固定**。PRをマージしただけではVPS側のFirebaseは有効にならない。
 
 ## 4. Android 実機の受入試験
 
