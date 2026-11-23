@@ -1,0 +1,36 @@
+# ConoHa実機: /opt/yajuDaifugou/app.jar / yaju-daifugou.service
+# Caddyだけをメンテナンスモードに切替え、Spring Boot:8080へは一般公開しない。
+# 注意: 8080の直接アクセスは別途127.0.0.1へのbindまたはFW遮断が必須。
+yaju-daifugou.com {
+    encode zstd gzip
+
+    # ステータスはバックエンドから取得する。静的画面の自動復帰判定に使用。
+    @systemStatus path /api/system/status
+    handle @systemStatus {
+        header Cache-Control "no-store"
+        reverse_proxy 127.0.0.1:8080
+    }
+
+    # ブラウザとネイティブアプリのゲーム操作はすべて停止。
+    @gameApi path /api /api/* /ws /ws/*
+    handle @gameApi {
+        header Cache-Control "no-store"
+        header Retry-After "60"
+        respond "メンテナンス中です" 503
+    }
+
+    # サーバー再起動中もCaddyから静的メンテナンス画面を配信。
+    handle {
+        root * /var/www/yaju-maintenance
+        rewrite * /maintenance.html
+        header Cache-Control "no-store"
+        file_server
+    }
+
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-Frame-Options "DENY"
+        -Server
+    }
+}

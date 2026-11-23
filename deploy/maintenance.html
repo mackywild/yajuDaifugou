@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>メンテナンス中 | 野獣大富豪</title>
+<style>
+:root{font-family:system-ui,"Noto Sans JP",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;color:#f7f3e6;background:radial-gradient(ellipse at 60% 15%,#12372a,#06120d 55%,#030706)}
+main{width:min(520px,100%);border:1px solid #8b713c;border-radius:22px;text-align:center;padding:48px 28px;background:#07120fec;box-shadow:0 24px 80px #0007}
+small{letter-spacing:.3em;color:#cbb06d}h1{font-size:clamp(2rem,6vw,3rem);margin:14px 0;color:#e3c57c}
+.suits{font-size:2rem;color:#d2b66b}h2{font-size:1.45rem;margin:30px 0 10px}
+p{color:#b6c1bb;line-height:1.95}footer{color:#d2b66b;font-size:.85rem;margin-top:24px}
+</style>
+</head>
+<body><main>
+<small>YAJU DAIFUGO</small><h1>野獣大富豪</h1><div class="suits">♠ ♥ ♦ ♣</div>
+<h2>ただいまメンテナンス中</h2>
+<p>アップデート作業を実施しています。<br>経験値・所持品などのアカウントデータは保持されます。<br>終了後は同じアカウントでプレイを再開できます。</p>
+<footer>終了を確認すると自動的にページを更新します。</footer>
+</main>
+<script>
+// Caddyの静的メンテナンス画面からも通常稼働の復帰を検知する。
+// 503 / ネットワークエラーは正常なメンテナンス中とみなし再試行する。
+setInterval(async function(){
+  try {
+    const response=await fetch('/api/system/status',{cache:'no-store',credentials:'same-origin'});
+    if(!response.ok)return;
+    const status=await response.json();
+    if(status.mode==='NORMAL')window.location.reload();
+  }catch(_){}
+},15000);
+</script>
+</body></html>

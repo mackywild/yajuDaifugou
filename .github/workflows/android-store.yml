@@ -102,6 +102,11 @@ jobs:
           ORG_GRADLE_PROJECT_YAJU_FIREBASE_ANDROID_APP_ID: ${{ vars.YAJU_FIREBASE_ANDROID_APP_ID }}
           ORG_GRADLE_PROJECT_YAJU_FIREBASE_PROJECT_ID: ${{ vars.YAJU_FIREBASE_PROJECT_ID }}
           ORG_GRADLE_PROJECT_YAJU_FIREBASE_WEB_CLIENT_ID: ${{ vars.YAJU_FIREBASE_WEB_CLIENT_ID }}
+          # 同じFirebaseプロジェクトをrelease AABにも注入。認証の有効化はサーバー側で段階管理する。
+          FIREBASE_ANDROID_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
+          FIREBASE_ANDROID_APP_ID: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_WEB_CLIENT_ID: ${{ secrets.FIREBASE_WEB_CLIENT_ID }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon :app:bundleRelease \

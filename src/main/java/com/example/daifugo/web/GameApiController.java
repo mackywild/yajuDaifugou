@@ -1,7 +1,6 @@
 package com.example.daifugo.web;
 
 import java.util.List;
-import java.util.UUID;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -45,15 +44,21 @@ public class GameApiController {
     private final GameRoomService roomService;
     private final CpuGameService cpuGameService;
     private final GameWebSocketHandler webSocketHandler;
+    private final RoomSessionBinding sessionBinding;
+    private final PlayerRegistrationFactory playerFactory;
     private final GameStateResponseMapper responseMapper = new GameStateResponseMapper();
 
     public GameApiController(
             GameRoomService roomService,
             CpuGameService cpuGameService,
-            GameWebSocketHandler webSocketHandler) {
+            GameWebSocketHandler webSocketHandler,
+            RoomSessionBinding sessionBinding,
+            PlayerRegistrationFactory playerFactory) {
         this.roomService = roomService;
         this.cpuGameService = cpuGameService;
         this.webSocketHandler = webSocketHandler;
+        this.sessionBinding = sessionBinding;
+        this.playerFactory = playerFactory;
     }
 
     /**
@@ -64,13 +69,13 @@ public class GameApiController {
             @RequestBody PlayerNameRequest request,
             HttpSession session) {
 
-        ensureNotBoundToRoom(session);
-        validatePlayerName(request.playerName());
+        sessionBinding.ensureNotBoundToRoom(session);
+        playerFactory.validatePlayerName(request.playerName());
 
         GameRoom room = roomService.createRoom();
-        Player player = createPlayer(request.playerName());
+        Player player = playerFactory.createPlayer(request.playerName());
         roomService.joinRoom(room.getRoomId(), player);
-        bindSession(session, room.getRoomId(), player.getId());
+        sessionBinding.bindSession(session, room.getRoomId(), player.getId());
         webSocketHandler.broadcastStateChanged(room.getRoomId());
 
         return new JoinResponse(room.getRoomId(), true);
@@ -85,15 +90,15 @@ public class GameApiController {
             @RequestBody PlayerNameRequest request,
             HttpSession session) {
 
-        ensureNotBoundToRoom(session);
-        validatePlayerName(request.playerName());
+        sessionBinding.ensureNotBoundToRoom(session);
+        playerFactory.validatePlayerName(request.playerName());
 
         GameRoom room = roomService.createRoom(
                 GameMode.MULTI_YAJU_CHALLENGE,
                 GameRuleSettings.standard());
-        Player player = createPlayer(request.playerName());
+        Player player = playerFactory.createPlayer(request.playerName());
         roomService.joinRoom(room.getRoomId(), player);
-        bindSession(session, room.getRoomId(), player.getId());
+        sessionBinding.bindSession(session, room.getRoomId(), player.getId());
         webSocketHandler.broadcastStateChanged(room.getRoomId());
 
         return new JoinResponse(room.getRoomId(), true);
@@ -107,8 +112,8 @@ public class GameApiController {
             @RequestBody CpuGameRequest request,
             HttpSession session) {
 
-        ensureNotBoundToRoom(session);
-        validatePlayerName(request.playerName());
+        sessionBinding.ensureNotBoundToRoom(session);
+        playerFactory.validatePlayerName(request.playerName());
 
         CpuDifficulty difficulty;
         try {
@@ -136,7 +141,7 @@ public class GameApiController {
         );
         GameRoom room = creation.room();
         Player human = creation.humanPlayer();
-        bindSession(session, room.getRoomId(), human.getId());
+        sessionBinding.bindSession(session, room.getRoomId(), human.getId());
 
         synchronized (room) {
             return responseMapper.map(room, human.getId());
@@ -151,8 +156,8 @@ public class GameApiController {
             @RequestBody CpuGameRequest request,
             HttpSession session) {
 
-        ensureNotBoundToRoom(session);
-        validatePlayerName(request.playerName());
+        sessionBinding.ensureNotBoundToRoom(session);
+        playerFactory.validatePlayerName(request.playerName());
 
         CpuDifficulty difficulty;
         try {
@@ -180,7 +185,7 @@ public class GameApiController {
         );
         GameRoom room = creation.room();
         Player human = creation.humanPlayer();
-        bindSession(session, room.getRoomId(), human.getId());
+        sessionBinding.bindSession(session, room.getRoomId(), human.getId());
 
         synchronized (room) {
             return responseMapper.map(room, human.getId());
@@ -196,12 +201,12 @@ public class GameApiController {
             @RequestBody PlayerNameRequest request,
             HttpSession session) {
 
-        ensureNotBoundToRoom(session);
-        validatePlayerName(request.playerName());
+        sessionBinding.ensureNotBoundToRoom(session);
+        playerFactory.validatePlayerName(request.playerName());
 
-        Player player = createPlayer(request.playerName());
+        Player player = playerFactory.createPlayer(request.playerName());
         GameRoom room = roomService.joinRoom(roomId, player);
-        bindSession(session, roomId, player.getId());
+        sessionBinding.bindSession(session, roomId, player.getId());
         webSocketHandler.broadcastStateChanged(roomId);
 
         return new JoinResponse(roomId, room.isHost(player.getId()));
@@ -216,7 +221,7 @@ public class GameApiController {
             @PathVariable String roomId,
             HttpSession session) {
 
-        String playerId = requireBoundPlayer(session, roomId);
+        String playerId = sessionBinding.requireBoundPlayer(session, roomId);
         GameRoom room = roomService.getRoom(roomId);
 
         synchronized (room) {
@@ -233,7 +238,7 @@ public class GameApiController {
             @PathVariable String roomId,
             HttpSession session) {
 
-        String playerId = requireBoundPlayer(session, roomId);
+        String playerId = sessionBinding.requireBoundPlayer(session, roomId);
         GameRoom room = roomService.getRoom(roomId);
 
         GameStateResponse response;
@@ -263,7 +268,7 @@ public class GameApiController {
             @RequestBody PlayRequest request,
             HttpSession session) {
 
-        String playerId = requireBoundPlayer(session, roomId);
+        String playerId = sessionBinding.requireBoundPlayer(session, roomId);
         GameRoom room = roomService.getRoom(roomId);
         ensureStarted(room);
 
@@ -297,7 +302,7 @@ public class GameApiController {
             @RequestBody PlayRequest request,
             HttpSession session) {
 
-        String playerId = requireBoundPlayer(session, roomId);
+        String playerId = sessionBinding.requireBoundPlayer(session, roomId);
         GameRoom room = roomService.getRoom(roomId);
         ensureStarted(room);
 
@@ -327,7 +332,7 @@ public class GameApiController {
             @PathVariable String roomId,
             HttpSession session) {
 
-        String playerId = requireBoundPlayer(session, roomId);
+        String playerId = sessionBinding.requireBoundPlayer(session, roomId);
         GameRoom room = roomService.getRoom(roomId);
         ensureStarted(room);
 
@@ -352,7 +357,7 @@ public class GameApiController {
             @PathVariable String roomId,
             HttpSession session) {
 
-        String playerId = requireBoundPlayer(session, roomId);
+        String playerId = sessionBinding.requireBoundPlayer(session, roomId);
         GameRoom room = roomService.getRoom(roomId);
         ensureStarted(room);
         ensureMember(room, playerId);
@@ -393,9 +398,9 @@ public class GameApiController {
             @PathVariable String roomId,
             HttpSession session) {
 
-        String playerId = requireBoundPlayer(session, roomId);
+        String playerId = sessionBinding.requireBoundPlayer(session, roomId);
         roomService.leaveRoom(roomId, playerId);
-        clearRoomBinding(session);
+        sessionBinding.clearRoomBinding(session);
         webSocketHandler.broadcastStateChanged(roomId);
     }
 
@@ -416,21 +421,6 @@ public class GameApiController {
         }
     }
 
-    private Player createPlayer(String playerName) {
-        return new Player(
-                UUID.randomUUID().toString(),
-                playerName.trim());
-    }
-
-    private void validatePlayerName(String playerName) {
-        if (playerName == null || playerName.isBlank()) {
-            throw new IllegalArgumentException("プレイヤー名を入力してください");
-        }
-        if (playerName.length() > 20) {
-            throw new IllegalArgumentException("プレイヤー名は20文字以内にしてください");
-        }
-    }
-
     private void ensureStarted(GameRoom room) {
         synchronized (room) {
             if (!room.isStarted() || room.getGameState() == null || room.getGameEngine() == null) {
@@ -443,51 +433,6 @@ public class GameApiController {
         if (!room.containsPlayer(playerId)) {
             throw new IllegalArgumentException("この部屋に参加していないプレイヤーです");
         }
-    }
-
-    private void ensureNotBoundToRoom(HttpSession session) {
-        Object boundPlayerId = session.getAttribute(SESSION_PLAYER_ID);
-        Object boundRoomId = session.getAttribute(SESSION_ROOM_ID);
-
-        if (boundPlayerId == null) {
-            return;
-        }
-
-        if (boundRoomId instanceof String roomId) {
-            try {
-                roomService.getRoom(roomId);
-                throw new IllegalStateException("既に別の部屋へ参加しています。先に退出してください");
-            } catch (IllegalArgumentException expiredRoom) {
-                // TTLなどで部屋が既に消えている場合は古いセッション紐付けだけ破棄する。
-                clearRoomBinding(session);
-                return;
-            }
-        }
-
-        clearRoomBinding(session);
-    }
-
-    private void bindSession(HttpSession session, String roomId, String playerId) {
-        session.setAttribute(SESSION_ROOM_ID, roomId);
-        session.setAttribute(SESSION_PLAYER_ID, playerId);
-    }
-
-    private String requireBoundPlayer(HttpSession session, String roomId) {
-        Object sessionRoomId = session.getAttribute(SESSION_ROOM_ID);
-        Object sessionPlayerId = session.getAttribute(SESSION_PLAYER_ID);
-
-        if (!(sessionRoomId instanceof String boundRoomId)
-                || !(sessionPlayerId instanceof String playerId)
-                || !boundRoomId.equals(roomId)) {
-            throw new IllegalStateException("このブラウザは指定された部屋に参加していません");
-        }
-
-        return playerId;
-    }
-
-    private void clearRoomBinding(HttpSession session) {
-        session.removeAttribute(SESSION_ROOM_ID);
-        session.removeAttribute(SESSION_PLAYER_ID);
     }
 
     public record PlayerNameRequest(String playerName) {
