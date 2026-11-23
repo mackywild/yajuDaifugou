@@ -19,6 +19,20 @@ class PlayerProgressRepository(context: Context) {
         return normalized
     }
 
+    /** Firestoreから取得した正本。ローカル保存領域へ書き戻さない。 */
+    fun parseCloudProgress(data: JSONObject, uid: String): PlayerProgress {
+        require(uid.isNotBlank()) { "Firebase UIDがありません" }
+        val normalized = JSONObject(data.toString())
+            .put("accountKey", "firebase:$uid")
+        return normalizeDaily(decode(normalized.toString()))
+    }
+
+    /** 新規アカウント作成時だけ送る旧データ。既存のクラウド情報は上書きしない。 */
+    fun cloudMigrationPayload(importLocal: Boolean): JSONObject {
+        val source = if (importLocal) load() else PlayerProgress()
+        return JSONObject(encode(source))
+    }
+
     fun enqueuePresent(present: PresentEntry): PlayerProgress {
         require(present.id.isNotBlank()) { "present id must not be blank" }
         require(present.itemId.isNotBlank()) { "item id must not be blank" }
