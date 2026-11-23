@@ -145,6 +145,10 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
         )
     }
 
+    LaunchedEffect(viewModel) {
+        viewModel.restoreFirebaseSession()
+    }
+
     LaunchedEffect(playGamesAccountManager) {
         playGamesAccountManager?.refresh(::applyPlayGamesAccount)
             ?: viewModel.updatePlayGamesAccount(
@@ -176,7 +180,8 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
         }
     } == true
 
-    val menuBgmActive = state.screen != DaifugoScreen.GAME &&
+    val menuBgmActive = state.bgmEnabled &&
+        state.screen != DaifugoScreen.GAME &&
         state.screen != DaifugoScreen.RESULT
 
     LaunchedEffect(menuBgmActive) {
@@ -187,8 +192,8 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
         }
     }
 
-    LaunchedEffect(yajuBgmActive) {
-        if (yajuBgmActive) {
+    LaunchedEffect(yajuBgmActive, state.bgmEnabled) {
+        if (yajuBgmActive && state.bgmEnabled) {
             YajuAudioPlayer.startBgm(context)
         } else {
             YajuAudioPlayer.stopBgm()
@@ -206,7 +211,7 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
         color = MaterialTheme.colorScheme.background,
     ) {
         if (state.screen == DaifugoScreen.TITLE) {
-            TitleScreen(onStart = viewModel::enterMainMenu)
+            TitleScreen(onStart = { if (!state.loading) viewModel.enterMainMenu() })
         } else {
             Column(
                 modifier = Modifier
@@ -280,12 +285,7 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                             )
                             DaifugoScreen.COLLECTION -> CollectionScreen(state, viewModel)
                             DaifugoScreen.PRESENT_BOX -> PresentBoxScreen(state, viewModel)
-                            DaifugoScreen.SETTINGS -> MenuPlaceholderScreen(
-                                title = "SYSTEM",
-                                subtitle = "設定",
-                                description = "BGM・SE・演出などを設定する。",
-                                onBack = viewModel::backToMenu,
-                            )
+                            DaifugoScreen.SETTINGS -> FirebaseSettingsScreen(state, viewModel)
                             DaifugoScreen.ROOM -> RoomScreen(state, viewModel)
                             DaifugoScreen.GAME -> GameScreen(state, viewModel)
                             DaifugoScreen.RESULT -> ResultScreen(state, viewModel)
@@ -569,7 +569,7 @@ private fun AccountSetupScreen(
                             fontWeight = FontWeight.Black,
                         )
                         Text(
-                            "Android向けの任意連携です。PC版とのクロスプレイにGoogleアカウントは不要です。",
+                            "Play GamesはAndroid用の任意連携です。FirebaseのGoogleログインとは別です。",
                             color = Color.White.copy(alpha = 0.48f),
                             fontSize = 11.sp,
                         )
@@ -581,6 +581,10 @@ private fun AccountSetupScreen(
                         }
                     }
                 }
+            }
+
+            item {
+                FirebaseAccountPanel(state, viewModel)
             }
 
             item {
@@ -613,7 +617,7 @@ private fun AccountSetupScreen(
 
             item {
                 Text(
-                    "Google Play Gamesなしでも全ゲームモードを利用できます。",
+                    "Play Games連携は任意です。Web版とのクラウド同期にはGoogleログインを利用します。",
                     modifier = Modifier.fillMaxWidth(),
                     color = Color.White.copy(alpha = 0.42f),
                     textAlign = TextAlign.Center,
@@ -798,6 +802,10 @@ private fun MainMenuScreen(
                         }
                     }
                 }
+            }
+
+            item {
+                FirebaseAccountPanel(state, viewModel)
             }
 
             item {
@@ -1680,6 +1688,10 @@ private fun ProfileScreen(
         }
 
         item {
+            FirebaseAccountPanel(state, viewModel)
+        }
+
+        item {
             PremiumCasinoInfoPanel("PLAYER NAME") {
                 PremiumPlayerNameField(
                     value = state.playerName,
@@ -2234,6 +2246,98 @@ private fun ChallengeSetupScreen(state: DaifugoUiState, viewModel: DaifugoViewMo
     }
 }
 
+/**
+ * 同一Firebase UIDに紐付くWeb/Android共通の進行データを操作する。
+ * 初回移行は明示的な選択を要求し、既存クラウドデータを端末側で上書きしない。
+ */
+@Composable
+private fun FirebaseAccountPanel(state: DaifugoUiState, viewModel: DaifugoViewModel) {
+    val activity = LocalContext.current as? Activity
+    PremiumCasinoInfoPanel("FIREBASE ACCOUNT") {
+        Text(
+            when {
+                !state.firebaseConfigured -> "Firebase未設定のAPKです。CIでFirebase構成を指定するとGoogleログインをテストできます。"
+                state.cloudMigrationRequired -> "Googleログイン済み。初回データ登録方法を選択してください。"
+                state.firebaseUid != null && state.cloudReady -> "✓ Web版とクラウドデータを共有しています"
+                else -> "Web版と共通のGoogleアカウントでログインできます。"
+            },
+            color = if (state.cloudReady) Color(0xFF78D6A1) else Color.White.copy(alpha = 0.82f),
+            fontSize = 12.sp,
+        )
+        state.firebaseDisplayName?.let { name ->
+            Text("GOOGLE  •  $name", color = CasinoGold, fontWeight = FontWeight.Bold)
+        }
+
+        if (state.firebaseConfigured && state.firebaseUid == null) {
+            Spacer(Modifier.height(10.dp))
+            PremiumStartButton(
+                label = "GOOGLEでログイン",
+                onClick = { activity?.let(viewModel::signInFirebase) },
+            )
+            Text(
+                "既存端末データは自動でクラウドに上書きしません。",
+                color = Color.White.copy(alpha = 0.54f), fontSize = 11.sp,
+            )
+        }
+        if (state.cloudMigrationRequired) {
+            Spacer(Modifier.height(12.dp))
+            PremiumStartButton(
+                label = "端末の戦績をクラウドへ引き継ぐ",
+                onClick = { viewModel.initializeCloud(true) },
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { viewModel.initializeCloud(false) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("新規アカウントとして開始") }
+            Text(
+                "既存のクラウドデータがあればサーバーで保護されます。端末の戦績は削除しません。",
+                color = Color.White.copy(alpha = 0.54f), fontSize = 11.sp,
+            )
+        }
+        if (state.firebaseUid != null && !state.cloudMigrationRequired) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = viewModel::restoreFirebaseSession,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("クラウドから再読み込み") }
+        }
+        if (state.firebaseUid != null) {
+            TextButton(onClick = viewModel::signOutFirebase) {
+                Text("Googleアカウントからログアウト", color = Color.White.copy(alpha = 0.78f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun FirebaseSettingsScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
+    Column(
+        modifier = Modifier.fillMaxSize().background(Color(0xFF07140E)).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        TextButton(onClick = viewModel::backToMenu) { Text("‹ BACK") }
+        Text("SYSTEM", color = CasinoGold, fontSize = 28.sp, fontWeight = FontWeight.Black)
+        PremiumCasinoInfoPanel("AUDIO") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("BGM", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(
+                        if (state.cloudReady) "Web版と設定を共有" else "端末に設定を保存",
+                        color = Color.White.copy(alpha = 0.58f), fontSize = 11.sp,
+                    )
+                }
+                Switch(
+                    checked = state.bgmEnabled,
+                    onCheckedChange = viewModel::setBgmEnabled,
+                    enabled = !state.loading,
+                )
+            }
+        }
+        FirebaseAccountPanel(state, viewModel)
+    }
+}
+
 @Composable
 private fun MenuPlaceholderScreen(
     title: String,
@@ -2560,7 +2664,7 @@ private fun LobbyScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                     )
                     Spacer(Modifier.height(3.dp))
                     Text(
-                        "Google Play Games不要。PCブラウザ版とも同じROOMへ参加できます。",
+                        "Firebase認証時はPCと同じクラウド戦績を使用します。Play Games連携は任意です。",
                         color = Color.White.copy(alpha = 0.52f),
                         fontSize = 11.sp,
                     )
@@ -4346,9 +4450,33 @@ private fun ResultScreen(state: DaifugoUiState, viewModel: DaifugoViewModel) {
                 )
             }
 
+            if (!game.isLocalCpuGame && state.firebaseUid != null) {
+                item {
+                    PremiumCasinoInfoPanel("CLOUD RESULT") {
+                        Text(
+                            when (state.cloudResultStatus) {
+                                "SAVED" -> "✓ サーバー確定の順位をFirestoreへ保存しました"
+                                "SAVING" -> "戦績をクラウドに保存しています…"
+                                "FAILED" -> "保存に失敗しました。退出前に再送してください。"
+                                else -> "クラウドへの戦績反映を確認中です"
+                            },
+                            color = Color.White,
+                        )
+                        if (state.cloudResultStatus == "FAILED") {
+                            Spacer(Modifier.height(8.dp))
+                            PremiumStartButton(
+                                label = "戦績を再送",
+                                onClick = viewModel::retryCloudResult,
+                            )
+                        }
+                    }
+                }
+            }
+
             item {
                 Button(
                     onClick = viewModel::leaveRoom,
+                    enabled = state.cloudResultStatus != "SAVING",
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp),

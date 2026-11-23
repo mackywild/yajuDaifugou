@@ -80,6 +80,62 @@ class DaifugoApiClient {
         return ServerJson.login(json).also { csrfToken = it.csrfToken }
     }
 
+    /**
+     * Firebase IDトークンをSpring Bootに渡し、Webと同じUID・CSRFセッションを確立する。
+     * FirestoreをAndroid端末から直接変更しない。
+     */
+    suspend fun openFirebaseSession(idToken: String): LoginResponse {
+        val body = JSONObject().put("idToken", idToken).toString().toRequestBody(JSON)
+        val json = execute(
+            request("/api/auth/firebase/session").post(body).build(),
+            needsCsrf = false,
+        )
+        return ServerJson.login(json).also { csrfToken = it.csrfToken }
+    }
+
+    fun clearSession() {
+        closeRoomSocket()
+        csrfToken = ""
+        cookieJar.clear()
+    }
+
+    suspend fun cloudProgress(): JSONObject =
+        JSONObject(execute(request("/api/users/me/progress").get().build()))
+
+    suspend fun migrateCloudProgress(data: JSONObject): JSONObject =
+        cloudUpdate("/api/users/me/progress/migrate", "POST", data)
+
+    suspend fun cloudProfile(displayName: String): JSONObject =
+        cloudUpdate("/api/users/me/profile", "PATCH", JSONObject().put("displayName", displayName))
+
+    suspend fun cloudBgm(enabled: Boolean): JSONObject =
+        cloudUpdate("/api/users/me/settings", "PATCH", JSONObject().put("bgm", enabled))
+
+    suspend fun cloudEquipment(itemId: String): JSONObject =
+        cloudUpdate("/api/users/me/equipment", "POST", JSONObject().put("itemId", itemId))
+
+    suspend fun cloudClaimMission(missionId: String): JSONObject =
+        cloudUpdate("/api/users/me/missions/${encodePath(missionId)}/claim", "POST", JSONObject())
+
+    suspend fun cloudReceivePresent(presentId: String): JSONObject =
+        cloudUpdate("/api/users/me/presents/${encodePath(presentId)}/receive", "POST", JSONObject())
+
+    suspend fun cloudReceiveAll(): JSONObject =
+        cloudUpdate("/api/users/me/presents/receive-all", "POST", JSONObject())
+
+    suspend fun cloudRecordMatch(roomId: String): JSONObject =
+        cloudUpdate("/api/users/me/matches/${encodePath(roomId)}/record", "POST", JSONObject())
+
+    private suspend fun cloudUpdate(path: String, method: String, json: JSONObject): JSONObject {
+        val body = json.toString().toRequestBody(JSON)
+        val builder = request(path)
+        val request = when (method) {
+            "PATCH" -> builder.patch(body).build()
+            else -> builder.post(body).build()
+        }
+        return JSONObject(execute(request))
+    }
+
     suspend fun logout() {
         execute(
             request("/api/auth/logout")
