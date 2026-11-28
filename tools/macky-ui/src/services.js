@@ -17,7 +17,7 @@ export function createRetryPanel({message="処理に失敗しました",task,onS
  const retry=action("再試行",singleFlight(async()=>{retry.disabled=true;status.textContent="実行中…";try{const result=await task();status.textContent="完了";onSuccess?.(result);}catch(e){status.textContent=String(e?.message||e);onError?.(e);}finally{retry.disabled=false;}}),"primary");element.append(status,retry);return element;
 }
 export function createNotificationHistory(ui,{limit=100}={}){
- const items=[],original=ui.toast;
+ limit=Math.max(0,Math.min(1000,Math.floor(Number(limit)||0)));const items=[],original=ui.toast;
  function wrapped(message,options={}){const h=original.call(ui,message,options);items.unshift({message:String(message),type:options.type||"info",at:new Date().toISOString()});if(items.length>limit)items.length=limit;return h;}
  ui.toast=wrapped;return {get:()=>items.map(x=>({...x})),clear:()=>{items.length=0;},destroy(){if(ui.toast===wrapped)ui.toast=original;}};
 }

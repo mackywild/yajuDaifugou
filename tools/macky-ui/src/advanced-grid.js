@@ -2,12 +2,13 @@ import {node,action,downloadText} from "./dom.js";
 import {createGridStore,parseDelimited,encodeDelimited,normalizeCell} from "./grid-model.js";
 export function createAdvancedGrid(options={}){
   const o={rows:[],columns:[],rowKey:"id",pageSize:50,label:"編集グリッド",...options};
-  if(!o.columns.length)throw Error("columns required");
+  o.columns=o.columns.map(c=>({...c}));
+  if(!o.columns.length||o.columns.some(c=>typeof c.key!=="string"||["__proto__","constructor","prototype"].includes(c.key))||new Set(o.columns.map(c=>c.key)).size!==o.columns.length)throw Error("columns require unique safe keys");
   const unique=rows=>{const ids=rows.map(r=>r[o.rowKey]);if(ids.some(v=>v==null)||new Set(ids).size!==ids.length)throw Error("行キーは必須かつ一意です");return rows;};
   let store=createGridStore(unique(o.rows)),query="",sort=null,desc=false,page=0,selection=null,selectedIds=new Set(),hidden=new Set(),filters=new Map(),dragging=false,disposed=false;
   const element=node("section","mky-grid mky-advanced"),bar=node("div","mky-grid-toolbar"),tools=node("div","mky-actions"),search=node("input","mky-input"),message=node("div","mky-muted"),viewport=node("div","mky-grid-scroll"),table=node("table","mky-table"),head=node("thead"),body=node("tbody"),foot=node("tfoot"),pager=node("div","mky-grid-footer"),summary=node("span","mky-muted");
   const columns=()=>o.columns.filter(c=>!hidden.has(c.key));
-  const size=Math.max(1,Math.min(500,Number(o.pageSize)||50));
+  const size=Math.max(1,Math.min(500,Math.floor(Number(o.pageSize)||50)));
   search.type="search";search.placeholder="全列検索";search.setAttribute("aria-label","全列検索");message.setAttribute("role","status");
   table.setAttribute("aria-label",o.label);table.append(head,body,foot);viewport.append(table);bar.append(search,tools);element.append(bar,message,viewport,pager);
   const fail=e=>{message.textContent=String(e?.message||e);o.onError?.(e);};
@@ -19,7 +20,7 @@ export function createAdvancedGrid(options={}){
   let visible=[];
   const clearSelection=()=>{selection=null;selectedIds.clear();};
   function notify(){o.onChange?.(store.get(),store.changes(o.rowKey));}
-  function apply(rows){store.apply(unique(rows));render();notify();}
+  function apply(rows){store.apply(unique(rows));clearSelection();render();notify();}
   function mutate(changes){
     const rows=store.get(),byId=new Map(rows.map(r=>[r[o.rowKey],r]));
     for(const {id,key,value} of changes){const r=byId.get(id),c=o.columns.find(c=>c.key===key);if(!r||!c||key===o.rowKey)throw Error("編集できないセル");r[key]=normalizeCell(value,c,r);}
@@ -49,7 +50,7 @@ export function createAdvancedGrid(options={}){
   const addRow=()=>{if(!o.newRow)throw Error("newRow関数が必要です");const r=o.newRow(store.get());apply([...store.get(),r]);};
   const exportCSV=()=>encodeDelimited([o.columns.map(c=>c.key),...filtered().map(r=>o.columns.map(c=>r[c.key]))]);
   function importCSV(text){const [header,...lines]=parseDelimited(text);if(new Set(header).size!==header.length||header.some(k=>!o.columns.some(c=>c.key===k))||!header.includes(o.rowKey))throw Error("CSVヘッダーが不正です");
-    const rows=lines.map(line=>{if(line.length!==header.length)throw Error("CSV列数が不一致です");const row={};header.forEach((k,i)=>{const c=o.columns.find(x=>x.key===k);row[k]=normalizeCell(line[i],{...c,editable:true,readonly:false},row);});return row;});clearSelection();apply(rows);}
+    const rows=lines.map(line=>{if(line.length!==header.length)throw Error("CSV列数が不一致です");const row=Object.create(null);header.forEach((k,i)=>{const c=o.columns.find(x=>x.key===k);row[k]=normalizeCell(line[i],{...c,editable:true,readonly:false},row);});return row;});clearSelection();apply(rows);}
   tools.append(action("追加",guarded(addRow)),action("行削除",guarded(deleteRows),"danger"),action("セル削除",guarded(erase)),action("Undo",undo),action("Redo",redo),action("CSV出力",()=>downloadText("grid.csv","\uFEFF"+exportCSV(),"text/csv;charset=utf-8")));
   const file=node("input");file.type="file";file.accept=".csv,text/csv";file.hidden=true;file.addEventListener("change",async()=>{try{if(file.files[0]){if(file.files[0].size>5_000_000)throw Error("CSVは5MBまで");importCSV(await file.files[0].text());}}catch(e){fail(e);}finally{file.value="";}});tools.append(action("CSV取込",()=>file.click()),file);
   const chooser=node("details","mky-column-settings");chooser.append(node("summary","","表示列"));
@@ -65,14 +66,14 @@ export function createAdvancedGrid(options={}){
       const th=node("th");th.scope="col";if(c.key===sort)th.setAttribute("aria-sort",desc?"descending":"ascending");
       th.append(action((c.label||c.key)+(sort===c.key?(desc?" ↓":" ↑"):""),()=>{desc=sort===c.key&&!desc;sort=c.key;page=0;clearSelection();render();},"ghost"));
       if(c.width)th.style.width=Math.max(60,Number(c.width)||120)+"px";
-      if(c.fixed){th.classList.add("mky-fixed");th.style.left="50px";}
-      const grip=node("input","mky-input");grip.type="range";grip.min="60";grip.max="500";grip.value=String(c.width||120);grip.setAttribute("aria-label",(c.label||c.key)+" 列幅");grip.addEventListener("input",()=>{c.width=Number(grip.value);th.style.width=c.width+"px";});th.append(grip);hr.append(th);
+      if(c.fixed){th.classList.add("mky-fixed");th.style.left=50+cols.slice(0,cols.indexOf(c)).filter(x=>x.fixed).reduce((n,x)=>n+(Number(x.width)||140),0)+"px";}
+      const grip=node("input","mky-input");grip.type="range";grip.min="60";grip.max="500";grip.value=String(c.width||120);grip.setAttribute("aria-label",(c.label||c.key)+" 列幅");grip.addEventListener("input",()=>{c.width=Number(grip.value);th.style.width=c.width+"px";});grip.addEventListener("change",()=>render());th.append(grip);hr.append(th);
       const filter=node("input","mky-input");filter.placeholder="絞込";filter.value=filters.get(c.key)||"";filter.setAttribute("aria-label",(c.label||c.key)+" フィルター");filter.addEventListener("change",()=>{filters.set(c.key,filter.value);page=0;clearSelection();render();});const ft=node("th");ft.append(filter);fr.append(ft);
     }
     head.replaceChildren(hr,fr);body.replaceChildren();
     const fragment=document.createDocumentFragment();
     visible.forEach((r,i)=>{const tr=node("tr"),check=node("td"),cb=node("input");cb.type="checkbox";cb.checked=selectedIds.has(r[o.rowKey]);cb.setAttribute("aria-label","行 "+r[o.rowKey]+" を選択");cb.addEventListener("change",()=>{if(cb.checked)selectedIds.add(r[o.rowKey]);else selectedIds.delete(r[o.rowKey]);});check.append(cb);tr.append(check);
-      cols.forEach((c,j)=>{const td=node("td","",c.format?c.format(r[c.key],r):r[c.key]??"");td.dataset.r=String(i);td.dataset.c=String(j);if(c.fixed){td.classList.add("mky-fixed");td.style.left="50px";}if(c.tone){const v=c.tone(r[c.key],r);if(["danger","warning","success","info"].includes(v))td.classList.add("mky-cell-"+v);}td.addEventListener("pointerdown",e=>{if(e.button!==0||e.target.tagName==="INPUT")return;dragging=true;choose(i,j,e.shiftKey);});td.addEventListener("pointerenter",()=>{if(dragging)choose(i,j,true);});td.addEventListener("focus",()=>{if(!selection)choose(i,j);});td.addEventListener("dblclick",()=>edit(td,i,j));tr.append(td);});fragment.append(tr);});
+      cols.forEach((c,j)=>{const td=node("td","",c.format?c.format(r[c.key],r):r[c.key]??"");td.dataset.r=String(i);td.dataset.c=String(j);if(c.fixed){td.classList.add("mky-fixed");td.style.left=50+cols.slice(0,j).filter(x=>x.fixed).reduce((n,x)=>n+(Number(x.width)||140),0)+"px";}if(c.tone){const v=c.tone(r[c.key],r);if(["danger","warning","success","info"].includes(v))td.classList.add("mky-cell-"+v);}td.addEventListener("pointerdown",e=>{if(e.button!==0||e.target.tagName==="INPUT")return;dragging=true;choose(i,j,e.shiftKey);td.focus({preventScroll:true});});td.addEventListener("pointerenter",()=>{if(dragging)choose(i,j,true);});td.addEventListener("focus",()=>{if(!selection)choose(i,j);});td.addEventListener("dblclick",()=>edit(td,i,j));tr.append(td);});fragment.append(tr);});
     body.append(fragment);const total=node("tr");total.append(node("td","","集計"));for(const c of cols){const values=data.map(r=>r[c.key]).filter(v=>typeof v==="number"&&Number.isFinite(v));total.append(node("td","",c.aggregate==="sum"?values.reduce((a,b)=>a+b,0):c.aggregate==="avg"&&values.length?(values.reduce((a,b)=>a+b,0)/values.length).toFixed(2):c.aggregate==="count"?data.length:""));}foot.replaceChildren(total);paint();
   }
   // Keyboard/clipboard handlers apply only inside the grid, never document-wide.

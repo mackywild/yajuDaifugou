@@ -39,7 +39,7 @@ export function createProgress({value=0,max=100,label="進捗"}={}){
 }
 export function createChart({type="bar",data=[],label="グラフ"}={}){
  const element=node("figure","mky-chart mky-panel");element.append(node("figcaption","mky-heading",label));
- const valid=data.filter(d=>Number.isFinite(Number(d.value))),max=Math.max(1,...valid.map(d=>Math.abs(Number(d.value))));
+ const valid=data.filter(d=>Number.isFinite(Number(d.value))),max=valid.reduce((m,d)=>Math.max(m,Math.abs(Number(d.value))),1);
  if(type==="line"){
   const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");svg.setAttribute("viewBox","0 0 600 180");svg.setAttribute("role","img");svg.setAttribute("aria-label",label);
   const points=valid.map((d,i)=>[30+i*540/Math.max(1,valid.length-1),90-Number(d.value)/max*65]);const path=document.createElementNS(svg.namespaceURI,"polyline");path.setAttribute("points",points.map(p=>p.join(",")).join(" "));path.setAttribute("fill","none");path.setAttribute("stroke","currentColor");path.setAttribute("stroke-width","3");svg.append(path);for(const p of points){const c=document.createElementNS(svg.namespaceURI,"circle");c.setAttribute("cx",p[0]);c.setAttribute("cy",p[1]);c.setAttribute("r","4");c.setAttribute("fill","currentColor");svg.append(c);}element.append(svg);
@@ -57,10 +57,10 @@ export function createCalendar({year=new Date().getFullYear(),month=new Date().g
  function render(){const y=cursor.getFullYear(),m=cursor.getMonth(),days=new Date(y,m+1,0).getDate();title.textContent=y+"年 "+(m+1)+"月";grid.replaceChildren();for(const day of ["日","月","火","水","木","金","土"])grid.append(node("span","mky-muted",day));for(let i=0;i<cursor.getDay();i++)grid.append(node("span"));for(let d=1;d<=days;d++){const date=[y,String(m+1).padStart(2,"0"),String(d).padStart(2,"0")].join("-"),ev=events.filter(x=>x.date===date),b=action(String(d),()=>onSelect?.(date,ev),"ghost");b.setAttribute("aria-label",date+(ev.length?" "+ev.length+"件":""));for(const x of ev.slice(0,2))b.append(node("small","",x.label));grid.append(b);}}render();return element;
 }
 export function createWizard({steps=[],onComplete}={}){
- const element=node("section","mky-panel"),status=node("div","mky-muted"),content=node("div","mky-tab-content"),nav=node("div","mky-actions");let i=0,busy=false;
+ const element=node("section","mky-panel"),status=node("div","mky-muted"),content=node("div","mky-tab-content"),nav=node("div","mky-actions");let i=0,busy=false,completed=false,error="";
  const panels=steps.map(s=>{const p=node("div");appendContent(p,typeof s.content==="function"?s.content():s.content);content.append(p);return p;});
- const prev=action("戻る",()=>{if(!busy&&i>0){i--;render();}}),next=action("次へ",async()=>{if(busy||!steps.length)return;busy=true;render();try{if(steps[i].validate&&!(await steps[i].validate()))return;if(i===steps.length-1)await onComplete?.();else i++;}catch(e){status.textContent=String(e?.message||e);return;}finally{busy=false;render();}},"primary");nav.append(prev,next);element.append(status,content,nav);
- function render(){status.textContent=steps.length?(i+1)+" / "+steps.length+" · "+steps[i].label:"ステップなし";panels.forEach((p,j)=>p.hidden=i!==j);prev.disabled=busy||i===0;next.disabled=busy||!steps.length;next.textContent=i===steps.length-1?"完了":"次へ";}render();return element;
+ const prev=action("戻る",()=>{if(!busy&&i>0){i--;render();}}),next=action("次へ",async()=>{if(busy||completed||!steps.length)return;busy=true;error="";render();try{if(steps[i].validate&&!(await steps[i].validate()))return;if(i===steps.length-1){await onComplete?.();completed=true;}else i++;}catch(e){error=String(e?.message||e);return;}finally{busy=false;render();}},"primary");nav.append(prev,next);element.append(status,content,nav);
+ function render(){status.textContent=error||(completed?"完了":steps.length?(i+1)+" / "+steps.length+" · "+steps[i].label:"ステップなし");panels.forEach((p,j)=>p.hidden=i!==j);prev.disabled=busy||completed||i===0;next.disabled=busy||completed||!steps.length;next.textContent=i===steps.length-1?"完了":"次へ";}render();return element;
 }
 export function createTimeline({items=[]}={}){const el=node("ol","mky-timeline");for(const item of items){const li=node("li");li.append(node("time","mky-muted",item.date),node("strong","",item.title),node("div","",item.description));el.append(li);}return el;}
 export function createKanban({columns=[],cards=[],onMove}={}){

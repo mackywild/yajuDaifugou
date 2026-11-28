@@ -61,7 +61,7 @@ export function normalizeScreen(screen){
 export function componentCode(type,options,framework="js"){
  if(!Object.hasOwn(registry,type))throw Error("Unknown component");
  const json=safeJSON(cloneOptions(options));if(framework==="vue")return 'h(kit.MComponent, { type: '+JSON.stringify(type)+', options: '+json+', onAction: (name, value) => console.log(name, value) })';
- return 'const component = mountComponent(api, '+JSON.stringify(type)+', '+json+', { ui, onEvent: (name, value) => console.log(name, value) });\nroot.append(component.element);\n// 画面破棄時: component.destroy();';
+ return 'const component = api.mountComponent(api, '+JSON.stringify(type)+', '+json+', { ui, onEvent: (name, value) => console.log(name, value) });\nroot.append(component.element);\n// 画面破棄時: component.destroy();';
 }
 export function screenHTML(screen,framework="js"){
  const data=safeJSON(normalizeScreen(screen));const vue=framework==="vue";
