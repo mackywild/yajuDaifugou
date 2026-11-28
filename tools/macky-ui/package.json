@@ -20,9 +20,26 @@
     "node": ">=18"
   },
   "files": [
-    "dist",
+    "dist/index.js",
+    "dist/model.js",
+    "dist/vue.js",
+    "dist/style.css",
+    "dist/dom.js",
+    "dist/form.js",
+    "dist/grid-model.js",
+    "dist/advanced-grid.js",
+    "dist/theme.js",
+    "dist/widgets.js",
+    "dist/services.js",
+    "dist/registry.js",
+    "dist/render.js",
+    "dist/virtual-grid.js",
+    "dist/manifest.json",
     "README.md",
-    "DESIGN.md"
+    "DESIGN.md",
+    "DESIGN_V2.md",
+    "API_V2.md",
+    "ROADMAP.md"
   ],
   "sideEffects": [
     "**/*.css"

@@ -72,7 +72,7 @@ export function createForm({fields=[],values={},submitLabel="保存",onSubmit,on
   let busy=false,disposed=false;
   for(const config of fields){
     if(!config.name||map.has(config.name))throw Error("Form fields need unique names");
-    const field=createField({...config,value:values[config.name]??config.value,onChange:v=>{config.onChange?.(v);onChange?.(getValues());}});
+    const field=createField({...config,value:values[config.name]??config.value,validateOnChange:false,onChange:v=>{if(config.validateOnChange!==false)map.get(config.name)?.validate(getValues());config.onChange?.(v);onChange?.(getValues());}});
     map.set(config.name,field);element.append(field.element);
   }
   const submit=action(submitLabel,null,"primary");submit.type="submit";element.append(message,submit);

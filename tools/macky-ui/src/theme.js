@@ -1,4 +1,4 @@
-const palette=(bg,panel,panel2,primary,onPrimary,fg,muted,line)=>({bg,panel,panel2,primary,"on-primary":onPrimary,fg,muted,line});
+const palette=(bg,panel,panel2,primary,onPrimary,fg,muted,line)=>({bg,panel,panel2,primary,"on-primary":onPrimary,fg,muted,line,...(panel==="#ffffff"?{danger:"#a81e35",success:"#07633c",warning:"#835400",info:"#185b97"}:{danger:"#ff9ba3",success:"#8ce5b3",warning:"#ffda84",info:"#a8d7ff"})});
 export const themes=Object.freeze(Object.fromEntries(Object.entries({
  casino:palette("#020403","#0d1712","#15241b","#d8b85a","#201a0a","#f7f4ea","#a7b4ac","#35483c"),
  business:palette("#edf2f7","#ffffff","#e5edf6","#245bd1","#ffffff","#14253a","#4a5d75","#afbed0"),
@@ -19,7 +19,7 @@ export function validateTheme(tokens){
     else throw Error("Invalid theme token: "+k);
   }return out;
 }
-export function themeCSS(tokens){const safe=validateTheme(tokens);return ".mky-ui {\n"+Object.entries(safe).map(([k,v])=>"  --mky-"+k+": "+v+";").join("\n")+"\n}\n";}
+export function themeCSS(tokens){const safe=validateTheme(tokens);return ".mky-ui.mky-ui {\n"+Object.entries(safe).map(([k,v])=>"  --mky-"+k+": "+v+";").join("\n")+"\n}\n";}
 export function applyTheme(root,nameOrTokens){
  const name=typeof nameOrTokens==="string"?nameOrTokens:null;
  const tokens=validateTheme(name?(themes[name]||(()=>{throw Error("Unknown theme: "+name);})()):nameOrTokens);

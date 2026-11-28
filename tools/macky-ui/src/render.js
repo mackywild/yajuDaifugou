@@ -2,7 +2,7 @@ import {node,action} from "./dom.js";
 import {registry,cloneOptions,normalizeScreen} from "./registry.js";
 export function mountComponent(api,type,options,{ui,onEvent=()=>{}}={}){
  if(!Object.hasOwn(registry,type))throw Error("Unknown component");
- const o=cloneOptions(options);const emit=name=>(...args)=>onEvent(name,args.length===1?args[0]:args);
+ const o=cloneOptions(options??registry[type].options);if(!o||typeof o!=="object"||Array.isArray(o))throw Error("options must be object");const emit=name=>(...args)=>onEvent(name,args.length===1?args[0]:args);
  const handlers={onClick:()=>onEvent("click",o.label),onChange:emit("change"),onSelect:emit("select"),onRowAction:emit("rowAction"),onSubmit:emit("submit"),onComplete:emit("complete"),onMove:emit("move"),onError:e=>onEvent("error",String(e?.message||e))};
  let result;
  if(["popup","toast","banner","loading"].includes(type)){

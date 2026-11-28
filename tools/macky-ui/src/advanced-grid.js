@@ -20,7 +20,7 @@ export function createAdvancedGrid(options={}){
   let visible=[];
   const clearSelection=()=>{selection=null;selectedIds.clear();};
   function notify(){o.onChange?.(store.get(),store.changes(o.rowKey));}
-  function apply(rows){store.apply(unique(rows));clearSelection();render();notify();}
+  function apply(rows){const last=selection?{id:visible[selection.b.r]?.[o.rowKey],key:columns()[selection.b.c]?.key}:null;store.apply(unique(rows));clearSelection();render();if(last){const r=visible.findIndex(x=>x[o.rowKey]===last.id),c=columns().findIndex(x=>x.key===last.key);if(r>=0&&c>=0){choose(r,c);focusCell(r,c);}}notify();}
   function mutate(changes){
     const rows=store.get(),byId=new Map(rows.map(r=>[r[o.rowKey],r]));
     for(const {id,key,value} of changes){const r=byId.get(id),c=o.columns.find(c=>c.key===key);if(!r||!c||key===o.rowKey||o.canEdit&&!o.canEdit(r,c))throw Error("編集できないセル");r[key]=normalizeCell(value,c,r);}
@@ -44,8 +44,8 @@ export function createAdvancedGrid(options={}){
     input.addEventListener("blur",()=>finish(true));
   }
   const guarded=fn=>()=>{try{fn();}catch(e){fail(e);}};
-  const undo=()=>{if(store.undo()){clearSelection();render();notify();}};
-  const redo=()=>{if(store.redo()){clearSelection();render();notify();}};
+  const undo=()=>{if(store.undo()){clearSelection();render();focusCell(0,0);notify();}};
+  const redo=()=>{if(store.redo()){clearSelection();render();focusCell(0,0);notify();}};
   const deleteRows=()=>{if(!selectedIds.size)return;const rows=store.get().filter(r=>!selectedIds.has(r[o.rowKey])||o.canDelete&&!o.canDelete(r));clearSelection();apply(rows);};
   const addRow=()=>{if(!o.newRow)throw Error("newRow関数が必要です");const r=o.newRow(store.get());apply([...store.get(),r]);};
   const exportCSV=()=>encodeDelimited([o.columns.map(c=>c.key),...filtered().map(r=>o.columns.map(c=>r[c.key]))]);
@@ -78,7 +78,7 @@ export function createAdvancedGrid(options={}){
   }
   // Keyboard/clipboard handlers apply only inside the grid, never document-wide.
   const stopDrag=()=>dragging=false;window.addEventListener("pointerup",stopDrag);window.addEventListener("pointercancel",stopDrag);
-  element.addEventListener("keydown",e=>{if(e.target.matches("input,textarea,select,button")||!selection)return;const {r,c}=selection.b,delta={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];try{
+  element.addEventListener("keydown",e=>{if(e.target.matches("input,textarea,select,button"))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"){e.preventDefault();redo();return;}if(!selection)return;const {r,c}=selection.b,delta={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];try{
     if(delta){e.preventDefault();choose(r+delta[0],c+delta[1],e.shiftKey);focusCell(selection.b.r,selection.b.c);}
     else if(e.key==="Enter"){e.preventDefault();const td=body.querySelector('[data-r="'+r+'"][data-c="'+c+'"]');if(td)edit(td,r,c);}
     else if(e.key==="Delete"){e.preventDefault();erase();}
