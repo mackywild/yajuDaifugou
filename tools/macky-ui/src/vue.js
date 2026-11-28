@@ -41,7 +41,7 @@ export function createVueKit(Vue,ui){
     function sync(){
       if(!host.value)return;
       const type=p.type,reset=p.resetKey;
-      if(previous&&previous.type===type&&stateful.has(type)){applyAccess(handle,p.options);if(previous.reset===reset)return;}
+      if(previous&&previous.type===type&&stateful.has(type)){try{applyAccess(handle,p.options);}catch(e){emit("action","error",String(e?.message||e));return;}if(previous.reset===reset)return;}
       if(handle?.handle?.isBusy?.()){emit("action","reset-blocked","処理中は再生成できません");return;}
       try{
         const fingerprint=api.safeJSON(p.options);

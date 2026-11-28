@@ -46,7 +46,7 @@ export function createAdvancedGrid(options={}){
   function notify(){o.onChange?.(store.get(),store.changes(o.rowKey));}
   function identity(r,c){return {id:visible[r]?.[o.rowKey],key:columns()[c]?.key};}
   function currentIdentity(){return selection?identity(selection.b.r,selection.b.c):null;}
-  function restore(last,focus=false){if(!last)return;const r=visible.findIndex(x=>x[o.rowKey]===last.id),c=columns().findIndex(x=>x.key===last.key);if(r>=0&&c>=0){choose(r,c);if(focus)focusCell(r,c);}}
+  function restore(last,focus=false){if(!last)return;const r=visible.findIndex(x=>x[o.rowKey]===last.id),c=columns().findIndex(x=>x.key===last.key);if(r>=0&&c>=0){choose(r,c);if(focus&&!o.disabled)focusCell(r,c);}}
   function flushRender(){
     if(!pendingRender||disposed)return;
     pendingRender=false;const rowLast=rowFocus(),last=currentIdentity(),active=document.activeElement,focus=Boolean(active?.closest?.("td[data-r]")&&body.contains(active));
@@ -59,7 +59,7 @@ export function createAdvancedGrid(options={}){
   function apply(rows,{defer=false}={}){
     assertWritable();const last=currentIdentity(),rowLast=rowFocus();store.apply(unique(rows));revision++;pruneRows();
     if(defer){scheduleRender();}
-    else{const focus=Boolean(document.activeElement?.closest?.("td[data-r]")&&body.contains(document.activeElement));clearSelection();render(true);restore(last,focus);}
+    else{const focus=Boolean(document.activeElement?.closest?.("td[data-r]")&&body.contains(document.activeElement));clearSelection();render(true);restore(last,focus);restoreRowFocus(rowLast);}
     notify();
   }
   function mutate(changes,opts){
@@ -99,7 +99,7 @@ export function createAdvancedGrid(options={}){
   const guarded=fn=>()=>{try{fn();}catch(e){fail(e);}};
   const undo=()=>{assertWritable();const target=store.peekUndo();if(!target)return false;checkTransition(target);if(store.undo()){revision++;clearSelection();render();focusCell(0,0);notify();return true;}return false;};
   const redo=()=>{assertWritable();const target=store.peekRedo();if(!target)return false;checkTransition(target);if(store.redo()){revision++;clearSelection();render();focusCell(0,0);notify();return true;}return false;};
-  const deleteRows=()=>{assertWritable();if(!selectedIds.size)return;const rows=store.get().filter(r=>!selectedIds.has(r[o.rowKey])||o.canDelete&&!o.canDelete(r));clearSelection();apply(rows);};
+  const deleteRows=()=>{assertWritable();const visibleIds=new Set(visible.map(r=>r[o.rowKey]));const old=store.get(),rows=old.filter(r=>!visibleIds.has(r[o.rowKey])||!selectedIds.has(r[o.rowKey])||o.canDelete&&!o.canDelete({...r}));if(rows.length===old.length)return;clearSelection();apply(rows);};
   const addRow=()=>{assertWritable();if(!o.newRow)throw Error("newRow関数が必要です");const r=o.newRow(store.get());if(o.canAdd&&!o.canAdd(r))throw Error("行追加は許可されていません");apply([...store.get(),r]);};
   const exportCSV=()=>encodeDelimited([o.columns.map(c=>c.key),...filtered().map(r=>o.columns.map(c=>r[c.key]))]);
   function previewCSV(text){assertWritable();return planCSVImport(text,{...o,rows:store.get()});}
@@ -122,8 +122,9 @@ export function createAdvancedGrid(options={}){
     }finally{importing=false;}
   }
   const mutationButtons=[action("追加",guarded(addRow)),action("行削除",guarded(deleteRows),"danger"),action("セル削除",guarded(erase)),action("Undo",guarded(undo)),action("Redo",guarded(redo))];
+  mutationButtons[1].title="表示ページ内で選択された行のみ削除";
   const selectedCount=node("span","mky-muted");
-  function showSelected(){selectedCount.textContent="選択 "+selectedIds.size+"件（全ページ）";}
+  function showSelected(){selectedCount.textContent="選択 "+selectedIds.size+"件（表示中 "+visible.filter(r=>selectedIds.has(r[o.rowKey])).length+"件）";}
   tools.append(...mutationButtons,action("CSV出力",()=>downloadText("grid.csv","\uFEFF"+exportCSV(),"text/csv;charset=utf-8")),action("行選択解除",()=>{selectedIds.clear();for(const cb of rowChecks.values())cb.checked=false;showSelected();}),selectedCount);
   const file=node("input");file.type="file";file.accept=".csv,text/csv";file.hidden=true;file.addEventListener("change",async()=>{try{if(file.files[0]){if(file.files[0].size>5_000_000)throw Error("CSVは5MBまで");await importCSV(await file.files[0].text());}}catch(e){fail(e);}finally{file.value="";}});const importButton=typeof o.confirmCSVImport==="function"?action("CSV取込",()=>{if(!blocked()&&o.allowCSVImport===true)file.click();}):null;if(importButton){importButton.hidden=o.allowCSVImport!==true;tools.append(importButton,file);}
   const chooser=node("details","mky-column-settings");chooser.append(node("summary","","表示列"));
@@ -157,8 +158,7 @@ export function createAdvancedGrid(options={}){
     if(delta){e.preventDefault();choose(r+delta[0],c+delta[1],e.shiftKey);focusCell(selection.b.r,selection.b.c);}
     else if(e.key==="Enter"){e.preventDefault();const td=body.querySelector('[data-r="'+r+'"][data-c="'+c+'"]');if(td)edit(td,r,c);}
     else if(e.key==="Delete"){e.preventDefault();erase();}
-    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();e.shiftKey?redo():undo();}
-    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"){e.preventDefault();redo();}
+    
   }catch(err){fail(err);}});
   element.addEventListener("copy",e=>{if(e.target.matches("input,textarea")||!selection)return;e.preventDefault();const values=rangeValues();e.clipboardData?.setData("text/plain",encodeDelimited(values,"\t",{spreadsheetSafe:true}));try{e.clipboardData?.setData("application/x-macky-grid-tsv",encodeDelimited(values,"\t",{spreadsheetSafe:false}));}catch{}});
   element.addEventListener("paste",e=>{if(e.target.matches("input,textarea")||!selection)return;e.preventDefault();try{paste(e.clipboardData?.getData("application/x-macky-grid-tsv")||e.clipboardData?.getData("text/plain")||"");}catch(err){fail(err);}});
