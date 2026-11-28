@@ -78,7 +78,7 @@ playground/example.html と example.js をコピーして自由に開発する�
     npm run build
     npm pack
 
-build は Node 標準機能のみで dist/ に14個のネイティブESM/CSS資産とSHA-256付きmanifestを生成する。トランスパイル・minify・単一ファイルbundleではない。別アプリのVite等で最終bundle化できる。npm pack は prepack で自動ビルドし、mackywild-macky-ui-2.0.2.tgz を生成する。公開npm登録は行わない。dist と tgz はGit管理対象外。Vueデモ以外は npm install 不要。
+build は Node 標準機能のみで dist/ に14個のネイティブESM/CSS資産とSHA-256付きmanifestを生成する。トランスパイル・minify・単一ファイルbundleではない。別アプリのVite等で最終bundle化できる。npm pack は prepack で自動ビルドし、mackywild-macky-ui-2.0.3.tgz を生成する。公開npm登録は行わない。dist と tgz はGit管理対象外。Vueデモ以外は npm install 不要。
 
 ### 他のアプリでの利用
 
@@ -86,7 +86,7 @@ build は Node 標準機能のみで dist/ に14個のネイティブESM/CSS資�
 
 方法B: 別のNode/Vueプロジェクトでローカルパッケージを導入。
 
-    npm install /absolute/path/to/mackywild-macky-ui-2.0.2.tgz
+    npm install /absolute/path/to/mackywild-macky-ui-2.0.3.tgz
 
     import { createUI, createButton } from "@mackywild/macky-ui";
     import { createVueKit } from "@mackywild/macky-ui/vue";
@@ -181,3 +181,10 @@ saveToServer(values) は実際の保存Promiseを返す。@action は成功・�
 Advanced Gridの行選択はrowKeyで保持し、セル選択とは分離する。ソート・検索・ページ移動・通常編集を経ても選択を維持し、存在しないIDのみ除外。選択総数と表示中の件数を表示。事故防止のため行削除は表示ページの選択行のみ（非表示行は削除しない）。「行選択解除」で全ページの選択を解除。権限変更で編集中のセルが編集不可になった場合、未確定のセル入力のみ取り消して通知し、確定済みデータと履歴は保持する。Undo/Redo/resetも現在の操作可否を検証し、拒否時は履歴を消費しない。commitは保存完了を示すアプリ側の操作。
 
 生成HTML・JSのmountScreenにsubmitTask引数の接続漏れがあったため併せて修正。詳細は REVIEW_RESPONSE_V2_0_2.md。
+
+
+## v2.0.3 第3回レビュー修正
+
+- フォームはgetValues()が返す全項目を検証する。disabled/readonlyは操作可否であり、送信データの妥当性を免除しない。送信時は検証したスナップショットを保存コールバックへ渡す。ロック時にも必須・範囲・独自ルールのエラーを表示し、編集不能項目ではエラー表示へフォーカスする。ロックされたネイティブ入力は必要に応じて独立した検証用コントロールで検証する。ファイルや選択グループの必須条件は値の検証を用いる。
+- グリッドは表示順を座標の基準とし、コピー・貼り付け・セル削除の値・操作対象は行IDと列keyで確定済みストアに照合する。遅延再描画中も確定値をコピーする。表示座標は再描画までは変えないため、ソート・検索で位置が変わる編集直後でも別行に貼り付けない。対象が消失した場合は範囲処理を拒否する。未確定のエディター入力はコピー対象外。既存の再描画後の選択復元、Undo/Redo、内部raw/外部安全TSVを維持。
+- Node回帰試験 test/state.test.js（5件）は実部品と決定的なDOM/イベント/タイマースタブを使用。実ブラウザの「レビュー回帰試験」にも2件追加。実行証跡・未実施項目は REVIEW_RESPONSE_V2_0_3.md。

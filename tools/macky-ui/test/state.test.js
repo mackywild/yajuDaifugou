@@ -53,7 +53,7 @@ test("RV-08 readonly range, custom rule, optional value and whole-form lock",()=
  try{assert.equal(await f.submit(),false);assert.match(f.element.textContent,/以下/);assert.match(f.element.textContent,/コード不正/);f.setValues({date:"2026-11-30",code:"OK"});assert.equal(await f.submit(),true);f.setAccess({disabled:true});assert.equal(await f.submit(),false);assert.equal(calls,1);}finally{f.destroy();}
 }));
 test("RV-09 committed values during callback, before repaint, multi-cell and after repaint",()=>scenario(async env=>{
- let g,callback;g=api.createAdvancedGrid({rows,columns,onChange:()=>{callback=g.copy({spreadsheetSafe:false});}});
+ let g,callback;g=api.createAdvancedGrid({rows,columns,onChange:()=>{g.select(0,1);callback=g.copy({spreadsheetSafe:false});}});
  try{edit(g,0,1,"C");env.win.emit("pointerdown");cell(g,1,1).focus();env.win.emit("pointerup");assert.equal(callback,"C");g.select(0,1);g.select(1,2,true);assert.equal(g.copy({spreadsheetSafe:false}),"C\tx\r\nB\ty");env.flush();g.select(0,1);g.select(1,2,true);assert.equal(g.copy({spreadsheetSafe:false}),"C\tx\r\nB\ty");}finally{g.destroy();}
 }));
 test("RV-09 pending repaint does not retarget sorted row for copy or paste",()=>scenario(async env=>{

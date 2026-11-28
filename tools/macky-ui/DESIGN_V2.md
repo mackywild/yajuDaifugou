@@ -101,7 +101,7 @@ Vue: submitTaskを通知イベントから独立した関数propとしてawait�
 
 ### 操作可否と状態の分離
 
-入力部品のsetAccess({disabled,readonly}, inherited)は値を更新せず、ネイティブreadOnlyとdisabledを切り替える。選択肢の固有disabledを保持。フォームはフォーム全体のアクセスと個別フィールドのアクセスを合成し、送信ボタンの有効条件は !busy && !disabled && !readonly。Promise完了時にもアクセス状態から再計算する。readonly/disabled項目は検証対象外、getValuesの既存契約（全値）は維持。
+入力部品のsetAccess({disabled,readonly}, inherited)は値を更新せず、ネイティブreadOnlyとdisabledを切り替える。選択肢の固有disabledを保持。フォームはフォーム全体のアクセスと個別フィールドのアクセスを合成し、送信ボタンの有効条件は !busy && !disabled && !readonly。Promise完了時にもアクセス状態から再計算する。readonly/disabled項目も送信対象である限り検証する（v2.0.3修正）。getValuesの既存契約（全値）は維持。
 
 Advanced GridのsetAccess({disabled,readonly,columns,canEdit,canAdd,canDelete,allowCSVImport})は部分更新。列はkeyで同定、readonly/editableのみ反映する。global disabled/readonlyはデータ変更を拒否、readonlyは検索・選択・コピー・エクスポートを許可する。履歴操作はpeekUndo/peekRedo/peekResetで候補データを取得し、現在の列・行アクセスを検証してから適用する。権限変更でrevision更新し、確認中CSVを拒否。編集中に権限を失った場合は未確定値を取消し、確定値・履歴は保持。commitは保存済み基準の明示更新でデータ値は変更しない。
 
@@ -114,3 +114,14 @@ Vue stateful部品は同じtype/resetKeyでも入力/フォーム/Advanced Grid�
 ### 周辺修正
 
 mountScreenの引数にsubmitTaskを明示追加。生成HTMLと生成JSの呼出先の未定義変数を解消し、フォームの保存関数に部品IDを渡す。
+
+
+## 14. v2.0.3 第3回レビュー修正
+
+### 操作可否と検証
+
+setAccessは入力コントロールと送信ボタンの操作可否のみ更新し、検証結果を消去しない。validateは全送信値に対してモデルルールを評価する。ネイティブ制約は通常の入力では実入力のvalidity、ロックされたテキスト系/数値系/日付等では型・値・min/max/step/multiple/required/defaultValueを設定した独立した有効コントロールで補完する。ファイルと選択グループ等はモデルルールで検証。フォームは送信スナップショットを検証してから同一データをonSubmitに渡す。不正な編集不能項目のエラーにフォーカスできるようにする。フォーム全体のロックは従来どおり送信不可。個別disabled/readonlyの値もgetValues/onSubmitに含むという既存契約に従う。サーバー側の認可・検証は引き続き必須。
+
+### グリッドの座標と値
+
+visibleは描画順・座標の参照に限定し、resolveRangeは座標から行ID・列キーを確定してstore.get()の最新スナップショットに照合する。欠落した行、範囲外は例外。rangeValuesはこの結果を使用してコピー値を取得する。paste/eraseも同じ行・列解決を用い、mutateで権限と値を検証して一括適用する。再描画前のソート/フィルター順は画面と一致する旧順序を保ち、値のみ最新確定値を参照する。タイマーによる再描画遅延、行選択/フォーカス保持、履歴とコピー安全化は維持。再描画後は従来の選択復元規則に従う（範囲が自動で完全復元されるとは限らない）。
