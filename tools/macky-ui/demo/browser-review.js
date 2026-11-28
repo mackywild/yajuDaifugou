@@ -45,6 +45,14 @@ await check("screen mount submitTask wiring",async()=>{
  let called;const spec={components:[{id:"form-a",type:"form",options:{fields:[{name:"name",value:"A"}]}}]};const screen=api.mountScreen(api,host,spec,{ui,submitTask:async(v,id)=>called={v,id}});
  try{host.querySelector("form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));await wait();eq(called,{v:{name:"A"},id:"form-a"});}finally{screen.destroy();}
 });
+await check("RV-08 locked submitted values remain validated",async()=>{
+ const submitted=[];const f=api.createForm({fields:[{name:"name",label:"氏名",required:true,value:""},{name:"date",label:"日付",type:"date",value:"2026-12-01",min:"2026-11-01",max:"2026-11-30",readonly:true},{name:"mail",label:"メール",type:"email",value:"bad",disabled:true},{name:"code",value:"bad",readonly:true,validate:v=>v==="OK"||"コード不正"}],onSubmit:v=>submitted.push(v)});host.append(f.element);
+ try{assert(await f.submit()===false,"initial invalid");f.setAccess({fields:[{name:"name",readonly:true}]});assert(await f.submit()===false,"readonly bypass");assert(f.element.textContent.includes("必須項目です")&&f.element.textContent.includes("コード不正"),"errors hidden");f.setValues({name:"valid",date:"2026-11-30",code:"OK"});assert(await f.submit()===false,"disabled native email bypass");f.setValues({mail:"a@example.com"});assert(await f.submit()===true,"valid locked values");eq(submitted,[{name:"valid",date:"2026-11-30",mail:"a@example.com",code:"OK"}]);f.setAccess({fields:[{name:"name",readonly:false,disabled:true}]});f.setValues({name:""});assert(await f.submit()===false,"disabled required bypass");}finally{f.destroy();}
+});
+await check("RV-09 committed copy before delayed repaint and stable sorted paste",async()=>{
+ let g,copied;g=api.createAdvancedGrid({rows:[{id:1,name:"A",note:"x"},{id:2,name:"B",note:"y"}],columns:[...columns,{key:"note"}],onChange:()=>{copied=g.copy({spreadsheetSafe:false});}});host.append(g.element);
+ try{[...g.element.querySelectorAll("th button")].find(b=>b.textContent==="name").click();edit(g,0,1,"Z");const target=cell(g,1,1);target.dispatchEvent(new PointerEvent("pointerdown",{button:0,bubbles:true}));target.focus();target.dispatchEvent(new PointerEvent("pointerup",{button:0,bubbles:true}));eq(copied,"Z");g.select(0,1);g.select(1,2,true);eq(g.copy({spreadsheetSafe:false}),"Z\tx\r\nB\ty");const data=new DataTransfer();cell(g,0,1).dispatchEvent(new ClipboardEvent("copy",{clipboardData:data,bubbles:true,cancelable:true}));eq(data.getData("text/plain"),"Z\tx\r\nB\ty");g.select(0,1);g.paste("Q");assert(g.getRows().find(r=>r.id===1).name==="Q"&&g.getRows().find(r=>r.id===2).name==="B","paste wrong ID");await wait();g.select(0,1);eq(g.copy(),"B");g.undo();assert(g.getRows()[0].name==="Z","undo");}finally{g.destroy();}
+});
 let Vue;try{Vue=await import("/vendor/vue.js");}catch(e){skip+=3;out.textContent+="SKIP RV-02 / RV-06 / RV-06a real Vue: npm install が必要\n";}
 if(Vue){
  const kit=createVueKit(Vue,ui);
