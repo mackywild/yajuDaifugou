@@ -1,6 +1,6 @@
-# Macky UI 1.0.0
+# Macky UI 1.1.0
 
-野獣大富豪の黒・深緑・金を継承した、ブラウザ向け独立UIライブラリ。Vue 3対応、Vanilla JS対応、Node.jsローカル開発環境。既存ゲームへの組み込みはこの変更では行わない。
+野獣大富豪の黒・深緑・金を継承した、ブラウザ向け独立UIライブラリ。Vue 3対応、Vanilla JS対応、Node.jsローカル開発環境。野獣大富豪は参照元のみ。現在も将来も同ゲームへの導入を前提にしない。
 
 ## 起動（Node.js 18以上、22 LTS系を推奨）
 
@@ -9,7 +9,7 @@
     npm test
     npm start
 
-http://127.0.0.1:4173/ を開く。Vanilla版は npm install 不要。Vue版を試す場合は別途 npm install を実行して /demo/vue.html を開く。外部CDN不要。ブラウザ自動チェックは /demo/test.html。サーバーは開発専用・ループバック限定。
+http://127.0.0.1:4173/ を開くと Test Studio が起動し、部品別・Vue・自動試験・独自HTML・配布版試験を選択できる。Vanilla版は npm install 不要。Vue版を試す場合は別途 npm install を実行して /demo/vue.html を開く。外部CDN不要。ブラウザ自動チェックは /demo/test.html。サーバーは開発専用・ループバック限定。
 
 ## 最短の使い方
 
@@ -69,4 +69,33 @@ MButton, MPanel, MGrid, MMenu, MBadge を登録。MGrid/MMenu/MBadge は options
 - demo/: 実行可能なカタログ、Vue例、ブラウザチェック
 - test/: Node単体試験
 
-公開npmパッケージではない。外部プロジェクトでは src/ コピー配置、またはローカル依存として取り込む。ゲームを直接変更せず、安全に段階導入する。
+## 独自HTMLの試験
+
+playground/example.html と example.js をコピーして自由に開発する。playground 直下に HTML を追加して Test Studio の「一覧を再読込」を押すと自動で選択肢に追加される。HTML・JS・MJS・CSSのみ同フォルダから配信する。サブフォルダ、任意PCファイル、シンボリックリンクは対象外。日本語ファイル名も利用可能。
+
+## ビルド・配布
+
+    npm run build
+    npm pack
+
+build は Node 標準機能のみで dist/ に4つのネイティブESM/CSS資産とSHA-256付きmanifestを生成する。トランスパイル・minify・単一ファイルbundleではない。別アプリのVite等で最終bundle化できる。npm pack は prepack で自動ビルドし、mackywild-macky-ui-1.1.0.tgz を生成する。公開npm登録は行わない。dist と tgz はGit管理対象外。Vueデモ以外は npm install 不要。
+
+### 他のアプリでの利用
+
+方法A: dist/ の全ファイルを別のWebアプリの静的資産フォルダに配置し、index.js / style.css を読み込む。Vue連携の場合は vue.js も利用する。
+
+方法B: 別のNode/Vueプロジェクトでローカルパッケージを導入。
+
+    npm install /absolute/path/to/mackywild-macky-ui-1.1.0.tgz
+
+    import { createUI, createButton } from "@mackywild/macky-ui";
+    import { createVueKit } from "@mackywild/macky-ui/vue";
+    import "@mackywild/macky-ui/style.css";
+
+Vueランタイムは導入先の Vue 3 を createVueKit に渡す（同梱しない）。WebView、Electron等のWebベースアプリにもそのアプリの資産配信方式に従って配置可能。ネイティブAndroid/iOS部品ではない。WebViewの実機互換は導入先で確認する。
+
+### ビルド後の確認
+
+npm start の後 Test Studio の「ビルド済み部品試験」を選択。dist から core/Vue adapter/manifest をロードする。配布版のボタン・通知・グリッドを試す。実際のVue連携はVue 3結合試験で確認する。
+
+野獣大富豪は参考元のみ。ゲーム本体には導入しない。

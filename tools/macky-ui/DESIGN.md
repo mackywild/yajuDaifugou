@@ -2,7 +2,7 @@
 
 |項目|内容|
 |---|---|
-|版|1.0.0|
+|版|1.1.0|
 |目的|クライアント部品再利用・開発工数削減・デザイン統一|
 |対象|Webブラウザ、Vue 3、Vanilla JavaScript|
 |非対象|ゲーム進行、Spring API、認証、Androidネイティブ、iOSネイティブ|
@@ -10,7 +10,7 @@
 
 ## 1. 現行調査・方針
 
-main の b863de8dbb409a7c841498b819fb460bdee533b1 時点の src/main/resources/static/index.html は約2300行。CSS、HTML、JS一体型。root色は #020403 / #0d1712 / #d8b85a。toast(text,error)、turn-banner、menu-grid 等の個別実装がある。現行ソースには本ライブラリを読み込ませない。ゲームデータ・ルール・API・配布物・既存ビルドは変更しない。
+main の b863de8dbb409a7c841498b819fb460bdee533b1 時点の src/main/resources/static/index.html は約2300行。CSS、HTML、JS一体型。root色は #020403 / #0d1712 / #d8b85a。toast(text,error)、turn-banner、menu-grid 等の個別実装がある。野獣大富豪は参考元のみであり、現在・将来とも導入計画の対象外とする。ゲームデータ・ルール・API・配布物・既存ビルドは変更しない。
 
 ## 2. 要求と方式
 
@@ -88,14 +88,16 @@ MButtonはlabel/variant/size/disabled/busy、default slot、click emit。MPanel�
 - 通知はrootがtransform/overflow等で固定配置を制限しない位置に設ける。通知のz-indexは .mky-layers の --mky-layer で調整。ネイティブdialogはtop layer。
 - 外部依存: Vueデモのみnpm installが必要。Nodeサーバーは標準ライブラリ。npm公開・CJS・SSR・旧IE対応は非対象。
 
-## 6. 野獣大富豪への段階導入（別PR）
+## 6. 独立開発・配布設計
 
-1. src/ を Spring Boot の static/macky-ui/ に配置、検証用ページにCSSとES moduleを追加。
-2. 既存ゲームの機能を維持し、通知・非モーダルbannerを新しい関数から呼ぶ。従来toast関数との互換ラッパー例: function notify(text,error){ ui.toast(text,{type:error?"danger":"info"}); }
-3. 自分の番への遷移はシングル/マルチ双方の共通表示更新箇所で、直前ターンIDとの差分を判定してから ui.banner を呼ぶ。ポーリング毎に繰り返さない。ゲーム開始/復元時のキー初期化と対戦終了時のリセットが必要。
-4. メニュー・ボタンを画面単位に置換。操作の有効条件・既存click・認証・通信・音声を維持。グリッドは戦績等から試す。
-5. 単体、結合、シングル/マルチ、CPU、再接続、メンテ、Firebase認証、モバイル幅の回帰試験。
-6. 問題があれば呼出切替を元に戻す。ゲームと部品ライブラリを同時全面改修しない。
+### 6.1 Test Studio
+GET / はランチャーHTML。GET /api/test-pages は固定試験画面9件と playground 直下のHTML一覧を返す。検索と再読込で選択可能。各画面は通常の別ページ遷移で実行する。部品別は component パラメータを既定の5種に限定し、対象部品のみ生成する。独自HTMLは信頼済みローカル開発者のみが配置する。ファイル名の許可文字・拡張子を制限し、ディレクトリ横断・任意ファイル・symlinkを許可しない。HTTPサーバーは127.0.0.1のみ。外部公開禁止。
+
+### 6.2 ビルド
+Node標準ライブラリで src の index.js/model.js/vue.js/style.css を dist へコピーし、manifest.jsonに版・エントリ・バイト数・SHA-256を記録する。ネイティブESM形式であり、単一ファイルbundle/minifyではない。Vueランタイムは注入型なので配布物には同梱不要。npm pack がprepackでbuildを実行し、distおよび説明文書のみ含むtgzを生成。package exports は dist に向ける。private=trueで誤publishを防止。生成物はGit対象外。開発環境はsrcを利用し、配布環境はdistを利用する。
+
+### 6.3 他アプリへの導入
+配布物を静的資産として配置するか、ローカルtgzをnpm installする。Viteなどで最終アプリ側のbundleを作成する。WebView/Electronでは各アプリの資産配信方式およびモダンブラウザ機能を確認する。Android/iOSのネイティブUIへの直接利用は非対象。野獣大富豪のソース・API・配布・ビルドには変更を加えない。
 
 ## 7. 試験計画
 
@@ -111,10 +113,12 @@ MButtonはlabel/variant/size/disabled/busy、default slot、click emit。MPanel�
 |T08|並行loading・例外時解放|/demo/test.html|
 |T09|Vue reactive更新/ボタン/通知|/demo/vue.html 手動|
 |T10|Tab/Esc、フォーカス復帰、モバイル幅、両テーマ|実ブラウザ手動|
-|T11|既存ゲームの回帰|導入PRで実施|
+|T11|ランチャー一覧・パス制限|npm test / 実ブラウザ|
+|T12|ビルド成果物・整合性・エントリ|npm test / npm run build|
+|T13|配布版の画面・npmパッケージ導入|/demo/built.html / 別アプリで確認|
 
-実行環境のない状態では合格扱いにしない。試験記録はPRで区別する。設計上の制約としてライブラリは独立配置、ゲームへの本番導入およびブラウザ実機検証は別工程。
+実行環境のない状態では合格扱いにしない。試験記録はPRで区別する。設計上の制約としてライブラリは独立配置、他のアプリへの導入およびブラウザ実機検証は別工程。野獣大富豪への導入は行わない。
 
 ## 8. 完了・運用基準
 
-新機能は部品APIに後方互換で追加する。破壊的変更はメジャー版。新しい部品はAPI、カタログ、試験を同時追加する。アプリ固有ロジックは部品に入れない。v1はローカル配布用であり、npm公開、TypeScript宣言、キーボード操作の高度なデータグリッドは次期候補。
+新機能は部品APIに後方互換で追加する。破壊的変更はメジャー版。新しい部品はAPI、カタログ、試験を同時追加する。アプリ固有ロジックは部品に入れない。v1はローカル配布用であり、公開npm登録、TypeScript宣言、キーボード操作の高度なデータグリッドは次期候補。

@@ -1,23 +1,33 @@
 {
   "name": "@mackywild/macky-ui",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "Standalone browser UI kit with Vue 3 adapter",
   "exports": {
-    ".": "./src/index.js",
-    "./vue": "./src/vue.js",
-    "./style.css": "./src/style.css"
+    ".": "./dist/index.js",
+    "./vue": "./dist/vue.js",
+    "./style.css": "./dist/style.css"
   },
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test",
-    "check": "node --check src/index.js && node --check src/model.js && node --check src/vue.js && node --check demo/demo.js && node --check demo/vue-demo.js && node --check server.mjs"
+    "check": "node --check src/index.js && node --check src/model.js && node --check src/vue.js && node --check demo/demo.js && node --check demo/vue-demo.js && node --check server.mjs && node --check build.mjs && node --check routes.mjs && node --check demo/launcher.js && node --check demo/built.js && node --check playground/example.js",
+    "build": "node build.mjs",
+    "prepack": "npm run build"
   },
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
+  "files": [
+    "dist",
+    "README.md",
+    "DESIGN.md"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "devDependencies": {
     "vue": "^3.5.0"
   }
 }

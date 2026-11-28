@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Macky UI | Test Studio</title>
+<link rel="stylesheet" href="/src/style.css"><link rel="stylesheet" href="/demo/demo.css">
+<style>
+.studio-head{padding:28px 0 18px;border-bottom:1px solid var(--mky-line)}.studio-tools{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:22px 0}.studio-tools input{flex:1;min-width:180px}.studio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.studio-group{margin:30px 0}.studio-group h2{font-size:17px}.studio-card{display:flex;flex-direction:column;gap:8px;text-decoration:none;color:var(--mky-fg);padding:20px;border:1px solid var(--mky-line);border-radius:14px;background:var(--mky-panel);min-height:105px}.studio-card:hover,.studio-card:focus-visible{border-color:var(--mky-primary);outline:2px solid var(--mky-primary);outline-offset:2px}.studio-card strong{font-size:17px}.studio-card span{color:var(--mky-muted);font-size:13px}.studio-card b{color:var(--mky-primary);font-size:12px;margin-top:auto}.studio-foot{margin-top:30px;line-height:1.8}.studio-foot code{overflow-wrap:anywhere}
+</style></head><body><div id="root"><main>
+<div class="studio-head"><div class="eyebrow">MACKY UI / DEVELOPMENT STUDIO</div><h1>Test Studio</h1><p class="subtitle">試験画面を選択して、独立したページで部品を確認。</p></div>
+<div class="studio-tools"><input class="mky-input" id="search" type="search" placeholder="試験画面を検索…" aria-label="試験画面を検索"><button id="refresh" class="mky-btn mky-btn--secondary mky-btn--md" type="button">一覧を再読込</button><button id="theme" class="mky-btn mky-btn--ghost mky-btn--md" type="button">テーマ切替</button></div>
+<p id="status" class="mky-muted" role="status">読み込み中…</p><div id="pages"></div>
+<section class="mky-panel studio-foot"><h2 class="mky-heading">独自試験画面の追加</h2><div>playground フォルダに HTML を保存し、「一覧を再読込」を押してください。ソース版は /src/ 、配布版は /dist/ から読み込めます。</div><div>配布用ビルド：<code>npm run build</code>　パッケージ化：<code>npm pack</code></div></section>
+</main></div><script type="module" src="/demo/launcher.js"></script></body></html>
