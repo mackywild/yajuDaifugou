@@ -131,3 +131,19 @@ onEvent(name,value,id) のidはmountScreen時。Builder用optionsはJSON専用�
 |生成Vue SFC submitTask prop|submitTask(values,componentId)|
 
 CSV取込の戻り値と既定許可、Vue optionsの更新挙動は破壊的な操作を防止するための意図的な変更。旧仕様より本節を優先する。
+
+
+## v2.0.2 API追加・動作変更
+
+| API | 仕様 |
+|---|---|
+| field.setAccess({disabled,readonly}) | 値・FileListを保持し操作可否を部分更新 |
+| form.setAccess({disabled,readonly,fields}) | 全体と個別(name)の操作可否を部分更新。全体ロック時は送信不可 |
+| grid.setAccess({disabled,readonly,columns,canEdit,canAdd,canDelete,allowCSVImport}) | 値・履歴・行選択を保持して部分更新。columnsはkey一致列のreadonly/editableのみ |
+| grid.getSelectedIds() | 全ページの選択行IDのコピー |
+| store.peekUndo()/peekRedo()/peekReset() | 履歴適用前の候補行コピー（undo/redoなしの場合null） |
+| Vue options.disabled/readonly | 入力部品・フォーム・Advanced Gridでは再生成なしで反映 |
+| Vue options.fields[].disabled/readonly / columns[].readonly/editable | 同じname/keyの操作可否のみ動的反映。他の設定はresetKey |
+| mountScreen(...,{submitTask}) | 値とcomponentIdを保存関数に伝える接続を修正 |
+
+grid.undo/redo/resetは操作不可時に例外を返す。現時点の権限制約を検査するため、以前に可能だった操作でも権限変更後は履歴適用できない場合がある。権限解除後は履歴を再利用可能。行削除は表示中の選択行に限定。直接APIのsetAccessは部分更新、Vueのoptionsに含まれる操作可否フラグはスナップショットとして扱う。操作禁止はサーバー認可とは独立。

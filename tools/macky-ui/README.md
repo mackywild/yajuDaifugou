@@ -78,7 +78,7 @@ playground/example.html と example.js をコピーして自由に開発する�
     npm run build
     npm pack
 
-build は Node 標準機能のみで dist/ に14個のネイティブESM/CSS資産とSHA-256付きmanifestを生成する。トランスパイル・minify・単一ファイルbundleではない。別アプリのVite等で最終bundle化できる。npm pack は prepack で自動ビルドし、mackywild-macky-ui-2.0.1.tgz を生成する。公開npm登録は行わない。dist と tgz はGit管理対象外。Vueデモ以外は npm install 不要。
+build は Node 標準機能のみで dist/ に14個のネイティブESM/CSS資産とSHA-256付きmanifestを生成する。トランスパイル・minify・単一ファイルbundleではない。別アプリのVite等で最終bundle化できる。npm pack は prepack で自動ビルドし、mackywild-macky-ui-2.0.2.tgz を生成する。公開npm登録は行わない。dist と tgz はGit管理対象外。Vueデモ以外は npm install 不要。
 
 ### 他のアプリでの利用
 
@@ -86,7 +86,7 @@ build は Node 標準機能のみで dist/ に14個のネイティブESM/CSS資�
 
 方法B: 別のNode/Vueプロジェクトでローカルパッケージを導入。
 
-    npm install /absolute/path/to/mackywild-macky-ui-2.0.1.tgz
+    npm install /absolute/path/to/mackywild-macky-ui-2.0.2.tgz
 
     import { createUI, createButton } from "@mackywild/macky-ui";
     import { createVueKit } from "@mackywild/macky-ui/vue";
@@ -164,3 +164,20 @@ saveToServer(values) は実際の保存Promiseを返す。@action は成功・�
 - IME変換中のEnter/Escapeは確定操作として扱わない。
 - 編集終了後はrowKey/column keyでフォーカス復元。blurのDOM再描画はポインター操作終了まで遅延。ソート・絞込で対象が表示範囲外なら別行へ強制フォーカスしない。
 - npm test、Test Studio「レビュー回帰試験」（Vueはnpm install必要）を実施。実IMEとExcel貼付は手動試験も必要。
+
+
+## v2.0.2 第2回レビュー修正
+
+フォーム、入力部品、Advanced Gridは再生成なしで操作可否を更新できる。JS APIの setAccess は部分更新、Vue options の disabled/readonly と fields(name)/columns(key) の操作可否フラグは初期データと分離して自動反映する。Vueのその他の設定と初期値は従来どおりresetKeyで明示反映。VueのJSON設定から関数は渡さない（行単位権限コールバックは信頼済みJS APIを利用）。他のMComponentではdisabledをinertで反映するが、readonlyは入力・フォーム・Advanced Gridに限り意味を定義する。
+
+    const field=api.createField({name:"name",value:"入力済み"});
+    field.setAccess({readonly:true}); // 値を保持
+    field.setAccess({readonly:false});
+    grid.setAccess({readonly:true}); // 変更系API・履歴操作・CSVも停止
+    grid.setAccess({readonly:false,columns:[{key:"name",editable:false}]});
+
+フォーム全体のdisabled/readonlyは送信も停止。通信中にロックしてもPromise完了後に解除されない。個別フィールド・選択肢の元のdisabledを維持する。readonly非対応のネイティブ入力（radio/checkbox/select/file等）はdisabledで操作を止める。getValuesは従来どおり全フィールドの値を返す。ロックはクライアント側の補助で、サーバー認可を代替しない。
+
+Advanced Gridの行選択はrowKeyで保持し、セル選択とは分離する。ソート・検索・ページ移動・通常編集を経ても選択を維持し、存在しないIDのみ除外。選択総数と表示中の件数を表示。事故防止のため行削除は表示ページの選択行のみ（非表示行は削除しない）。「行選択解除」で全ページの選択を解除。権限変更で編集中のセルが編集不可になった場合、未確定のセル入力のみ取り消して通知し、確定済みデータと履歴は保持する。Undo/Redo/resetも現在の操作可否を検証し、拒否時は履歴を消費しない。commitは保存完了を示すアプリ側の操作。
+
+生成HTML・JSのmountScreenにsubmitTask引数の接続漏れがあったため併せて修正。詳細は REVIEW_RESPONSE_V2_0_2.md。

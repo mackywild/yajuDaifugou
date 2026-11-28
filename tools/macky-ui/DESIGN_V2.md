@@ -95,3 +95,22 @@ CSV: planCSVImportは純粋な検証関数。全列・非空・一意ID、既存
 Vue: submitTaskを通知イベントから独立した関数propとしてawaitする。submitイベントは成功後通知。stateful部品はtype/resetKeyの一致中にoptionsを再適用しない。resetKeyは意図的な初期化用。busy中はreset-blockedで拒否。導入先は処理中の画面離脱・アンマウントと未保存破棄を管理する。
 
 フォーム: date/timeの値とmin/maxを型別スカラー化、日付の妥当性と深夜跨ぎを検証。グリッド: 外部TSVを既定安全モード、内部カスタムMIMEをraw。IME composition/isComposing/229を確認。セルのID/列キーによる復元、blur後の再描画はポインター操作終了後に延期する。対象が画面外なら復元しない。実ブラウザ・IME・Excelでの確認は受入条件。
+
+
+## 13. v2.0.2 第2回レビュー修正
+
+### 操作可否と状態の分離
+
+入力部品のsetAccess({disabled,readonly}, inherited)は値を更新せず、ネイティブreadOnlyとdisabledを切り替える。選択肢の固有disabledを保持。フォームはフォーム全体のアクセスと個別フィールドのアクセスを合成し、送信ボタンの有効条件は !busy && !disabled && !readonly。Promise完了時にもアクセス状態から再計算する。readonly/disabled項目は検証対象外、getValuesの既存契約（全値）は維持。
+
+Advanced GridのsetAccess({disabled,readonly,columns,canEdit,canAdd,canDelete,allowCSVImport})は部分更新。列はkeyで同定、readonly/editableのみ反映する。global disabled/readonlyはデータ変更を拒否、readonlyは検索・選択・コピー・エクスポートを許可する。履歴操作はpeekUndo/peekRedo/peekResetで候補データを取得し、現在の列・行アクセスを検証してから適用する。権限変更でrevision更新し、確認中CSVを拒否。編集中に権限を失った場合は未確定値を取消し、確定値・履歴は保持。commitは保存済み基準の明示更新でデータ値は変更しない。
+
+Vue stateful部品は同じtype/resetKeyでも入力/フォーム/Advanced Gridのdisabled/readonly、個別fields/columnsの操作可否を適用する。初期値とその他設定は明示resetKeyで更新。ロック変更は処理中も適用。その他部品のdisabledはinertで補助する（readonlyの意味を定義していない部品は対象外）。行権限関数は直接JS API。権限ロジックはクライアント側の補助で、サーバー側認可必須。
+
+### 行選択と再描画
+
+セル選択座標と選択行ID集合を分離。renderはストアに存在しないIDのみ除去。行チェックボックスのフォーカスを再描画前にrowKeyで記録し、遅延再描画・通常の変更後に同IDが表示中なら復元。選択総数と表示中件数を表示、明示的な全選択解除を追加。行削除は表示ページの選択行のみ対象（権限拒否行は保持）。削除した行をUndoしても選択は復元しない。ページを跨ぐ選択による意図しない非表示行削除を避ける。
+
+### 周辺修正
+
+mountScreenの引数にsubmitTaskを明示追加。生成HTMLと生成JSの呼出先の未定義変数を解消し、フォームの保存関数に部品IDを渡す。
