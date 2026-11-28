@@ -3,7 +3,7 @@ import {createGridStore,parseDelimited,encodeDelimited,normalizeCell,planCSVImpo
 export function createAdvancedGrid(options={}){
   const o={rows:[],columns:[],rowKey:"id",pageSize:50,label:"編集グリッド",...options};
   o.columns=o.columns.map(c=>({...c}));
-  if(!o.columns.length||o.columns.some(c=>typeof c.key!=="string"||["__proto__","constructor","prototype"].includes(c.key))||new Set(o.columns.map(c=>c.key)).size!==o.columns.length)throw Error("columns require unique safe keys");
+  if(!o.columns.some(c=>c.key===o.rowKey)||o.columns.some(c=>typeof c.key!=="string"||["__proto__","constructor","prototype"].includes(c.key))||new Set(o.columns.map(c=>c.key)).size!==o.columns.length)throw Error("columns require unique safe keys");
   const unique=rows=>{const ids=rows.map(r=>r[o.rowKey]);if(ids.some(v=>v==null)||new Set(ids).size!==ids.length)throw Error("行キーは必須かつ一意です");return rows;};
   let store=createGridStore(unique(o.rows)),query="",sort=null,desc=false,page=0,selection=null,selectedIds=new Set(),hidden=new Set(),filters=new Map(),dragging=false,disposed=false,revision=0,importing=false,pointerActive=false,pendingRender=false,renderTimer=null;
   const element=node("section","mky-grid mky-advanced"),bar=node("div","mky-grid-toolbar"),tools=node("div","mky-actions"),search=node("input","mky-input"),message=node("div","mky-muted"),viewport=node("div","mky-grid-scroll"),table=node("table","mky-table"),head=node("thead"),body=node("tbody"),foot=node("tfoot"),pager=node("div","mky-grid-footer"),summary=node("span","mky-muted");
@@ -39,8 +39,8 @@ export function createAdvancedGrid(options={}){
     notify();
   }
   function mutate(changes,opts){
-    const rows=store.get(),byId=new Map(rows.map(r=>[r[o.rowKey],r]));
-    for(const {id,key,value} of changes){const r=byId.get(id),c=o.columns.find(c=>c.key===key);if(!r||!c||key===o.rowKey||o.canEdit&&!o.canEdit(r,c))throw Error("編集できないセル");r[key]=normalizeCell(value,c,r);}
+    const rows=store.get(),byId=new Map(rows.map(r=>[r[o.rowKey],r])),original=new Map(store.get().map(r=>[r[o.rowKey],r]));
+    for(const {id,key,value} of changes){const r=byId.get(id),c=o.columns.find(c=>c.key===key);if(!r||!c||key===o.rowKey||o.canEdit&&!o.canEdit(original.get(id),c)||c.readonly||c.editable===false||typeof c.editable==="function"&&!c.editable(original.get(id)))throw Error("編集できないセル");r[key]=normalizeCell(value,c,r);}
     apply(rows,opts);
   }
   function rect(){if(!selection)return null;return {r0:Math.min(selection.a.r,selection.b.r),r1:Math.max(selection.a.r,selection.b.r),c0:Math.min(selection.a.c,selection.b.c),c1:Math.max(selection.a.c,selection.b.c)};}
@@ -133,5 +133,5 @@ export function createAdvancedGrid(options={}){
   element.addEventListener("copy",e=>{if(e.target.matches("input,textarea")||!selection)return;e.preventDefault();const values=rangeValues();e.clipboardData?.setData("text/plain",encodeDelimited(values,"\t",{spreadsheetSafe:true}));try{e.clipboardData?.setData("application/x-macky-grid-tsv",encodeDelimited(values,"\t",{spreadsheetSafe:false}));}catch{}});
   element.addEventListener("paste",e=>{if(e.target.matches("input,textarea")||!selection)return;e.preventDefault();try{paste(e.clipboardData?.getData("application/x-macky-grid-tsv")||e.clipboardData?.getData("text/plain")||"");}catch(err){fail(err);}});
   render();
-  return {element,getRows:store.get,getChanges:()=>store.changes(o.rowKey),isDirty:store.isDirty,commit(){store.commit();revision++;},reset(){store.reset();revision++;clearSelection();render();notify();},undo,redo,paste,copy:({spreadsheetSafe=true}={})=>encodeDelimited(rangeValues(),"\t",{spreadsheetSafe}),exportCSV,previewCSV,importCSV,select:choose,editCell:(id,key,value)=>mutate([{id,key,value}]),destroy(){if(disposed)return;disposed=true;clearTimeout(renderTimer);window.removeEventListener("pointerdown",startPointer,true);window.removeEventListener("pointerup",stopDrag,true);window.removeEventListener("pointercancel",stopDrag,true);window.removeEventListener("blur",stopDrag);element.remove();}};
+  return {element,isBusy:()=>importing,getRows:store.get,getChanges:()=>store.changes(o.rowKey),isDirty:store.isDirty,commit(){store.commit();revision++;},reset(){store.reset();revision++;clearSelection();render();notify();},undo,redo,paste,copy:({spreadsheetSafe=true}={})=>encodeDelimited(rangeValues(),"\t",{spreadsheetSafe}),exportCSV,previewCSV,importCSV,select:choose,editCell:(id,key,value)=>mutate([{id,key,value}]),destroy(){if(disposed)return;disposed=true;clearTimeout(renderTimer);window.removeEventListener("pointerdown",startPointer,true);window.removeEventListener("pointerup",stopDrag,true);window.removeEventListener("pointercancel",stopDrag,true);window.removeEventListener("blur",stopDrag);element.remove();}};
 }

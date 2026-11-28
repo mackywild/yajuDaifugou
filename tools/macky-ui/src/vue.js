@@ -24,14 +24,33 @@ export function createVueKit(Vue,ui){
     }});
   }
   const MGrid=wrap("MGrid",createGrid,true),MMenu=wrap("MMenu",createMenu),MBadge=wrap("MBadge",createBadge);
-  const MComponent=defineComponent({name:"MComponent",props:{type:{type:String,required:true},options:{type:Object,default:()=>({})}},emits:["action"],setup(p,{emit}){
-    const host=ref(null);let handle;
-    function sync(){if(!host.value)return;handle?.destroy();handle=null;try{handle=api.mountComponent(api,p.type,p.options,{ui,onEvent:(name,value)=>emit("action",name,value)});host.value.replaceChildren(handle.element);}catch(e){host.value.textContent=String(e?.message||e);emit("action","error",String(e?.message||e));}}
-    onMounted(sync);watch(()=>[p.type,p.options],sync,{deep:true,flush:"post"});onBeforeUnmount(()=>{handle?.destroy();handle=null;});return ()=>h("div",{ref:host});
+  // Stateful components treat options as initial configuration; resetKey is explicit.
+  const stateful=new Set(["field","select","checkbox","radio","date","file","form","advancedGrid","kanban","richText","wizard","tabs","calendar","accordion","command","image","sidebar"]);
+  const sharedProps={options:{type:Object,default:()=>({})},resetKey:{type:[String,Number],default:0},submitTask:Function};
+  const MComponent=defineComponent({name:"MComponent",props:{type:{type:String,required:true},...sharedProps},emits:["action"],setup(p,{emit}){
+    const host=ref(null);let handle=null,previous=null;
+    function sync(){
+      if(!host.value)return;
+      const type=p.type,reset=p.resetKey;
+      if(previous&&previous.type===type&&previous.reset===reset&&stateful.has(type))return;
+      if(handle?.handle?.isBusy?.()){emit("action","reset-blocked","処理中は再生成できません");return;}
+      try{
+        const fingerprint=api.safeJSON(p.options);
+        if(previous&&previous.type===type&&previous.reset===reset&&previous.fingerprint===fingerprint)return;
+        const next=api.mountComponent(api,type,p.options,{
+          ui,onEvent:(name,value)=>emit("action",name,value),
+          submitTask:async values=>{if(p.submitTask)await p.submitTask(values);}
+        });
+        handle?.destroy();handle=next;host.value.replaceChildren(next.element);previous={type,reset,fingerprint};
+      }catch(e){if(!handle)host.value.textContent=String(e?.message||e);emit("action","error",String(e?.message||e));}
+    }
+    onMounted(sync);watch(()=>[p.type,p.options,p.resetKey],sync,{deep:true,flush:"post"});
+    onBeforeUnmount(()=>{handle?.destroy();handle=null;});
+    return ()=>h("div",{ref:host});
   }});
   const named={MField:"field",MSelect:"select",MCheckbox:"checkbox",MRadio:"radio",MDatePicker:"date",MFilePicker:"file",MForm:"form",MAdvancedGrid:"advancedGrid",MVirtualGrid:"virtualGrid",MTabs:"tabs",MAccordion:"accordion",MSidebar:"sidebar",MTooltip:"tooltip",MContextMenu:"context",MProgress:"progress",MChart:"chart",MTree:"tree",MCalendar:"calendar",MWizard:"wizard",MTimeline:"timeline",MKanban:"kanban",MImageViewer:"image",MRichText:"richText",MCommandPalette:"command",MRetryPanel:"retry"};
   const components={MButton,MPanel,MGrid,MMenu,MBadge,MComponent};
-  for(const [name,type] of Object.entries(named))components[name]=defineComponent({name,props:{options:{type:Object,default:()=>({})}},emits:["action"],setup(p,{emit}){return ()=>h(MComponent,{type,options:p.options,onAction:(n,v)=>emit("action",n,v)});}});
+  for(const [name,type] of Object.entries(named))components[name]=defineComponent({name,props:sharedProps,emits:["action"],setup(p,{emit}){return ()=>h(MComponent,{type,options:p.options,resetKey:p.resetKey,submitTask:p.submitTask,onAction:(n,v)=>emit("action",n,v)});}});
   return {...components,install(app){app.provide(key,ui);for(const [name,c] of Object.entries(components))app.component(name,c);},
     useUI(){const service=inject(key);if(!service)throw new Error("Install Macky UI before useUI");return service;}};
 }
