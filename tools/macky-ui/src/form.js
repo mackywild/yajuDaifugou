@@ -1,13 +1,33 @@
 import {node,action,selectOptions} from "./dom.js";
 let sequence=0;
+function dateScalar(value){
+ const m=/^(\d{4,})-(\d{2})-(\d{2})$/.exec(String(value));if(!m)return NaN;
+ const [y,month,d]=m.slice(1).map(Number);if(y<1||month<1||month>12||d<1)return NaN;
+ const leap=y%4===0&&(y%100!==0||y%400===0),days=[31,leap?29:28,31,30,31,30,31,31,30,31,30,31];
+ return d<=days[month-1]?y*10000+month*100+d:NaN;
+}
+function timeScalar(value){
+ const m=/^(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/.exec(String(value));if(!m)return NaN;
+ const h=Number(m[1]),min=Number(m[2]),s=Number(m[3]||0),ms=Number((m[4]||"").padEnd(3,"0"));
+ return h<24&&min<60&&s<60?((h*60+min)*60+s)*1000+ms:NaN;
+}
+
 export function validateValue(value,rules={},all={}){
   const empty=value==null||value===""||(Array.isArray(value)&&!value.length)||value===false;
   if(rules.required&&empty)return "必須項目です";
   if(empty)return "";
   if(rules.minLength!=null&&String(value).length<rules.minLength)return rules.minLength+"文字以上入力してください";
   if(rules.maxLength!=null&&String(value).length>rules.maxLength)return rules.maxLength+"文字以内で入力してください";
-  if(rules.min!=null&&(!Number.isFinite(Number(value))||Number(value)<rules.min))return rules.min+"以上を入力してください";
-  if(rules.max!=null&&(!Number.isFinite(Number(value))||Number(value)>rules.max))return rules.max+"以下を入力してください";
+  const kind=rules.type??(/^\d{4,}-\d{2}-\d{2}$/.test(String(rules.min??rules.max??""))?"date":/^\d{2}:\d{2}/.test(String(rules.min??rules.max??""))?"time":"number");
+  if(kind==="date"||kind==="time"||rules.min!=null||rules.max!=null){
+    const convert=kind==="date"?dateScalar:kind==="time"?timeScalar:Number;
+    const n=convert(value),lo=rules.min==null?null:convert(rules.min),hi=rules.max==null?null:convert(rules.max);
+    if(!Number.isFinite(n))return "入力形式が正しくありません";
+    if(lo!==null&&!Number.isFinite(lo)||hi!==null&&!Number.isFinite(hi))return "範囲設定が不正です";
+    // HTML time inputs allow a range crossing midnight.
+    if(kind==="time"&&lo!==null&&hi!==null&&lo>hi){if(n<lo&&n>hi)return "指定時刻範囲外です";}
+    else{if(lo!==null&&hi!==null&&lo>hi)return "範囲設定が不正です";if(lo!==null&&n<lo)return rules.min+"以上を入力してください";if(hi!==null&&n>hi)return rules.max+"以下を入力してください";}
+  }
   if(rules.pattern){try{if(!new RegExp(rules.pattern).test(String(value)))return rules.patternMessage||"入力形式が正しくありません";}catch{return "検証ルールが不正です";}}
   if(typeof rules.validate==="function"){const r=rules.validate(value,all);if(r!==true&&r!=null&&r!=="")return typeof r==="string"?r:"入力値を確認してください";}
   return "";

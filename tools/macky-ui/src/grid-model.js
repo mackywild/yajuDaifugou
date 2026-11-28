@@ -46,3 +46,50 @@ export function normalizeCell(raw,column,row){
   if(column.validate){const result=column.validate(v,row);if(result!==true&&result!=null&&result!=="")throw Error(typeof result==="string"?result:"不正な値: "+column.key);}
   return v;
 }
+
+/** Validate a full replacement without mutating any input or history. */
+export function planCSVImport(text,{rows=[],columns=[],rowKey="id",canEdit,canDelete,canAdd,allowCSVImport=false}={}){
+ if(allowCSVImport!==true)throw Error("CSV取込は許可されていません");
+ if(typeof text!=="string"||text.length>5_000_000)throw Error("CSVは5MBまで");
+ const [header,...lines]=parseDelimited(text);
+ const keys=columns.map(c=>c.key);
+ if(!keys.includes(rowKey)||header.length!==keys.length||new Set(header).size!==keys.length||header.some(k=>!keys.includes(k)))throw Error("CSVには全列のヘッダーが必要です");
+ if(!lines.length)throw Error("データのないCSVで全件削除することはできません");
+ const existing=new Map(),seen=new Set(),next=[],added=[],updated=[],deleted=[];
+ const idColumn=columns.find(c=>c.key===rowKey);
+ for(const row of rows){const id=row[rowKey],k=String(id);if(!["string","number"].includes(typeof id)||id===""||typeof id==="number"&&!Number.isFinite(id)||existing.has(k))throw Error("CSVで一意に識別できない行キー");existing.set(k,row);}
+ const types=new Set(rows.map(r=>typeof r[rowKey]));
+ const idType=idColumn.type|| (types.size===1?[...types][0]:null);
+ for(const line of lines){
+  if(line.length!==header.length)throw Error("CSV列数が不一致です");
+  const raw=Object.fromEntries(header.map((k,i)=>[k,line[i]]));
+  const key=raw[rowKey];if(!key.trim()||seen.has(key))throw Error("行キーが空または重複しています");
+  seen.add(key);const old=existing.get(key);
+  let id=old?.[rowKey];
+  if(!old){
+   if(idType!=="string"&&idType!=="number")throw Error("新規行のID型を列typeで明示してください");
+   id=idType==="number"?Number(key):key;
+   if(idType==="number"&&(!Number.isFinite(id)||String(id)!==key))throw Error("数値IDの形式が不正です");
+   if(existing.has(String(id)))throw Error("行キーが重複しています");
+  }
+  const candidate=old?{...old}:{};
+  for(const col of columns){
+   const k=col.key;if(k===rowKey){candidate[k]=id;continue;}
+   // Untyped existing scalar values retain their type, avoiding false changes.
+   const type=col.type??(typeof old?.[k]==="number"?"number":typeof old?.[k]==="boolean"?"boolean":undefined);
+   const v=normalizeCell(raw[k],{...col,type,readonly:false,editable:true,validate:undefined},candidate);
+   if(old&&!Object.is(old[k],v)&&(col.readonly||col.editable===false||typeof col.editable==="function"&&!col.editable({...old})||canEdit&&!canEdit({...old},col)))throw Error("編集不可: "+k);
+   candidate[k]=v;
+  }
+  for(const col of columns){
+   const value=candidate[col.key];
+   if(col.required&&(value===""||value==null))throw Error("必須: "+col.key);
+   if(col.validate){const r=col.validate(value,{...candidate});if(r!==true&&r!=null&&r!=="")throw Error(typeof r==="string"?r:"不正な値: "+col.key);}
+  }
+  if(!old){if(typeof canAdd!=="function"||!canAdd({...candidate}))throw Error("CSVからの新規行追加は許可されていません");added.push({...candidate});}
+  else if(columns.some(c=>!Object.is(candidate[c.key],old[c.key])))updated.push({...candidate});
+  next.push(candidate);
+ }
+ for(const old of rows){if(!seen.has(String(old[rowKey]))){if(typeof canDelete!=="function"||!canDelete({...old}))throw Error("CSVからの行削除は許可されていません");deleted.push({...old});}}
+ return {rows:next,changes:{added,updated,deleted}};
+}
