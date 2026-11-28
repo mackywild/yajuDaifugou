@@ -1,0 +1,55 @@
+/* Macky UI styles are opt-in; no global reset or unprefixed class. */
+.mky-ui{--mky-bg:#020403;--mky-panel:#0d1712;--mky-panel2:#15241b;--mky-primary:#d8b85a;--mky-on-primary:#201a0a;--mky-fg:#f7f4ea;--mky-muted:#a7b4ac;--mky-line:#35483c;--mky-danger:#ff9ba3;--mky-success:#8ce5b3;--mky-warning:#ffda84;--mky-info:#a8d7ff;--mky-shadow:0 18px 60px #0008;--mky-radius:14px}
+.mky-ui[data-mky-theme=light]{--mky-bg:#f3f6f8;--mky-panel:#fff;--mky-panel2:#edf2f6;--mky-primary:#0c6250;--mky-on-primary:#fff;--mky-fg:#172a25;--mky-muted:#4e625d;--mky-line:#b6c8c2;--mky-danger:#a81e35;--mky-success:#07633c;--mky-warning:#835400;--mky-info:#185b97;--mky-shadow:0 18px 60px #122a2424}
+.mky-ui :is(.mky-btn,.mky-panel,.mky-grid,.mky-menu,.mky-badge,.mky-dialog,.mky-toast,.mky-banner,.mky-loading,.mky-input){box-sizing:border-box;font-family:Inter,"Segoe UI","Noto Sans JP",system-ui,sans-serif;color:var(--mky-fg);line-height:1.5}
+.mky-ui .mky-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;min-height:40px;border:1px solid transparent;border-radius:10px;font-size:14px;font-weight:750;cursor:pointer;background:var(--mky-panel2);text-decoration:none;transition:filter .15s,transform .15s}
+.mky-ui .mky-btn--primary{background:var(--mky-primary);color:var(--mky-on-primary)}
+.mky-ui .mky-btn--secondary{border-color:var(--mky-line);background:var(--mky-panel)}
+.mky-ui .mky-btn--danger{background:var(--mky-danger);color:#25090d}
+.mky-ui[data-mky-theme=light] .mky-btn--danger{color:#fff}
+.mky-ui .mky-btn--ghost{background:transparent;border-color:transparent}
+.mky-ui .mky-btn--sm{padding:6px 10px;min-height:34px;font-size:13px}
+.mky-ui .mky-btn--lg{padding:12px 24px;min-height:48px;font-size:16px}
+.mky-ui .mky-btn:not(:disabled):hover{filter:brightness(1.13)}
+.mky-ui .mky-btn:not(:disabled):active{transform:translateY(1px)}
+.mky-ui .mky-btn:disabled{opacity:.48;cursor:not-allowed}
+.mky-ui :is(.mky-btn,.mky-input,.mky-grid-scroll):focus-visible{outline:3px solid var(--mky-primary);outline-offset:3px}
+.mky-ui .mky-panel,.mky-ui .mky-grid{padding:18px;border:1px solid var(--mky-line);border-radius:var(--mky-radius);background:var(--mky-panel)}
+.mky-ui .mky-heading{margin:0 0 10px;font-size:18px;font-weight:800;color:var(--mky-fg)}
+.mky-ui .mky-muted{color:var(--mky-muted);font-size:13px}
+.mky-ui .mky-menu{display:flex;gap:6px;flex-wrap:wrap;padding:6px;border:1px solid var(--mky-line);border-radius:12px;background:var(--mky-panel)}
+.mky-ui .mky-menu--vertical{flex-direction:column;align-items:stretch}
+.mky-ui .mky-menu--vertical .mky-btn{justify-content:flex-start}
+.mky-ui .mky-tone--info{--mky-tone:var(--mky-info)}
+.mky-ui .mky-tone--success{--mky-tone:var(--mky-success)}
+.mky-ui .mky-tone--warning{--mky-tone:var(--mky-warning)}
+.mky-ui .mky-tone--danger{--mky-tone:var(--mky-danger)}
+.mky-ui .mky-badge{display:inline-block;border:1px solid var(--mky-tone);color:var(--mky-tone);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
+.mky-ui .mky-grid-toolbar,.mky-ui .mky-grid-footer{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap}
+.mky-ui .mky-grid-footer{justify-content:flex-end;margin-top:12px}
+.mky-ui .mky-input{background:var(--mky-bg);border:1px solid var(--mky-line);padding:9px 12px;border-radius:9px;max-width:100%;font-size:14px}
+.mky-ui .mky-input[hidden]{display:none}
+.mky-ui .mky-grid-scroll{overflow:auto;margin-top:12px;max-width:100%;border-radius:8px}
+.mky-ui .mky-table{border-collapse:collapse;width:100%;font-size:14px;color:var(--mky-fg)}
+.mky-ui .mky-table :is(th,td){text-align:left;padding:10px 12px;border-bottom:1px solid var(--mky-line);overflow-wrap:anywhere}
+.mky-ui .mky-table th{background:var(--mky-panel2);white-space:nowrap}
+.mky-ui .mky-table th .mky-btn{padding:4px 6px}
+.mky-ui .mky-empty{text-align:center!important;color:var(--mky-muted);padding:24px!important}
+.mky-ui .mky-layers{--mky-layer:1200}
+.mky-ui .mky-dialog{width:min(460px,calc(100% - 32px));max-height:85vh;overflow:auto;padding:24px;border:1px solid var(--mky-primary);border-radius:var(--mky-radius);background:var(--mky-panel);box-shadow:var(--mky-shadow)}
+.mky-ui .mky-dialog::backdrop{background:#000a}
+.mky-ui .mky-dialog-message{white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0 24px}
+.mky-ui .mky-dialog-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.mky-ui :is(.mky-notices,.mky-banners,.mky-loads){position:fixed;z-index:var(--mky-layer);pointer-events:none}
+.mky-ui .mky-notices{right:16px;bottom:16px;display:grid;gap:8px;width:min(380px,calc(100vw - 32px))}
+.mky-ui .mky-toast{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--mky-panel);border:1px solid var(--mky-line);border-left:4px solid var(--mky-tone);padding:12px;border-radius:12px;box-shadow:var(--mky-shadow);pointer-events:auto;animation:mky-enter .18s ease-out}
+.mky-ui .mky-notice-text{overflow-wrap:anywhere;white-space:pre-wrap}
+.mky-ui .mky-banners{left:50%;top:20%;transform:translateX(-50%);width:min(580px,calc(100vw - 32px));text-align:center}
+.mky-ui .mky-banner{border:1px solid var(--mky-tone);border-radius:16px;background:var(--mky-panel);box-shadow:var(--mky-shadow);padding:20px;color:var(--mky-fg);font-size:clamp(20px,4vw,30px);overflow-wrap:anywhere;animation:mky-enter .2s ease-out}
+.mky-ui .mky-banner-title{font-size:12px;letter-spacing:.15em;color:var(--mky-tone);font-weight:800;margin-bottom:4px}
+.mky-ui .mky-loads{top:16px;right:16px;max-width:calc(100vw - 32px)}
+.mky-ui .mky-loading{display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid var(--mky-line);border-radius:999px;background:var(--mky-panel);box-shadow:var(--mky-shadow);overflow-wrap:anywhere}
+.mky-ui .mky-spinner{width:18px;height:18px;flex:none;border:2px solid var(--mky-line);border-top-color:var(--mky-primary);border-radius:50%;animation:mky-spin .7s linear infinite}
+@keyframes mky-spin{to{transform:rotate(360deg)}}
+@keyframes mky-enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.mky-ui :is(.mky-btn,.mky-toast,.mky-banner,.mky-spinner){animation:none;transition:none}}

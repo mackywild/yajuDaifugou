@@ -1,0 +1,23 @@
+{
+  "name": "@mackywild/macky-ui",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone browser UI kit with Vue 3 adapter",
+  "exports": {
+    ".": "./src/index.js",
+    "./vue": "./src/vue.js",
+    "./style.css": "./src/style.css"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test",
+    "check": "node --check src/index.js && node --check src/model.js && node --check src/vue.js && node --check demo/demo.js && node --check demo/vue-demo.js && node --check server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "vue": "^3.5.0"
+  }
+}
