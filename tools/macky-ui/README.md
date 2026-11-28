@@ -50,9 +50,8 @@ npm環境で Vue をインポートし、ライブラリのCSSも読み込む。
     const app = Vue.createApp({
       setup() {
         const ui = kit.useUI();
-        return { notify: () => ui.toast("完了") };
-      },
-      template: '<MButton label="実行" @click="notify" />'
+        return () => Vue.h(kit.MButton, { label: "実行", onClick: () => ui.toast("完了") });
+      }
     });
     app.use(kit);
     app.mount("#app");
