@@ -72,7 +72,7 @@ export function createKanban({columns=[],cards=[],onMove}={}){
 export function createImageViewer({src="",alt=""}={}){
  const element=node("figure","mky-image-viewer mky-panel"),frame=node("div","mky-image-frame"),img=node("img");img.alt=alt;
  // Only explicit HTTP(S), blob, relative same-origin URLs and safe raster data types.
- try{const u=new URL(src,document.baseURI);if(["http:","https:","blob:"].includes(u.protocol)||/^data:image\/(?:png|jpeg|gif|webp);base64,/i.test(src))img.src=src;}catch{}
+ try{if(!src)throw Error("No image");const u=new URL(src,document.baseURI);if(["http:","https:","blob:"].includes(u.protocol)||/^data:image\/(?:png|jpeg|gif|webp);base64,/i.test(src))img.src=src;}catch{}
  frame.append(img);let zoom=1;function set(v){zoom=Math.max(.5,Math.min(4,v));img.style.width=(zoom*100)+"%";}
  const tools=node("div","mky-actions");tools.append(action("−",()=>set(zoom-.25)),action("＋",()=>set(zoom+.25)),action("リセット",()=>set(1)));element.append(tools,frame);return element;
 }

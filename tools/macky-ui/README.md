@@ -1,4 +1,4 @@
-# Macky UI 1.1.0
+# Macky UI 2.0.0
 
 野獣大富豪の黒・深緑・金を継承した、ブラウザ向け独立UIライブラリ。Vue 3対応、Vanilla JS対応、Node.jsローカル開発環境。野獣大富豪は参照元のみ。現在も将来も同ゲームへの導入を前提にしない。
 
@@ -13,7 +13,7 @@ http://127.0.0.1:4173/ を開くと Test Studio が起動し、部品別・Vue�
 
 ## 最短の使い方
 
-CSSを読み込み、DOMの準備後に初期化する。コピー配置の場合は src/ 以下の4ファイルを同じ構成で配置する。HTMLを file:// で直接開かずHTTPで配信する。
+CSSを読み込み、DOMの準備後に初期化する。コピー配置の場合は dist/ 以下の全ファイルを同じ構成で配置する。HTMLを file:// で直接開かずHTTPで配信する。
 
     <link rel="stylesheet" href="./macky-ui/style.css">
     <div id="ui-root"><div id="actions"></div></div>
@@ -78,7 +78,7 @@ playground/example.html と example.js をコピーして自由に開発する�
     npm run build
     npm pack
 
-build は Node 標準機能のみで dist/ に4つのネイティブESM/CSS資産とSHA-256付きmanifestを生成する。トランスパイル・minify・単一ファイルbundleではない。別アプリのVite等で最終bundle化できる。npm pack は prepack で自動ビルドし、mackywild-macky-ui-1.1.0.tgz を生成する。公開npm登録は行わない。dist と tgz はGit管理対象外。Vueデモ以外は npm install 不要。
+build は Node 標準機能のみで dist/ に14個のネイティブESM/CSS資産とSHA-256付きmanifestを生成する。トランスパイル・minify・単一ファイルbundleではない。別アプリのVite等で最終bundle化できる。npm pack は prepack で自動ビルドし、mackywild-macky-ui-2.0.0.tgz を生成する。公開npm登録は行わない。dist と tgz はGit管理対象外。Vueデモ以外は npm install 不要。
 
 ### 他のアプリでの利用
 
@@ -86,7 +86,7 @@ build は Node 標準機能のみで dist/ に4つのネイティブESM/CSS資�
 
 方法B: 別のNode/Vueプロジェクトでローカルパッケージを導入。
 
-    npm install /absolute/path/to/mackywild-macky-ui-1.1.0.tgz
+    npm install /absolute/path/to/mackywild-macky-ui-2.0.0.tgz
 
     import { createUI, createButton } from "@mackywild/macky-ui";
     import { createVueKit } from "@mackywild/macky-ui/vue";
@@ -99,3 +99,30 @@ Vueランタイムは導入先の Vue 3 を createVueKit に渡す（同梱し�
 npm start の後 Test Studio の「ビルド済み部品試験」を選択。dist から core/Vue adapter/manifest をロードする。配布版のボタン・通知・グリッドを試す。実際のVue連携はVue 3結合試験で確認する。
 
 野獣大富豪は参考元のみ。ゲーム本体には導入しない。
+
+
+## v2.0 Development Studio
+
+起動後トップに4つのスタジオが表示される。
+
+- Component Builder: 34種の部品を選び、スカラー引数とJSONを編集。プレビュー、イベントログ、JS/Vueコード、設定JSON・実行用HTML出力。
+- Screen Builder: クリック・ドラッグで追加、並べ替え、半幅/全幅、テーマ選択、プレビュー。localStorage保存・復元、JSON入出力、HTML/JS/Vue SFC出力。業務ロジック/APIは生成しない。生成HTMLを playground 直下に保存して再読込すればテスト可能（先に npm run build、Vue は npm install）。別アプリで使う場合は HTML と同じ階層に dist/ を置く。VueスタンドアロンHTMLは vendor/vue.js にVue ESMブラウザ版を配置。JS/SFC出力は npm pack したライブラリを導入先に install。
+- Theme Editor: 6プリセット、色・角丸・余白・フォント・文字サイズ・モーション。localStorage保存、CSS/JSON出力。テーマCSSは共通CSSの後に読み込む。
+- Quality Lab: 100〜100000行のモデル処理・DOM生成計測、ページ型/仮想スクロール、異常値、モック通信（遅延/失敗/タイムアウト）、manifest確認、通知履歴・離脱警告・ショートカット例。描画完了時間・メモリは測定対象外。
+
+### API追加例
+
+    import * as api from "@mackywild/macky-ui";
+    const ui = api.createUI(root, {theme:"light"});
+    api.applyTheme(root,"business");
+    const form=api.createForm({fields:[{name:"name",label:"名称",required:true}],onSubmit:async values=>console.log(values)});
+    root.append(form.element);
+    const grid=api.createAdvancedGrid({rows:[{id:1,name:"製品"}],columns:[{key:"id",readonly:true},{key:"name",required:true}],newRow:rows=>({id:Math.max(0,...rows.map(r=>r.id))+1,name:""}),onChange:(rows,changes)=>console.log(changes)});
+    root.append(grid.element);
+    // 画面終了時: grid.destroy(); form.destroy(); ui.destroy();
+
+Vueは既存の MButton/MGrid 等に加え MComponent(type/options/@action) と25種の名前付き部品を利用可能（合計31登録）。MComponent の options はJSON設定専用。イベントは @action で受ける。直接APIでは独自のコールバックを指定できる。Vue options変更時は部品を再生成するため、編集途中の値を保持するにはアプリ側で管理する。
+
+npm test は従来テストと v2.test.js を実行。ブラウザは Test Studio の「自動ブラウザ試験」と「v2 ブラウザ受入試験」を実行。
+
+詳細は DESIGN_V2.md、API_V2.md、ROADMAP.md、TEST_REPORT_V2.md。

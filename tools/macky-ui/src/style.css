@@ -120,3 +120,5 @@
 .mky-ui .mky-virtual-spacer{position:relative}
 .mky-ui .mky-virtual-window{position:absolute;left:0;right:0;top:0}
 .mky-ui .mky-virtual-cell{min-width:0;padding:5px 9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mky-fg)}
+
+.mky-ui .mky-context-target{position:relative}
