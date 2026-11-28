@@ -317,6 +317,72 @@ private struct GameView: View {
                 }
                 HandArea(game: game, me: me, viewModel: viewModel)
             }
+            .overlay {
+                MyTurnPopup(trigger: MyTurnPopupTrigger(
+                    key: myTurnPopupKey(game),
+                    blocked: viewModel.loading || !viewModel.ruleCutIns.isEmpty
+                ))
+            }
+        }
+    }
+}
+
+
+private struct MyTurnPopupTrigger: Equatable {
+    let key: String?
+    let blocked: Bool
+}
+
+// Presentation state only; no actions or mutations of the game state.
+private func myTurnPopupKey(_ game: GameStateDTO) -> String? {
+    guard game.started, !game.finished, game.isMyTurn,
+          let me = game.selfPlayer, me.rank == nil, !game.isMySevenTransfer else {
+        return nil
+    }
+    // A new lead after an 8-cut may keep the same current player.
+    return "\(game.roomId):\(me.playerId):\(me.handCount)"
+}
+
+private struct MyTurnPopup: View {
+    let trigger: MyTurnPopupTrigger
+    @State private var shownKey: String?
+    @State private var visibleKey: String?
+
+    var body: some View {
+        ZStack {
+            if let key = trigger.key, visibleKey == key, !trigger.blocked {
+                VStack(spacing: 5) {
+                    Text("YOUR TURN")
+                        .font(.caption.weight(.black)).tracking(3)
+                        .foregroundStyle(casinoGold)
+                    Text("あなたの番です！")
+                        .font(.title2.weight(.black))
+                        .foregroundStyle(Color(red: 1, green: 0.96, blue: 0.84))
+                }
+                .padding(.horizontal, 30).padding(.vertical, 18)
+                .background(Color(red: 0.06, green: 0.09, blue: 0.07))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(casinoGold, lineWidth: 1.5))
+                .shadow(radius: 12)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .allowsHitTesting(false)
+        .task(id: trigger) {
+            visibleKey = nil
+            guard let key = trigger.key else {
+                shownKey = nil
+                return
+            }
+            guard !trigger.blocked, shownKey != key else { return }
+            shownKey = key
+            visibleKey = key
+            do {
+                try await Task.sleep(nanoseconds: 1_500_000_000)
+            } catch {
+                return
+            }
+            if !Task.isCancelled { visibleKey = nil }
         }
     }
 }
