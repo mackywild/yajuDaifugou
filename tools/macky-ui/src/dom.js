@@ -1,0 +1,5 @@
+export function node(tag,cls="",value){const e=document.createElement(tag);if(cls)e.className=cls;if(value!=null)e.textContent=String(value);return e;}
+export function appendContent(parent,value){if(value instanceof Node)parent.append(value);else if(value!=null)parent.append(document.createTextNode(String(value)));}
+export const action=(label,fn,variant="secondary")=>{const b=node("button","mky-btn mky-btn--"+variant+" mky-btn--sm",label);b.type="button";if(fn)b.addEventListener("click",fn);return b;};
+export function downloadText(name,content,type="text/plain;charset=utf-8"){const url=URL.createObjectURL(new Blob([content],{type}));const a=node("a");a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+export function selectOptions(el,items){for(const item of items){const o=node("option","",typeof item==="object"?item.label:item);o.value=String(typeof item==="object"?item.value:item);o.disabled=Boolean(item?.disabled);el.append(o);}}
