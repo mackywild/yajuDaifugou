@@ -1,7 +1,7 @@
 import {createUI} from "/src/index.js";
 const ui=createUI(document.querySelector("#root"));
 const pages=document.querySelector("#pages"),status=document.querySelector("#status"),search=document.querySelector("#search"),refresh=document.querySelector("#refresh");
-const groups={catalog:"01 / 部品別カタログ",integration:"02 / 結合・自動・配布版試験",custom:"03 / 独自HTML"};
+const groups={studio:"00 / 開発スタジオ",catalog:"01 / 部品別カタログ",integration:"02 / 結合・自動・配布版試験",custom:"03 / 独自HTML"};
 let list=[],light=false;
 function render(){
   const query=search.value.trim().toLowerCase();

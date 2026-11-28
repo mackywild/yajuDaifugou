@@ -10,7 +10,7 @@ test("dist copies all ESM assets, integrity and exports",async()=>{
  const dir=await mkdtemp(join(tmpdir(),"macky-ui-"));
  try{
   const m=await build(dir);
-  assert.equal(m.format,"esm");assert.equal(Object.keys(m.files).length,4);
+  assert.equal(m.format,"esm");assert.equal(Object.keys(m.files).length,assets.length);
   const onDisk=JSON.parse(await readFile(join(dir,"manifest.json"),"utf8"));assert.deepEqual(onDisk,m);
   for(const name of assets){
    const bytes=await readFile(join(dir,name));assert.equal(bytes.length,m.files[name].bytes);
@@ -20,7 +20,7 @@ test("dist copies all ESM assets, integrity and exports",async()=>{
   await writeFile(join(dir,"package.json"),'{"type":"module"}');
   const core=await import(pathToFileURL(join(dir,"index.js")).href);
   const vue=await import(pathToFileURL(join(dir,"vue.js")).href);
-  assert.equal(typeof core.createUI,"function");assert.equal(typeof vue.createVueKit,"function");
+  assert.equal(typeof core.createUI,"function");assert.equal(typeof core.createAdvancedGrid,"function");assert.equal(typeof core.mountScreen,"function");assert.equal(typeof vue.createVueKit,"function");
   assert.equal(core.gridView([{n:2},{n:1}],[{key:"n"}],{sortKey:"n"}).rows[0].n,1);
  }finally{await rm(dir,{recursive:true,force:true});}
 });

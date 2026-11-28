@@ -1,4 +1,5 @@
-import {buttonClass,createGrid,createMenu,createBadge} from "./index.js";
+import * as api from "./index.js";
+const {buttonClass,createGrid,createMenu,createBadge}=api;
 /** Runtime injection avoids bundler and Vue-version duplication. */
 export function createVueKit(Vue,ui){
   const {defineComponent,h,ref,onMounted,onBeforeUnmount,watch,inject}=Vue;
@@ -23,7 +24,14 @@ export function createVueKit(Vue,ui){
     }});
   }
   const MGrid=wrap("MGrid",createGrid,true),MMenu=wrap("MMenu",createMenu),MBadge=wrap("MBadge",createBadge);
-  const components={MButton,MPanel,MGrid,MMenu,MBadge};
+  const MComponent=defineComponent({name:"MComponent",props:{type:{type:String,required:true},options:{type:Object,default:()=>({})}},emits:["action"],setup(p,{emit}){
+    const host=ref(null);let handle;
+    function sync(){if(!host.value)return;handle?.destroy();handle=null;try{handle=api.mountComponent(api,p.type,p.options,{ui,onEvent:(name,value)=>emit("action",name,value)});host.value.replaceChildren(handle.element);}catch(e){host.value.textContent=String(e?.message||e);emit("action","error",String(e?.message||e));}}
+    onMounted(sync);watch(()=>[p.type,p.options],sync,{deep:true,flush:"post"});onBeforeUnmount(()=>{handle?.destroy();handle=null;});return ()=>h("div",{ref:host});
+  }});
+  const named={MField:"field",MSelect:"select",MCheckbox:"checkbox",MRadio:"radio",MDatePicker:"date",MFilePicker:"file",MForm:"form",MAdvancedGrid:"advancedGrid",MTabs:"tabs",MAccordion:"accordion",MSidebar:"sidebar",MTooltip:"tooltip",MContextMenu:"context",MProgress:"progress",MChart:"chart",MTree:"tree",MCalendar:"calendar",MWizard:"wizard",MTimeline:"timeline",MKanban:"kanban",MImageViewer:"image",MRichText:"richText",MCommandPalette:"command",MRetryPanel:"retry"};
+  const components={MButton,MPanel,MGrid,MMenu,MBadge,MComponent};
+  for(const [name,type] of Object.entries(named))components[name]=defineComponent({name,props:{options:{type:Object,default:()=>({})}},emits:["action"],setup(p,{emit}){return ()=>h(MComponent,{type,options:p.options,onAction:(n,v)=>emit("action",n,v)});}});
   return {...components,install(app){app.provide(key,ui);for(const [name,c] of Object.entries(components))app.component(name,c);},
     useUI(){const service=inject(key);if(!service)throw new Error("Install Macky UI before useUI");return service;}};
 }
