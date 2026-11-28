@@ -72,12 +72,26 @@ export function createAdvancedGrid(options={}){
   function paint(){const r=rect();for(const td of body.querySelectorAll("[data-r]")){const i=Number(td.dataset.r),j=Number(td.dataset.c);const yes=Boolean(r&&i>=r.r0&&i<=r.r1&&j>=r.c0&&j<=r.c1);td.classList.toggle("mky-cell-selected",yes);td.tabIndex=selection?.b.r===i&&selection?.b.c===j||!selection&&i===0&&j===0?0:-1;}}
   function choose(r,c,extend=false){if(!visible[r]||!columns()[c])return;selection={a:extend&&selection?selection.a:{r,c},b:{r,c}};paint();}
   function focusCell(r,c){body.querySelector('[data-r="'+r+'"][data-c="'+c+'"]')?.focus();}
-  function rangeValues(){const x=rect(),cols=columns();if(!x)return [];return visible.slice(x.r0,x.r1+1).map(r=>cols.slice(x.c0,x.c1+1).map(c=>r[c.key]));}
+  // The displayed order defines coordinates; the store is the only value source.
+  function resolveRange(r0,r1,c0,c1){
+    const cols=columns(),ids=visible.slice(r0,r1+1).map(r=>r[o.rowKey]),keys=cols.slice(c0,c1+1).map(c=>c.key);
+    if(r0<0||c0<0||r1<r0||c1<c0||ids.length!==r1-r0+1||keys.length!==c1-c0+1)throw Error("選択範囲が表示ページを超えています");
+    const latest=new Map(store.get().map(r=>[r[o.rowKey],r]));
+    if(ids.some(id=>!latest.has(id)))throw Error("選択行が変更されました。再選択してください");
+    return {ids,keys,latest};
+  }
+  function rangeValues(){
+    const x=rect();if(!x)return [];
+    const {ids,keys,latest}=resolveRange(x.r0,x.r1,x.c0,x.c1);
+    return ids.map(id=>keys.map(key=>latest.get(id)[key]));
+  }
   function paste(text){assertWritable();const x=rect();if(!x)throw Error("セルを選択してください");const values=parseDelimited(text,"\t"),cols=columns(),changes=[];
     if(x.r0+values.length>visible.length||values.some(a=>x.c0+a.length>cols.length))throw Error("貼り付け範囲が表示ページを超えています");
-    values.forEach((line,i)=>line.forEach((value,j)=>changes.push({id:visible[x.r0+i][o.rowKey],key:cols[x.c0+j].key,value})));mutate(changes);
+    const width=values.reduce((n,row)=>Math.max(n,row.length),0);
+    const {ids,keys}=resolveRange(x.r0,x.r0+values.length-1,x.c0,x.c0+width-1);
+    values.forEach((line,i)=>line.forEach((value,j)=>changes.push({id:ids[i],key:keys[j],value})));mutate(changes);
   }
-  function erase(){const x=rect(),cols=columns();if(!x)return;const changes=[];for(let i=x.r0;i<=x.r1;i++)for(let j=x.c0;j<=x.c1;j++)changes.push({id:visible[i][o.rowKey],key:cols[j].key,value:""});mutate(changes);}
+  function erase(){assertWritable();const x=rect();if(!x)return;const {ids,keys}=resolveRange(x.r0,x.r1,x.c0,x.c1);mutate(ids.flatMap(id=>keys.map(key=>({id,key,value:""}))));}
   function edit(td,r,c){
     if(td.querySelector("input"))return;const col=columns()[c],row=store.get().find(x=>x[o.rowKey]===visible[r]?.[o.rowKey]);if(!row||!col)return;if(!cellAllowed(row,col))return;
     const input=node("input","mky-input");input.value=String(row[col.key]??"");if(col.type==="number")input.type="number";td.replaceChildren(input);input.focus();input.select();let finished=false,composing=false;
@@ -160,7 +174,7 @@ export function createAdvancedGrid(options={}){
     else if(e.key==="Delete"){e.preventDefault();erase();}
     
   }catch(err){fail(err);}});
-  element.addEventListener("copy",e=>{if(e.target.matches("input,textarea")||!selection)return;e.preventDefault();const values=rangeValues();e.clipboardData?.setData("text/plain",encodeDelimited(values,"\t",{spreadsheetSafe:true}));try{e.clipboardData?.setData("application/x-macky-grid-tsv",encodeDelimited(values,"\t",{spreadsheetSafe:false}));}catch{}});
+  element.addEventListener("copy",e=>{if(e.target.matches("input,textarea")||!selection)return;e.preventDefault();try{const values=rangeValues();e.clipboardData?.setData("text/plain",encodeDelimited(values,"\t",{spreadsheetSafe:true}));try{e.clipboardData?.setData("application/x-macky-grid-tsv",encodeDelimited(values,"\t",{spreadsheetSafe:false}));}catch{}}catch(err){fail(err);}});
   element.addEventListener("paste",e=>{if(e.target.matches("input,textarea")||!selection)return;e.preventDefault();try{paste(e.clipboardData?.getData("application/x-macky-grid-tsv")||e.clipboardData?.getData("text/plain")||"");}catch(err){fail(err);}});
   render();
   return {element,setAccess,getSelectedIds:()=>[...selectedIds],isBusy:()=>importing,getRows:store.get,getChanges:()=>store.changes(o.rowKey),isDirty:store.isDirty,commit(){store.commit();revision++;},reset(){checkTransition(store.peekReset());store.reset();revision++;clearSelection();render();notify();},undo,redo,paste,copy:({spreadsheetSafe=true}={})=>encodeDelimited(rangeValues(),"\t",{spreadsheetSafe}),exportCSV,previewCSV,importCSV,select:choose,editCell:(id,key,value)=>mutate([{id,key,value}]),destroy(){if(disposed)return;activeEditor?.cancel();disposed=true;clearTimeout(renderTimer);window.removeEventListener("pointerdown",startPointer,true);window.removeEventListener("pointerup",stopDrag,true);window.removeEventListener("pointercancel",stopDrag,true);window.removeEventListener("blur",stopDrag);element.remove();}};

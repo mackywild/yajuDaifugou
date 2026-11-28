@@ -19,7 +19,7 @@ export function validateValue(value,rules={},all={}){
   if(rules.minLength!=null&&String(value).length<rules.minLength)return rules.minLength+"文字以上入力してください";
   if(rules.maxLength!=null&&String(value).length>rules.maxLength)return rules.maxLength+"文字以内で入力してください";
   const kind=rules.type??(/^\d{4,}-\d{2}-\d{2}$/.test(String(rules.min??rules.max??""))?"date":/^\d{2}:\d{2}/.test(String(rules.min??rules.max??""))?"time":"number");
-  if(kind==="date"||kind==="time"||rules.min!=null||rules.max!=null){
+  if(kind==="date"||kind==="time"||kind==="number"&&rules.type==="number"||rules.min!=null||rules.max!=null){
     const convert=kind==="date"?dateScalar:kind==="time"?timeScalar:Number;
     const n=convert(value),lo=rules.min==null?null:convert(rules.min),hi=rules.max==null?null:convert(rules.max);
     if(!Number.isFinite(n))return "入力形式が正しくありません";
@@ -35,7 +35,7 @@ export function validateValue(value,rules={},all={}){
 export function createField(options={}){
   const o={type:"text",label:"",name:"",...options},id="mky-field-"+(++sequence);
   const element=node("div","mky-field"),error=node("div","mky-field-error"),hint=node("div","mky-muted",o.hint);
-  error.id=id+"-error";error.setAttribute("aria-live","polite");hint.id=id+"-hint";
+  error.id=id+"-error";error.tabIndex=-1;error.setAttribute("aria-live","polite");hint.id=id+"-hint";
   const choice=o.type==="radio"||o.type==="checkbox-group";
   let input,controls=[],intrinsicDisabled=[];
   if(choice){
@@ -81,14 +81,38 @@ export function createField(options={}){
     if(inherited)parentAccess={disabled:Boolean(inherited.disabled),readonly:Boolean(inherited.readonly)};
     const disabled=isDisabled(),readonly=isReadonly(),native=nativeReadonly();
     for(const [i,c] of controls.entries()){c.disabled=disabled||intrinsicDisabled[i]||readonly&&!native;if(native)c.readOnly=readonly;c.setAttribute("aria-disabled",String(c.disabled));}
-    element.setAttribute("aria-disabled",String(disabled));if(disabled||readonly){error.textContent="";controls.forEach(c=>c.setAttribute("aria-invalid","false"));}
+    element.setAttribute("aria-disabled",String(disabled));
+    // Access changes never clear validation results or alter the submitted value.
   }
-  function validate(all={}){const value=getValue();let msg=isDisabled()||isReadonly()?"":validateValue(value,{...o,...o.rules},all);
-    if(!msg&&!isDisabled()&&!isReadonly()&&controls.some(c=>c.validity&&!c.validity.valid))msg=controls.find(c=>!c.validity.valid).validationMessage;
-    error.textContent=msg;controls.forEach(c=>c.setAttribute("aria-invalid",String(Boolean(msg))));return !msg;}
+  function nativeError(){
+    // A disabled/readonly control may be barred from native constraint validation.
+    // Validate its retained value with an enabled detached equivalent, without
+    // changing live controls (particularly file inputs and radio groups).
+    const invalid=controls.find(c=>c.validity&&!c.validity.valid);
+    if(invalid&&!(isDisabled()||isReadonly()))return invalid.validationMessage||"入力値を確認してください";
+    if(choice||!["INPUT","TEXTAREA"].includes(input.tagName)||["file","checkbox","radio"].includes(input.type))return "";
+    if(!(isDisabled()||isReadonly()))return "";
+    const probe=node(input.tagName.toLowerCase());
+    if(input.tagName==="INPUT")probe.type=input.type;
+    for(const k of ["min","max","step","multiple","required"])if(k in input&&input[k]!=null)probe[k]=input[k];
+    // Preserve the step base used by the original control.
+    if("defaultValue" in input)probe.defaultValue=input.defaultValue;
+    probe.value=input.value;
+    return probe.validity&&!probe.validity.valid?(probe.validationMessage||"入力値を確認してください"):"";
+  }
+  function validate(all={},value=getValue()){
+    // getValues includes every field, therefore every field is validated.
+    let msg=validateValue(value,{...o,...o.rules},all);
+    if(!msg)msg=nativeError();
+    error.textContent=msg;controls.forEach(c=>c.setAttribute("aria-invalid",String(Boolean(msg))));return !msg;
+  }
+  function focusError(){
+    if((isDisabled()||isReadonly()||controls.every(c=>c.disabled))&&error.textContent){error.focus();return;}
+    (controls.find(c=>!c.disabled)||error).focus();
+  }
   if(o.value!==undefined)setValue(o.value);setAccess();
   for(const c of controls){c.addEventListener("change",()=>{if(isDisabled()||isReadonly()||c.disabled)return;if(o.validateOnChange!==false)validate();o.onChange?.(getValue());});}
-  return {element,input,getValue,setValue,validate,setAccess,focus:()=>controls[0]?.focus(),destroy:()=>element.remove()};
+  return {element,input,getValue,setValue,validate,setAccess,focus:focusError,destroy:()=>element.remove()};
 }
 export const createTextBox=o=>createField({...o,type:o?.type||"text"});
 export const createSelect=o=>createField({...o,type:"select"});
@@ -117,11 +141,14 @@ export function createForm({fields=[],values={},submitLabel="保存",disabled=fa
   setAccess();
   function getValues(){return Object.fromEntries([...map].map(([k,f])=>[k,f.getValue()]));}
   function setValues(next){for(const [k,v] of Object.entries(next))map.get(k)?.setValue(v);}
-  function validate(){const all=getValues();let first=null;for(const f of map.values())if(!f.validate(all)&&!first)first=f;first?.focus();return !first;}
+  function validateSnapshot(all){let first=null;for(const [name,f] of map)if(!f.validate(all,all[name])&&!first)first=f;first?.focus();return !first;}
+  function validate(){return validateSnapshot(getValues());}
   async function run(){
-    if(busy||disposed||access.disabled||access.readonly||!validate())return false;
+    if(busy||disposed||access.disabled||access.readonly)return false;
+    const payload=getValues();
+    if(!validateSnapshot(payload))return false;
     busy=true;submit.disabled=true;submit.setAttribute("aria-busy","true");message.textContent="";
-    try{await onSubmit?.(getValues());return true;}
+    try{await onSubmit?.(payload);return true;}
     catch(e){message.textContent=String(e?.message||e);onError?.(e);return false;}
     finally{busy=false;refreshSubmit();submit.removeAttribute("aria-busy");}
   }
