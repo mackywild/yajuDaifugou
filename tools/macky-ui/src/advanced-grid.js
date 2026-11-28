@@ -85,7 +85,8 @@ export function createAdvancedGrid(options={}){
       const plan=previewCSV(text);
       const {added,updated,deleted}=plan.changes;
       if(!added.length&&!updated.length&&!deleted.length)return false;
-      const accepted=await o.confirmCSVImport({added:added.map(r=>({...r})),updated:updated.map(r=>({...r})),deleted:deleted.map(r=>({...r}))});
+      const old=new Map(store.get().map(r=>[r[o.rowKey],r]));
+      const accepted=await o.confirmCSVImport({added:added.map(r=>({...r})),updated:updated.map(r=>({...r})),deleted:deleted.map(r=>({...r})),updates:updated.map(r=>({before:{...old.get(r[o.rowKey])},after:{...r}}))});
       if(accepted!==true)return false;
       if(disposed||revision!==before)throw Error("確認中にデータが変更されました。再度取り込んでください");
       // Recheck policy after the async confirmation.
