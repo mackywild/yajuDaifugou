@@ -23,7 +23,7 @@ export function createAdvancedGrid(options={}){
   function apply(rows){store.apply(unique(rows));clearSelection();render();notify();}
   function mutate(changes){
     const rows=store.get(),byId=new Map(rows.map(r=>[r[o.rowKey],r]));
-    for(const {id,key,value} of changes){const r=byId.get(id),c=o.columns.find(c=>c.key===key);if(!r||!c||key===o.rowKey)throw Error("編集できないセル");r[key]=normalizeCell(value,c,r);}
+    for(const {id,key,value} of changes){const r=byId.get(id),c=o.columns.find(c=>c.key===key);if(!r||!c||key===o.rowKey||o.canEdit&&!o.canEdit(r,c))throw Error("編集できないセル");r[key]=normalizeCell(value,c,r);}
     apply(rows);
   }
   function rect(){if(!selection)return null;return {r0:Math.min(selection.a.r,selection.b.r),r1:Math.max(selection.a.r,selection.b.r),c0:Math.min(selection.a.c,selection.b.c),c1:Math.max(selection.a.c,selection.b.c)};}
@@ -37,7 +37,7 @@ export function createAdvancedGrid(options={}){
   }
   function erase(){const x=rect(),cols=columns();if(!x)return;const changes=[];for(let i=x.r0;i<=x.r1;i++)for(let j=x.c0;j<=x.c1;j++)changes.push({id:visible[i][o.rowKey],key:cols[j].key,value:""});mutate(changes);}
   function edit(td,r,c){
-    if(td.querySelector("input"))return;const col=columns()[c],row=visible[r];if(col.key===o.rowKey||col.readonly||col.editable===false||typeof col.editable==="function"&&!col.editable(row))return;
+    if(td.querySelector("input"))return;const col=columns()[c],row=visible[r];if(col.key===o.rowKey||o.canEdit&&!o.canEdit(row,col)||col.readonly||col.editable===false||typeof col.editable==="function"&&!col.editable(row))return;
     const input=node("input","mky-input");input.value=String(row[col.key]??"");if(col.type==="number")input.type="number";td.replaceChildren(input);input.focus();input.select();let finished=false;
     const finish=save=>{if(finished)return;finished=true;try{if(save)mutate([{id:row[o.rowKey],key:col.key,value:input.value}]);else render();}catch(e){fail(e);render();}focusCell(r,c);};
     input.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key==="Escape"){e.preventDefault();e.stopPropagation();finish(e.key==="Enter");}});
@@ -46,7 +46,7 @@ export function createAdvancedGrid(options={}){
   const guarded=fn=>()=>{try{fn();}catch(e){fail(e);}};
   const undo=()=>{if(store.undo()){clearSelection();render();notify();}};
   const redo=()=>{if(store.redo()){clearSelection();render();notify();}};
-  const deleteRows=()=>{if(!selectedIds.size)return;const rows=store.get().filter(r=>!selectedIds.has(r[o.rowKey]));clearSelection();apply(rows);};
+  const deleteRows=()=>{if(!selectedIds.size)return;const rows=store.get().filter(r=>!selectedIds.has(r[o.rowKey])||o.canDelete&&!o.canDelete(r));clearSelection();apply(rows);};
   const addRow=()=>{if(!o.newRow)throw Error("newRow関数が必要です");const r=o.newRow(store.get());apply([...store.get(),r]);};
   const exportCSV=()=>encodeDelimited([o.columns.map(c=>c.key),...filtered().map(r=>o.columns.map(c=>r[c.key]))]);
   function importCSV(text){const [header,...lines]=parseDelimited(text);if(new Set(header).size!==header.length||header.some(k=>!o.columns.some(c=>c.key===k))||!header.includes(o.rowKey))throw Error("CSVヘッダーが不正です");
@@ -67,7 +67,7 @@ export function createAdvancedGrid(options={}){
       th.append(action((c.label||c.key)+(sort===c.key?(desc?" ↓":" ↑"):""),()=>{desc=sort===c.key&&!desc;sort=c.key;page=0;clearSelection();render();},"ghost"));
       if(c.width)th.style.width=Math.max(60,Number(c.width)||120)+"px";
       if(c.fixed){th.classList.add("mky-fixed");th.style.left=50+cols.slice(0,cols.indexOf(c)).filter(x=>x.fixed).reduce((n,x)=>n+(Number(x.width)||140),0)+"px";}
-      const grip=node("input","mky-input");grip.type="range";grip.min="60";grip.max="500";grip.value=String(c.width||120);grip.setAttribute("aria-label",(c.label||c.key)+" 列幅");grip.addEventListener("input",()=>{c.width=Number(grip.value);th.style.width=c.width+"px";});grip.addEventListener("change",()=>render());th.append(grip);hr.append(th);
+      const grip=node("input","mky-input");grip.type="range";grip.min="60";grip.max="500";grip.value=String(c.width||120);grip.setAttribute("aria-label",(c.label||c.key)+" 列幅");grip.addEventListener("input",()=>{c.width=Number(grip.value);th.style.width=c.width+"px";});grip.addEventListener("change",()=>render());th.append(grip);const resize=node("span","mky-resize-grip");resize.title="ドラッグして列幅を変更";resize.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();const x=e.clientX,start=th.getBoundingClientRect().width;resize.setPointerCapture(e.pointerId);const drag=ev=>{c.width=Math.max(60,Math.min(500,start+ev.clientX-x));th.style.width=c.width+"px";};const end=()=>{resize.removeEventListener("pointermove",drag);resize.removeEventListener("pointerup",end);resize.removeEventListener("pointercancel",end);render();};resize.addEventListener("pointermove",drag);resize.addEventListener("pointerup",end);resize.addEventListener("pointercancel",end);});th.append(resize);hr.append(th);
       const filter=node("input","mky-input");filter.placeholder="絞込";filter.value=filters.get(c.key)||"";filter.setAttribute("aria-label",(c.label||c.key)+" フィルター");filter.addEventListener("change",()=>{filters.set(c.key,filter.value);page=0;clearSelection();render();});const ft=node("th");ft.append(filter);fr.append(ft);
     }
     head.replaceChildren(hr,fr);body.replaceChildren();

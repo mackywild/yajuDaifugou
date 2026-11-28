@@ -230,3 +230,5 @@ export * from "./widgets.js";
 export * from "./services.js";
 export * from "./registry.js";
 export * from "./render.js";
+
+export * from "./virtual-grid.js";

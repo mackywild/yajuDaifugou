@@ -3,7 +3,7 @@ import {fileURLToPath,pathToFileURL} from "node:url";
 import {join,resolve} from "node:path";
 import {createHash} from "node:crypto";
 const root=fileURLToPath(new URL(".",import.meta.url));
-export const assets=["index.js","model.js","vue.js","style.css","dom.js","form.js","grid-model.js","advanced-grid.js","theme.js","widgets.js","services.js","registry.js","render.js"];
+export const assets=["index.js","model.js","vue.js","style.css","dom.js","form.js","grid-model.js","advanced-grid.js","theme.js","widgets.js","services.js","registry.js","render.js","virtual-grid.js"];
 // Native ESM distribution: no bundler or external download required.
 export async function build(output=join(root,"dist")){
   await mkdir(output,{recursive:true});

@@ -110,3 +110,13 @@
 @container(max-width:600px){.mky-ui .mky-screen-grid{grid-template-columns:1fr}.mky-ui :is(.mky-span-1,.mky-span-2){grid-column:1}}
 @media(max-width:600px){.mky-ui .mky-screen-grid{grid-template-columns:1fr}.mky-ui :is(.mky-span-1,.mky-span-2){grid-column:1}.mky-ui .mky-calendar-grid button{min-height:42px;font-size:12px}}
 @media(prefers-reduced-motion:reduce){.mky-ui .mky-btn{transition:none}}
+
+.mky-ui .mky-advanced th{position:relative}.mky-ui .mky-advanced th.mky-fixed{position:sticky}
+.mky-ui .mky-resize-grip{position:absolute;top:0;right:0;width:7px;height:100%;cursor:col-resize;touch-action:none;border-right:2px solid var(--mky-line)}
+.mky-ui .mky-virtual-table{overflow-x:auto;margin-top:10px;min-width:0}
+.mky-ui .mky-virtual-row{display:grid;align-items:center;min-width:max-content;border-bottom:1px solid var(--mky-line);box-sizing:border-box}
+.mky-ui .mky-virtual-head{background:var(--mky-panel2);min-height:38px}
+.mky-ui .mky-virtual-scroll{overflow:auto;position:relative}
+.mky-ui .mky-virtual-spacer{position:relative}
+.mky-ui .mky-virtual-window{position:absolute;left:0;right:0;top:0}
+.mky-ui .mky-virtual-cell{min-width:0;padding:5px 9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mky-fg)}

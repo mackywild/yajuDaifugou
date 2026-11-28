@@ -10,6 +10,7 @@ export const registry={
  badge:entry("バッジ","createBadge",{label:"完了",type:"success"}),
  menu:entry("メニュー","createMenu",{items:sampleItems,activeId:"home",orientation:"horizontal"}),
  grid:entry("読み取りグリッド","createGrid",{rows:rowData,columns:cols,pageSize:5},"データ"),
+ virtualGrid:entry("仮想スクロールグリッド","createVirtualGrid",{rows:rowData,columns:cols,height:240},"データ"),
  advancedGrid:entry("高機能グリッド","createAdvancedGrid",{rows:rowData,columns:cols,pageSize:10},"データ"),
  popup:entry("確認ダイアログ","ui.confirm",{message:"実行しますか？",title:"確認"}),
  toast:entry("トースト","ui.toast",{message:"完了しました",type:"success",duration:3000}),
