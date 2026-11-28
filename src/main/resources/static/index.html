@@ -464,7 +464,15 @@
       body.game-active .cutin-main{font-size:clamp(1.7rem,11vw,3rem)}
       body.game-active .cutin-route{font-size:1rem;padding:7px 20px}
     }
-  </style>
+  
+    #myTurnPopup{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1900;
+      pointer-events:none;box-sizing:border-box;width:max-content;max-width:90vw;
+      padding:18px 30px;text-align:center;border:1px solid #e8c36a;border-radius:14px;
+      background:#101813f5;color:#fff5d7;box-shadow:0 8px 35px #000a,0 0 24px #d9b45835}
+    #myTurnPopup[hidden]{display:none}
+    #myTurnPopup span{display:block;color:#e8c36a;font-size:12px;font-weight:900;letter-spacing:.25em}
+    #myTurnPopup strong{display:block;margin-top:5px;font-size:clamp(19px,4vw,27px);font-weight:900}
+</style>
 </head>
 <body>
 <div class="app-bg"></div>
@@ -767,6 +775,11 @@
   <div id="cpuActionStage"></div>
 </div>
 
+<div id="myTurnPopup" role="status" aria-live="polite" hidden>
+  <span>YOUR TURN</span>
+  <strong>あなたの番です！</strong>
+</div>
+
 <div id="cutin" class="cutin hidden">
   <div class="cutin-box">
     <div id="cutinTitle" class="cutin-title"></div>
@@ -811,6 +824,49 @@ let cpuSequenceToken = 0;
 let collectionCategory='AVATAR';
 const cutinQueue = [];
 const playLog = [];
+/* Presentation only: never changes the authoritative game state or action availability. */
+let myTurnPopupSeenKey=null;
+let myTurnPopupTimer=null;
+
+function myTurnPopupKey(state){
+  if(!state || !state.started || state.finished)return null;
+  const self=state.players.find(function(p){return p.self;});
+  if(!self || self.rank!=null || self.playerId!==state.currentPlayerId)return null;
+  const seven=state.sevenTransfer||{};
+  if(seven.pending && seven.sourcePlayerId===self.playerId)return null;
+  // A smaller hand also covers a new lead after an 8-cut without a player change.
+  return JSON.stringify([state.roomId,self.playerId,self.handCount]);
+}
+
+function hideMyTurnPopup(){
+  if(myTurnPopupTimer!==null)clearTimeout(myTurnPopupTimer);
+  myTurnPopupTimer=null;
+  byId('myTurnPopup').hidden=true;
+}
+
+function resetMyTurnPopup(){
+  hideMyTurnPopup();
+  myTurnPopupSeenKey=null;
+}
+
+function updateMyTurnPopup(state){
+  if(byId('gameScreen').classList.contains('hidden') || !roomId || !state || state.roomId!==roomId){
+    resetMyTurnPopup();
+    return;
+  }
+  const key=myTurnPopupKey(state);
+  if(key===null){resetMyTurnPopup();return;}
+  if(cpuSequenceRunning || cutinBusy || cutinQueue.length){
+    hideMyTurnPopup();
+    return;
+  }
+  if(key===myTurnPopupSeenKey)return;
+  hideMyTurnPopup();
+  myTurnPopupSeenKey=key;
+  byId('myTurnPopup').hidden=false;
+  myTurnPopupTimer=setTimeout(hideMyTurnPopup,1500);
+}
+
 
 const screens = ['profileScreen','menuScreen','missionScreen','profileMetaScreen','collectionScreen','presentScreen','settingsScreen','multiScreen','setupScreen','roomScreen','gameScreen','resultScreen'];
 
@@ -939,6 +995,7 @@ function byId(id){ return document.getElementById(id); }
 function showOnly(id){
   screens.forEach(function(screenId){ byId(screenId).classList.toggle('hidden',screenId !== id); });
   document.body.classList.toggle('game-active',id==='gameScreen');
+  if(id!=='gameScreen')resetMyTurnPopup();
 }
 function toast(text,error){
   const el=byId('toast');
@@ -1800,6 +1857,7 @@ function renderGame(state){
   pushStateLog(state);
   renderLog();
   byId('leaveAfterGameButton').classList.add('hidden');
+  updateMyTurnPopup(state);
 }
 
 function renderRules(state){
@@ -2006,6 +2064,7 @@ function processEvents(events){
 function showNextCutin(){
   if(cutinBusy || !cutinQueue.length)return;
   cutinBusy=true;
+  hideMyTurnPopup();
   const item=cutinQueue.shift();
   const overlay=byId('cutin');
   overlay.className='cutin '+(item.kind||'yaju');
@@ -2033,6 +2092,7 @@ function showNextCutin(){
     overlay.className='cutin hidden';
     cutinBusy=false;
     showNextCutin();
+    updateMyTurnPopup(currentState);
   },item.duration||2300);
 }
 

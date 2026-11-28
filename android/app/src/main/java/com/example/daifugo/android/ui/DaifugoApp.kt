@@ -292,6 +292,9 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                         }
                     }
 
+
+                    MyTurnPopup(state)
+
                     if (state.loading) {
                         Box(
                             modifier = Modifier
@@ -333,6 +336,61 @@ fun DaifugoApp(viewModel: DaifugoViewModel) {
                             onDismiss = viewModel::clearRuleCutIn,
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+
+/** Read-only turn notification shared by local CPU and online games. */
+private fun myTurnPopupKey(state: DaifugoUiState): String? {
+    val game = state.gameState ?: return null
+    val self = game.selfPlayer ?: return null
+    if (state.screen != DaifugoScreen.GAME || !game.started || game.finished ||
+        !game.isMyTurn || self.rank != null || game.isMySevenTransfer
+    ) return null
+    // A new lead after an 8-cut may keep the same current player.
+    return "${game.roomId}:${self.playerId}:${self.handCount}"
+}
+
+@Composable
+private fun MyTurnPopup(state: DaifugoUiState) {
+    val turnKey = myTurnPopupKey(state)
+    val blocked = state.cpuTurnInProgress || state.cpuTurnAnimation != null ||
+        state.loading || state.yajuCutIn != null || state.ruleCutIns.isNotEmpty()
+    var shownKey by remember { mutableStateOf<String?>(null) }
+    var visibleKey by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(turnKey, blocked) {
+        visibleKey = null
+        if (turnKey == null) {
+            shownKey = null
+        } else if (!blocked && shownKey != turnKey) {
+            shownKey = turnKey
+            visibleKey = turnKey
+            delay(1500)
+            visibleKey = null
+        }
+    }
+
+    // A plain layout (not a Dialog or clickable surface) leaves gameplay input untouched.
+    if (turnKey != null && visibleKey == turnKey && !blocked) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFF101813),
+                border = BorderStroke(1.5.dp, CasinoGold),
+                shadowElevation = 12.dp,
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 30.dp, vertical = 18.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text("YOUR TURN", color = CasinoGold, fontSize = 12.sp,
+                        fontWeight = FontWeight.Black, letterSpacing = 3.sp)
+                    Text("あなたの番です！", color = Color(0xFFFFF5D7), fontSize = 24.sp,
+                        fontWeight = FontWeight.Black)
                 }
             }
         }
