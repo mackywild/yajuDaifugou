@@ -1,4 +1,4 @@
-# Macky UI 2.0.0
+# Macky UI 2.0.1
 
 野獣大富豪の黒・深緑・金を継承した、ブラウザ向け独立UIライブラリ。Vue 3対応、Vanilla JS対応、Node.jsローカル開発環境。野獣大富豪は参照元のみ。現在も将来も同ゲームへの導入を前提にしない。
 
@@ -78,7 +78,7 @@ playground/example.html と example.js をコピーして自由に開発する�
     npm run build
     npm pack
 
-build は Node 標準機能のみで dist/ に14個のネイティブESM/CSS資産とSHA-256付きmanifestを生成する。トランスパイル・minify・単一ファイルbundleではない。別アプリのVite等で最終bundle化できる。npm pack は prepack で自動ビルドし、mackywild-macky-ui-2.0.0.tgz を生成する。公開npm登録は行わない。dist と tgz はGit管理対象外。Vueデモ以外は npm install 不要。
+build は Node 標準機能のみで dist/ に14個のネイティブESM/CSS資産とSHA-256付きmanifestを生成する。トランスパイル・minify・単一ファイルbundleではない。別アプリのVite等で最終bundle化できる。npm pack は prepack で自動ビルドし、mackywild-macky-ui-2.0.1.tgz を生成する。公開npm登録は行わない。dist と tgz はGit管理対象外。Vueデモ以外は npm install 不要。
 
 ### 他のアプリでの利用
 
@@ -86,7 +86,7 @@ build は Node 標準機能のみで dist/ に14個のネイティブESM/CSS資�
 
 方法B: 別のNode/Vueプロジェクトでローカルパッケージを導入。
 
-    npm install /absolute/path/to/mackywild-macky-ui-2.0.0.tgz
+    npm install /absolute/path/to/mackywild-macky-ui-2.0.1.tgz
 
     import { createUI, createButton } from "@mackywild/macky-ui";
     import { createVueKit } from "@mackywild/macky-ui/vue";
@@ -121,8 +121,46 @@ npm start の後 Test Studio の「ビルド済み部品試験」を選択。dis
     root.append(grid.element);
     // 画面終了時: grid.destroy(); form.destroy(); ui.destroy();
 
-Vueは既存の MButton/MGrid 等に加え MComponent(type/options/@action) と25種の名前付き部品を利用可能（合計31登録）。MComponent の options はJSON設定専用。イベントは @action で受ける。直接APIでは独自のコールバックを指定できる。Vue options変更時は部品を再生成するため、編集途中の値を保持するにはアプリ側で管理する。
+Vueは既存の MButton/MGrid 等に加え MComponent(type/options/@action) と25種の名前付き部品を利用可能（合計31登録）。MComponent の options はJSON設定専用。イベントは @action で受ける。直接APIでは独自のコールバックを指定できる。状態を持つVue部品のoptionsは初期設定。再生成する場合はresetKeyを変更する。フォームの非同期保存はsubmitTaskを指定する。
 
 npm test は従来テストと v2.test.js を実行。ブラウザは Test Studio の「自動ブラウザ試験」と「v2 ブラウザ受入試験」を実行。
 
 詳細は DESIGN_V2.md、API_V2.md、ROADMAP.md、TEST_REPORT_V2.md。
+
+
+## v2.0.1 レビュー修正・互換性の注意
+
+### CSV安全取込（Advanced Grid）
+
+CSV取込は既定で無効。JSON Builderでは許可できない。信頼済みアプリの直接APIで allowCSVImport: true と confirmCSVImport(diff) を両方指定する。全件置換のため、全列ヘッダー必須、空データ拒否、必須・型・ID・編集権限検証。CSVで新規追加・削除をする場合は canAdd / canDelete が明示的に true を返すこと。既存のID型を保持する。confirmCSVImportは更新前後（updates）を含む差分をユーザーに表示し、承認時だけtrueを返す。false・例外・確認中のデータ変更では取込を反映しない。importCSV は async Promise<boolean> に変更。previewCSV(text) で検証・差分のみ取得できる。
+
+    const grid=api.createAdvancedGrid({
+      rows,columns,
+      allowCSVImport:true,
+      canAdd:()=>false,
+      canDelete:()=>false,
+      confirmCSVImport:diff=>{
+        preview.textContent=JSON.stringify(diff,null,2);
+        return ui.confirm("差分を確認し、反映しますか？");
+      }
+    });
+    const applied=await grid.importCSV(csvText);
+
+実行サンプル: Test Studio の独自HTML「csv-import.html」。通常編集の権限はクライアント側の補助であり、サーバー側の認可を必ず実施する。
+
+### Vueの状態と非同期送信
+
+    <MForm :options="formOptions"
+           :reset-key="formResetKey"
+           :submit-task="saveToServer"
+           @action="handleNotification" />
+
+saveToServer(values) は実際の保存Promiseを返す。@action は成功・変更・エラー等の通知であり、保存処理を行う場所ではない。submitTask がrejectするとフォームがエラー表示し再試行可能。状態を持つ部品（フォーム、入力、Advanced Grid、タブ、カンバン等）は同じtype/resetKeyの間はoptionsを再適用しない。新しい設定を明示反映する際にresetKeyを変更する。未保存内容を破棄するか導入先で確認する。処理中の再生成は拒否してreset-blocked通知、終了後に再度resetKeyを変更する。コンポーネント自体のアンマウントは導入先の責務。生成Vue SFCにもsubmitTask(values,componentId) prop、生成JSのmountAppにも第3引数submitTaskを追加。
+
+### その他
+
+- 日付・時刻・数値の範囲検証を分離（日付のうるう年、時刻の深夜跨ぎ対応）。
+- 外部コピーは数式文字列を緩和するTSV、内部コピーはカスタムMIMEで元値保持。clipboardがカスタムMIMEを落とす環境では外部向けTSVにフォールバック。Excelの全バージョンでの安全性を保証するものではない。copy({spreadsheetSafe:false}) は信頼済み内部用途のみ。
+- IME変換中のEnter/Escapeは確定操作として扱わない。
+- 編集終了後はrowKey/column keyでフォーカス復元。blurのDOM再描画はポインター操作終了まで遅延。ソート・絞込で対象が表示範囲外なら別行へ強制フォーカスしない。
+- npm test、Test Studio「レビュー回帰試験」（Vueはnpm install必要）を実施。実IMEとExcel貼付は手動試験も必要。

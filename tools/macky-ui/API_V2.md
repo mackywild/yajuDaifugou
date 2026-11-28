@@ -38,7 +38,7 @@ type: text/email/password/number/date/time/textarea/select/checkbox/radio/checkb
 |encodeDelimited|rows,separator,{spreadsheetSafe}|文字列|
 |normalizeCell|raw,column,row|型変換済み値、無効なら例外|
 
-列: key,label,type:number/boolean（既定は文字列入力）,readonly,editable:boolean/function,required,validate(value,row),format(value,row),tone(value,row),width,fixed,aggregate:sum/avg/count。select(r,c,extend) は現在表示ページの0始まり位置、editCell(id,key,value) は行キー。paste(tsv) は選択位置から全検証。importCSVは全行置換。新規行はnewRow関数を指定。表示用フォーマットと編集値は別。
+列: key,label,type:number/boolean（既定は文字列入力）,readonly,editable:boolean/function,required,validate(value,row),format(value,row),tone(value,row),width,fixed,aggregate:sum/avg/count。select(r,c,extend) は現在表示ページの0始まり位置、editCell(id,key,value) は行キー。paste(tsv) は選択位置から全検証。importCSVはv2.0.1で既定無効の非同期全行置換。新規行はnewRow関数を指定。表示用フォーマットと編集値は別。
 
 ## ナビゲーション・データ・補助部品
 
@@ -107,4 +107,27 @@ onEvent(name,value,id) のidはmountScreen時。Builder用optionsはJSON専用�
     const kit=createVueKit(Vue,ui);
     app.use(kit);
 
-旧部品 MButton/MPanel/MGrid/MMenu/MBadge はそのまま。新規は MComponent(type,options,action event) と名前付き部品 MField/MSelect/MCheckbox/MRadio/MDatePicker/MFilePicker/MForm/MAdvancedGrid/MVirtualGrid/MTabs/MAccordion/MSidebar/MTooltip/MContextMenu/MProgress/MChart/MTree/MCalendar/MWizard/MTimeline/MKanban/MImageViewer/MRichText/MCommandPalette/MRetryPanel。optionsの変更時に再生成。JSON以外の高度な関数を渡す場合は直接APIをVueライフサイクルで使用する。
+旧部品 MButton/MPanel/MGrid/MMenu/MBadge はそのまま。新規は MComponent(type,options,action event) と名前付き部品 MField/MSelect/MCheckbox/MRadio/MDatePicker/MFilePicker/MForm/MAdvancedGrid/MVirtualGrid/MTabs/MAccordion/MSidebar/MTooltip/MContextMenu/MProgress/MChart/MTree/MCalendar/MWizard/MTimeline/MKanban/MImageViewer/MRichText/MCommandPalette/MRetryPanel。状態保持部品は同じtype/resetKeyのoptions変更で再生成しない。JSON以外の高度な関数を渡す場合は直接APIをVueライフサイクルで使用する。
+
+
+## v2.0.1 追加・変更API
+
+|API / option|仕様|
+|---|---|
+|planCSVImport(text,{rows,columns,rowKey,allowCSVImport,canEdit,canAdd,canDelete})|副作用なし。検証済み rows と changes を返す。不正なら例外|
+|createAdvancedGrid.allowCSVImport|既定false。trueとconfirmCSVImport関数の両方が必要|
+|createAdvancedGrid.confirmCSVImport(diff)|added/updated/deleted/updates(before,after)を受け取り、booleanまたはPromise<boolean>。trueだけ承認|
+|createAdvancedGrid.canAdd(row)|CSV新規行は明示true必須。通常の行追加でも指定されていれば適用|
+|createAdvancedGrid.canDelete(row)|CSV削除は明示true必須|
+|grid.previewCSV(text)|取込計画（変更なし、履歴不変）|
+|grid.importCSV(text)|Promise<boolean>。キャンセル/変更なしfalse。エラー/競合はreject|
+|grid.copy({spreadsheetSafe=true})|既定は外部表計算ソフト向け。falseは内部raw TSV|
+|grid.isBusy()|CSV確認・取込処理中|
+|MComponent / 名前付きVue部品 resetKey|状態保持部品の再生成を明示するString/Number。既定0|
+|MComponent / MForm submitTask(values)|保存Promiseを返す関数prop。@actionのsubmitは成功通知|
+|mountComponent(...,{submitTask})|JSONフォームに信頼済み非同期保存関数を接続|
+|mountScreen(...,{submitTask})|submitTask(values,componentId)|
+|生成JS mountApp(root,onEvent,submitTask)|第3引数で保存処理を指定|
+|生成Vue SFC submitTask prop|submitTask(values,componentId)|
+
+CSV取込の戻り値と既定許可、Vue optionsの更新挙動は破壊的な操作を防止するための意図的な変更。旧仕様より本節を優先する。

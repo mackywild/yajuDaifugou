@@ -48,7 +48,7 @@ createField の戻り値は element/input/getValue/setValue/validate/focus/destr
 
 行は一意・非nullのrowKeyを要求。行キーは編集不可。列keyは一意・予約キー禁止。内部ストアは初期値/現在値/過去/未来を分離、行の浅いコピーでスカラー値を前提とする。履歴上限は50。変更は複数セルを検証した後、単一トランザクションとしてapplyする。1セルでも不正なら貼り付けを反映しない。Undo/Redoは操作単位。commitで基準を更新し履歴をクリア。resetで基準に戻す。getChangesは added/updated/deleted。
 
-クリック・Shift・ドラッグ範囲選択、Enter/ダブルクリック編集、Delete、Ctrl/Cmd+C/V/Z/Y、行選択・追加・削除、列ソート、全列検索、列フィルター、表示列、列幅（スライダー・ドラッグ）、左固定、条件付き書式、集計（sum/avg/count）、CSVファイル取込・出力を提供する。canEdit(row,column)、canDelete(row)、列readonly/editable、型・必須・独自validateで制御。認可はアプリサーバーでも実施する。複数固定列は左詰めを推奨。範囲操作は現在の表示ページ内に限定し、ページを越える貼り付けは拒否する。CSVは列keyヘッダー・UTF-8・5MB以下。取込は明示的な全件置換機能で編集権限判定とは別の操作。CSV出力では式として評価されやすい文字列にアポストロフィを付加する（完全なExcel安全保証ではない）。既存APIの制約は読み取り専用版にのみ適用。
+クリック・Shift・ドラッグ範囲選択、Enter/ダブルクリック編集、Delete、Ctrl/Cmd+C/V/Z/Y、行選択・追加・削除、列ソート、全列検索、列フィルター、表示列、列幅（スライダー・ドラッグ）、左固定、条件付き書式、集計（sum/avg/count）、CSVファイル取込・出力を提供する。canEdit(row,column)、canDelete(row)、列readonly/editable、型・必須・独自validateで制御。認可はアプリサーバーでも実施する。複数固定列は左詰めを推奨。範囲操作は現在の表示ページ内に限定し、ページを越える貼り付けは拒否する。CSVは全列keyヘッダー・UTF-8・5MB以下。取込は既定無効。明示許可・確認関数・権限・型・全列検証を経た全件置換操作。CSV出力では式として評価されやすい文字列にアポストロフィを付加する（完全なExcel安全保証ではない）。既存APIの制約は読み取り専用版にのみ適用。
 
 ### 5.3 Virtual Grid
 
@@ -83,6 +83,15 @@ npm run build は14個のESM/CSS資産をdistへ配置し、SHA-256 manifestを�
 - mky- スコープ、textContent、JSONのサイズ・キー検証、テーマトークン許可リスト。
 - 開発HTTPはlocalhost専用。固定許可ルートとplayground直下の許可拡張子。サブフォルダ/シンボリックリンク/任意ファイルは拒否（dist/vendorは固定エイリアス）。
 - APIで外部入力を受け取るときはアプリ側でも検証する。信頼済み開発者が生成・保存したHTMLを実行する。未信頼HTMLの実行サンドボックスではない。
-- DOMイベントの解除が必要な部品はdestroyを返す。VueラッパーはbeforeUnmountでdestroyする。Vue options更新時は再生成し、状態保持は親側で管理する。
+- DOMイベントの解除が必要な部品はdestroyを返す。VueラッパーはbeforeUnmountでdestroyする。Vueの状態保持部品は同じtype/resetKeyのoptions更新で再生成しない。明示的なresetKey変更で再生成する。
 - テストは旧版、v2モデル、v2 DOM、Vue、配布版、実機・アクセシビリティを分離。実際に実行できた項目のみ合格とする。
 - 本ライブラリの保管場所はtools/macky-ui。野獣大富豪のJava/Android/iOS/ゲームHTML/既存ビルドに変更なし。
+
+
+## 12. v2.0.1 レビュー修正設計
+
+CSV: planCSVImportは純粋な検証関数。全列・非空・一意ID、既存ID型保持、必須/独自検証、既存行のreadonly/editable/canEdit、追加/削除の明示canAdd/canDeleteを判定する。新規行はcanAddが行全体を認可し、既存行の非表示データは保持する。確認には差分added/updated/deletedと更新前後updatesを渡す。importCSVは確認Promise中の同時取込を拒否し、revision（編集、履歴、commit/resetで更新）と再検証で競合を拒否する。変更なし・キャンセルはfalse、承認後の変更は一操作で履歴に登録。不許可/異常は例外。ヘッダーのみの全削除は禁止。CSV安全化された文字列の完全往復やnullと空文字の区別は保証しない。JSONビルダーからの破壊的取込は無効。
+
+Vue: submitTaskを通知イベントから独立した関数propとしてawaitする。submitイベントは成功後通知。stateful部品はtype/resetKeyの一致中にoptionsを再適用しない。resetKeyは意図的な初期化用。busy中はreset-blockedで拒否。導入先は処理中の画面離脱・アンマウントと未保存破棄を管理する。
+
+フォーム: date/timeの値とmin/maxを型別スカラー化、日付の妥当性と深夜跨ぎを検証。グリッド: 外部TSVを既定安全モード、内部カスタムMIMEをraw。IME composition/isComposing/229を確認。セルのID/列キーによる復元、blur後の再描画はポインター操作終了後に延期する。対象が画面外なら復元しない。実ブラウザ・IME・Excelでの確認は受入条件。
