@@ -9,6 +9,7 @@ export function createGridStore(initial=[],{historyLimit=50}={}){
   return {get,apply,undo(){if(!past.length)return false;future.push(copyRows(rows));rows=past.pop();return true;},
     redo(){if(!future.length)return false;past.push(copyRows(rows));rows=future.pop();return true;},
     canUndo:()=>past.length>0,canRedo:()=>future.length>0,
+    peekUndo:()=>past.length?copyRows(past.at(-1)):null,peekRedo:()=>future.length?copyRows(future.at(-1)):null,peekReset:()=>copyRows(baseline),
     commit(){baseline=copyRows(rows);past=[];future=[];},reset(){rows=copyRows(baseline);past=[];future=[];},
     isDirty:()=>JSON.stringify(rows)!==JSON.stringify(baseline),
     changes(key="id"){const old=new Map(baseline.map(r=>[r[key],r])),now=new Map(rows.map(r=>[r[key],r]));return {added:rows.filter(r=>!old.has(r[key])).map(r=>({...r})),updated:rows.filter(r=>old.has(r[key])&&JSON.stringify(old.get(r[key]))!==JSON.stringify(r)).map(r=>({...r})),deleted:baseline.filter(r=>!now.has(r[key])).map(r=>({...r}))};}};

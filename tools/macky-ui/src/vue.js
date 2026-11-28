@@ -26,13 +26,22 @@ export function createVueKit(Vue,ui){
   const MGrid=wrap("MGrid",createGrid,true),MMenu=wrap("MMenu",createMenu),MBadge=wrap("MBadge",createBadge);
   // Stateful components treat options as initial configuration; resetKey is explicit.
   const stateful=new Set(["field","select","checkbox","radio","date","file","form","advancedGrid","kanban","richText","wizard","tabs","calendar","accordion","command","image","sidebar"]);
+  // Live access policy is separate from initial data and never regenerates a handle.
+  function applyAccess(handle,options){
+    if(!handle)return;
+    const policy={disabled:Boolean(options.disabled),readonly:Boolean(options.readonly)};
+    if(Array.isArray(options.fields))policy.fields=options.fields.map(f=>({name:f.name,disabled:Boolean(f.disabled),readonly:Boolean(f.readonly)}));
+    if(Array.isArray(options.columns))policy.columns=options.columns.map(c=>({key:c.key,readonly:Boolean(c.readonly),editable:c.editable!==false}));
+    if(handle.handle?.setAccess)handle.handle.setAccess(policy);
+    else{handle.element.inert=policy.disabled;handle.element.setAttribute("aria-disabled",String(policy.disabled));}
+  }
   const sharedProps={options:{type:Object,default:()=>({})},resetKey:{type:[String,Number],default:0},submitTask:Function};
   const MComponent=defineComponent({name:"MComponent",props:{type:{type:String,required:true},...sharedProps},emits:["action"],setup(p,{emit}){
     const host=ref(null);let handle=null,previous=null;
     function sync(){
       if(!host.value)return;
       const type=p.type,reset=p.resetKey;
-      if(previous&&previous.type===type&&previous.reset===reset&&stateful.has(type))return;
+      if(previous&&previous.type===type&&stateful.has(type)){applyAccess(handle,p.options);if(previous.reset===reset)return;}
       if(handle?.handle?.isBusy?.()){emit("action","reset-blocked","処理中は再生成できません");return;}
       try{
         const fingerprint=api.safeJSON(p.options);
@@ -41,7 +50,7 @@ export function createVueKit(Vue,ui){
           ui,onEvent:(name,value)=>emit("action",name,value),
           submitTask:async values=>{if(p.submitTask)await p.submitTask(values);}
         });
-        handle?.destroy();handle=next;host.value.replaceChildren(next.element);previous={type,reset,fingerprint};
+        applyAccess(next,p.options);handle?.destroy();handle=next;host.value.replaceChildren(next.element);previous={type,reset,fingerprint};
       }catch(e){if(!handle)host.value.textContent=String(e?.message||e);emit("action","error",String(e?.message||e));}
     }
     onMounted(sync);watch(()=>[p.type,p.options,p.resetKey],sync,{deep:true,flush:"post"});

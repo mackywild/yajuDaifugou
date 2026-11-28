@@ -26,7 +26,7 @@ export function mountComponent(api,type,options,{ui,onEvent=()=>{},submitTask}={
  const element=result.element||result;
  return {element,handle:result,destroy(){if(result.destroy)result.destroy();else element.remove();}};
 }
-export function mountScreen(api,root,screen,{ui,onEvent=()=>{}}={}){
+export function mountScreen(api,root,screen,{ui,onEvent=()=>{},submitTask}={}){
  const spec=normalizeScreen(screen),main=node("main","mky-screen"),grid=node("div","mky-screen-grid"),handles=[];
  main.append(node("h1","",spec.title),grid);root.append(main);
  try{for(const c of spec.components){const cell=node("div",c.span===1?"mky-span-1":"mky-span-2");const h=mountComponent(api,c.type,c.options,{ui,onEvent:(name,value)=>onEvent(name,value,c.id),submitTask:submitTask?values=>submitTask(values,c.id):undefined});handles.push(h);cell.append(h.element);grid.append(cell);}}
