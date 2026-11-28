@@ -1,0 +1,50 @@
+{
+  "name": "@mackywild/macky-ui",
+  "version": "2.0.3",
+  "private": true,
+  "type": "module",
+  "description": "Standalone browser UI kit with Vue 3 adapter",
+  "exports": {
+    ".": "./dist/index.js",
+    "./vue": "./dist/vue.js",
+    "./style.css": "./dist/style.css"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test",
+    "check": "node --check src/index.js && node --check src/model.js && node --check src/vue.js && node --check demo/demo.js && node --check demo/vue-demo.js && node --check server.mjs && node --check build.mjs && node --check routes.mjs && node --check demo/launcher.js && node --check demo/built.js && node --check playground/example.js && node --check src/dom.js && node --check src/form.js && node --check src/grid-model.js && node --check src/advanced-grid.js && node --check src/theme.js && node --check src/widgets.js && node --check src/services.js && node --check src/registry.js && node --check src/render.js && node --check demo/studio.js && node --check src/virtual-grid.js && node --check demo/browser-test-v2.js && node --check test/v2.test.js && node --check test/review.test.js && node --check demo/browser-review.js && node --check playground/csv-import.js && node --check test/state.test.js",
+    "build": "node build.mjs",
+    "prepack": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist/index.js",
+    "dist/model.js",
+    "dist/vue.js",
+    "dist/style.css",
+    "dist/dom.js",
+    "dist/form.js",
+    "dist/grid-model.js",
+    "dist/advanced-grid.js",
+    "dist/theme.js",
+    "dist/widgets.js",
+    "dist/services.js",
+    "dist/registry.js",
+    "dist/render.js",
+    "dist/virtual-grid.js",
+    "dist/manifest.json",
+    "README.md",
+    "DESIGN.md",
+    "DESIGN_V2.md",
+    "API_V2.md",
+    "ROADMAP.md"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "devDependencies": {
+    "vue": "^3.5.0"
+  }
+}
